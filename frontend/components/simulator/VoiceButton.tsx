@@ -1,0 +1,73 @@
+"use client";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { Mic, Loader2 } from "lucide-react";
+
+export type VoiceState = "idle" | "recording" | "processing" | "playing";
+
+interface Props {
+  state: VoiceState;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+const config = {
+  idle: {
+    bg: "bg-[#6C63FF]",
+    ring: "ring-[#6C63FF]/30",
+    label: "Нажми и говори",
+    pulse: false,
+  },
+  recording: {
+    bg: "bg-[#FF6B6B]",
+    ring: "ring-[#FF6B6B]/40",
+    label: "Говорю... (нажми чтобы остановить)",
+    pulse: true,
+  },
+  processing: {
+    bg: "bg-[#F59E0B]",
+    ring: "ring-[#F59E0B]/30",
+    label: "Обрабатываю...",
+    pulse: false,
+  },
+  playing: {
+    bg: "bg-[#00D4AA]",
+    ring: "ring-[#00D4AA]/30",
+    label: "Офицер отвечает...",
+    pulse: true,
+  },
+};
+
+export function VoiceButton({ state, onClick, disabled = false }: Props) {
+  const cfg = config[state];
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <motion.button
+        onClick={onClick}
+        disabled={disabled || state === "processing" || state === "playing"}
+        whileTap={{ scale: 0.93 }}
+        className={`relative w-20 h-20 rounded-full ${cfg.bg} ring-4 ${cfg.ring} flex items-center justify-center text-white shadow-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed`}
+      >
+        <AnimatePresence>
+          {cfg.pulse && (
+            <motion.span
+              key="pulse"
+              className={`absolute inset-0 rounded-full ${cfg.bg} opacity-40`}
+              animate={{ scale: [1, 1.5, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          )}
+        </AnimatePresence>
+
+        {state === "processing" ? (
+          <Loader2 size={28} className="animate-spin" />
+        ) : (
+          <Mic size={28} />
+        )}
+      </motion.button>
+
+      <p className="text-[#8B8BA7] text-xs text-center">{cfg.label}</p>
+    </div>
+  );
+}

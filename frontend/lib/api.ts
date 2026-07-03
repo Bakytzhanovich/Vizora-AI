@@ -1,0 +1,491 @@
+import axios from "axios";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+export const api = axios.create({
+  baseURL: `${BASE_URL}/api`,
+  headers: { "Content-Type": "application/json" },
+  timeout: 15000,
+});
+
+// Attach access token to every request
+api.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("access_token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// On 401 try to refresh; on failure clear storage and redirect
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    if (
+      error.response?.status === 401 &&
+      !original._retry &&
+      typeof window !== "undefined"
+    ) {
+      original._retry = true;
+      const refreshToken = localStorage.getItem("refresh_token");
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {
+            refresh_token: refreshToken,
+          });
+          localStorage.setItem("access_token", data.access_token);
+          original.headers.Authorization = `Bearer ${data.access_token}`;
+          return api(original);
+        } catch (refreshError) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          localStorage.removeItem("user_id");
+          window.location.href = "/login";
+          return Promise.reject(refreshError);
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ─── fetchWithAuth ──────────────────────────────────────────────────────────
+// Wrapper around fetch() that adds Authorization header and handles 401 by
+// refreshing the token (mirrors the axios interceptor above, for pages that
+// use raw fetch instead of the axios instance — e.g. streaming chat).
+
+export async function fetchWithAuth(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  if (typeof window === "undefined") return fetch(url, options);
+
+  const token = localStorage.getItem("access_token");
+  const headers = new Headers(options.headers as HeadersInit | undefined);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status !== 401) return res;
+
+  // Try to refresh
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (refreshToken) {
+    try {
+      const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (refreshRes.ok) {
+        const { access_token } = await refreshRes.json();
+        localStorage.setItem("access_token", access_token);
+        headers.set("Authorization", `Bearer ${access_token}`);
+        return fetch(url, { ...options, headers });
+      }
+    } catch {
+      // fall through to redirect
+    }
+  }
+
+  // Refresh failed — wipe session and send to login
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("user_id");
+  window.location.href = "/login";
+  throw new Error("Session expired");
+}
+
+// ─── Auth ───────────────────────────────────────────────────────────────────
+
+export async function apiRegister(
+  email: string,
+  password: string,
+  referral_code?: string
+) {
+  const { data } = await api.post<{
+    access_token: string;
+    refresh_token: string;
+    user_id: string;
+    referrer_name?: string | null;
+  }>("/auth/register", { email, password, ...(referral_code ? { referral_code } : {}) });
+  return data;
+}
+
+export async function apiLogin(email: string, password: string) {
+  const { data } = await api.post<{
+    access_token: string;
+    refresh_token: string;
+    user_id: string;
+  }>("/auth/login", { email, password });
+  return data;
+}
+
+// ─── Profile ─────────────────────────────────────────────────────────────────
+
+export interface OnboardingPayload {
+  name: string;
+  university: string;
+  course_year: number;
+  interview_date: string | null;
+  english_level: string;
+  travel_history: boolean;
+  financial_source: string;
+  job_offer: string;
+  country: string;
+  via_agency: boolean;
+}
+
+export interface RiskItem {
+  type: string;
+  severity: "high" | "medium" | "low";
+  label_ru: string;
+  advice_ru: string;
+  focus_questions?: string[];
+  note?: string;
+}
+
+export interface RiskProfile {
+  risks: RiskItem[];
+  overall_risk: "high" | "medium" | "low";
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  university: string;
+  course_year: number;
+  interview_date: string | null;
+  english_level: string;
+  travel_history: boolean;
+  financial_source: string;
+  job_offer: string;
+  country: string;
+  via_agency: boolean;
+}
+
+export async function apiOnboarding(payload: OnboardingPayload) {
+  try {
+    const { data } = await api.post<{ profile: UserProfile; risk_profile: RiskProfile }>(
+      "/profile/onboarding",
+      payload
+    );
+    return data;
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "response" in err) {
+      const axiosErr = err as { response: { data: unknown; status: number } };
+      console.error("422 detail:", JSON.stringify(axiosErr.response.data, null, 2));
+    }
+    throw err;
+  }
+}
+
+export async function apiGetMe() {
+  const { data } = await api.get<{
+    user: { id: string; email: string; role: string };
+    profile: UserProfile | null;
+    risk_profile: RiskProfile | null;
+  }>("/profile/me");
+  return data;
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+export interface DocumentItem {
+  id: string;
+  name: string;
+  description: string;
+  required: boolean;
+  category: string;
+  tips: string;
+  risk_note: string | null;
+  completed: boolean;
+}
+
+export interface DS160Step {
+  step: number;
+  title: string;
+  description: string;
+  important: string | null;
+  warning: string | null;
+}
+
+export interface CommonMistake {
+  mistake: string;
+  consequence: string;
+  solution: string;
+}
+
+export async function apiGetChecklist() {
+  const { data } = await api.get<{ checklist: DocumentItem[]; progress: number }>(
+    "/documents/checklist"
+  );
+  return data;
+}
+
+export async function apiUpdateDocument(document_id: string, completed: boolean) {
+  const { data } = await api.post<{ success: boolean; progress: number }>(
+    "/documents/checklist/update",
+    { document_id, completed }
+  );
+  return data;
+}
+
+export async function apiGetDS160Guide() {
+  const { data } = await api.get<{ steps: DS160Step[] }>("/documents/ds160-guide");
+  return data;
+}
+
+export async function apiGetCommonMistakes() {
+  const { data } = await api.get<{ mistakes: CommonMistake[] }>("/documents/common-mistakes");
+  return data;
+}
+
+// ─── Roadmap ─────────────────────────────────────────────────────────────────
+
+export type RoadmapStatus = "pending" | "in_progress" | "completed";
+
+export interface RoadmapStepData {
+  id: string;
+  number: number;
+  title: string;
+  description: string;
+  category: string;
+  tips: string;
+  auto_complete: boolean;
+  status: RoadmapStatus;
+  completed_at: string | null;
+}
+
+export interface RoadmapResponse {
+  steps: RoadmapStepData[];
+  current_step: string | null;
+  progress: number;
+}
+
+export async function apiGetRoadmap() {
+  const { data } = await api.get<RoadmapResponse>("/roadmap/roadmap");
+  return data;
+}
+
+export async function apiUpdateRoadmapStep(step_id: string, status: RoadmapStatus) {
+  const { data } = await api.post<{ success: boolean; next_step: string | null }>(
+    "/roadmap/roadmap/update",
+    { step_id, status }
+  );
+  return data;
+}
+
+// ─── Emergency ────────────────────────────────────────────────────────────────
+
+export interface EmergencyScenario {
+  id: string;
+  title: string;
+  icon: string;
+  description: string;
+  urgency: "critical" | "high" | "medium";
+  total_steps: number;
+}
+
+export interface EmergencyStep {
+  id: string;
+  question: string;
+  options: string[];
+}
+
+export interface EmergencyContact {
+  name: string;
+  phone?: string;
+  description: string;
+  note?: string;
+  priority: "emergency" | "first" | "secondary";
+}
+
+export interface EmergencyActionPlan {
+  steps: string[];
+  urgency: "critical" | "high" | "medium";
+  contacts: EmergencyContact[];
+  disclaimer: string;
+}
+
+export interface EmergencyStartResponse {
+  session_id: string;
+  scenario: { id: string; title: string; icon: string; urgency: string };
+  step: EmergencyStep;
+  step_index: number;
+  total_steps: number;
+  completed: false;
+}
+
+export interface EmergencyRespondResponse {
+  step: EmergencyStep | null;
+  step_index: number;
+  total_steps: number;
+  completed: boolean;
+  action_plan: EmergencyActionPlan | null;
+}
+
+export async function apiGetEmergencyScenarios() {
+  const { data } = await api.get<{ scenarios: EmergencyScenario[] }>("/emergency/scenarios");
+  return data;
+}
+
+export async function apiStartEmergency(scenario_id: string) {
+  const { data } = await api.post<EmergencyStartResponse>("/emergency/start", { scenario_id });
+  return data;
+}
+
+export async function apiRespondEmergency(
+  session_id: string,
+  step_index: number,
+  answer: string
+) {
+  const { data } = await api.post<EmergencyRespondResponse>("/emergency/respond", {
+    session_id,
+    step_index,
+    answer,
+  });
+  return data;
+}
+
+// ─── Referral ─────────────────────────────────────────────────────────────────
+
+export interface ReferralTier {
+  referrals_needed: number;
+  reward: string;
+  reward_type: string;
+  reward_value: number | null;
+}
+
+export interface ReferralReward {
+  reward_type: string;
+  description: string;
+  status: "earned" | "claimed" | "expired";
+}
+
+export interface ReferralStats {
+  total_invited: number;
+  total_registered: number;
+  total_active: number;
+  rewards: ReferralReward[];
+  next_tier: ReferralTier | null;
+  tiers: ReferralTier[];
+}
+
+export interface ReferralCodeResponse {
+  code: string;
+  link: string;
+  stats: ReferralStats;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  count: number;
+  is_me: boolean;
+}
+
+export async function apiGetReferralCode() {
+  const { data } = await api.get<ReferralCodeResponse>("/referral/my-code");
+  return data;
+}
+
+export async function apiGetReferralStats() {
+  const { data } = await api.get<{
+    total_invited: number;
+    total_registered: number;
+    total_active: number;
+    rewards_earned: ReferralReward[];
+    pending_rewards: ReferralTier[];
+    next_tier: ReferralTier | null;
+  }>("/referral/stats");
+  return data;
+}
+
+export async function apiGetReferralLeaderboard() {
+  const { data } = await api.get<{ top_referrers: LeaderboardEntry[] }>(
+    "/referral/leaderboard"
+  );
+  return data;
+}
+
+export async function apiApplyReferralCode(referral_code: string) {
+  const { data } = await api.post<{ success: boolean; referrer_name: string }>(
+    "/referral/apply",
+    { referral_code }
+  );
+  return data;
+}
+
+// ─── After Visa ──────────────────────────────────────────────────────────────
+
+export interface AfterVisaModuleSummary {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  section_count: number;
+  completed: number;
+  total: number;
+  pct: number;
+}
+
+export interface AfterVisaModulesResponse {
+  unlocked: boolean;
+  modules: AfterVisaModuleSummary[];
+  overall_completed: number;
+  overall_total: number;
+  overall_pct: number;
+}
+
+export interface AfterVisaSection {
+  id: string;
+  title: string;
+  content: string;
+  completed: boolean;
+}
+
+export interface AfterVisaModuleDetail {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  sections: AfterVisaSection[];
+}
+
+export interface AfterVisaContentResponse {
+  module: AfterVisaModuleDetail;
+  completed: number;
+  total: number;
+  pct: number;
+}
+
+export async function apiGetAfterVisaModules() {
+  const { data } = await api.get<AfterVisaModulesResponse>("/after-visa/modules");
+  return data;
+}
+
+export async function apiGetAfterVisaContent(module_id: string) {
+  const { data } = await api.get<AfterVisaContentResponse>(
+    `/after-visa/content/${module_id}`
+  );
+  return data;
+}
+
+export async function apiUpdateAfterVisaProgress(
+  module_id: string,
+  section_id: string,
+  completed: boolean
+) {
+  const { data } = await api.post<{ success: boolean; overall_progress: number }>(
+    "/after-visa/progress",
+    { module_id, section_id, completed }
+  );
+  return data;
+}
+
+export async function apiResolveEmergency(session_id: string) {
+  const { data } = await api.post<{ success: boolean }>("/emergency/resolve", { session_id });
+  return data;
+}

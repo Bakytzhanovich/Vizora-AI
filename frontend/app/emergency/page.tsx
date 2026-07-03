@@ -1,0 +1,266 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+import { ScenarioCard } from "@/components/emergency/ScenarioCard";
+import { GuidedStep } from "@/components/emergency/GuidedStep";
+import { ActionPlan } from "@/components/emergency/ActionPlan";
+import {
+  apiGetEmergencyScenarios,
+  apiStartEmergency,
+  apiRespondEmergency,
+  apiResolveEmergency,
+  type EmergencyScenario,
+  type EmergencyStep,
+  type EmergencyActionPlan,
+} from "@/lib/api";
+
+type FlowStep = "landing" | "guided" | "plan" | "resolved";
+
+interface ActiveSession {
+  sessionId: string;
+  scenario: EmergencyScenario;
+  step: EmergencyStep;
+  stepIndex: number;
+  totalSteps: number;
+}
+
+export default function EmergencyPage() {
+  const router = useRouter();
+
+  const [flowStep, setFlowStep] = useState<FlowStep>("landing");
+  const [scenarios, setScenarios] = useState<EmergencyScenario[]>([]);
+  const [loadingScenarios, setLoadingScenarios] = useState(true);
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [session, setSession] = useState<ActiveSession | null>(null);
+  const [actionPlan, setActionPlan] = useState<EmergencyActionPlan | null>(null);
+  const [answering, setAnswering] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!localStorage.getItem("access_token")) {
+      router.replace("/login");
+      return;
+    }
+    apiGetEmergencyScenarios()
+      .then((d) => setScenarios(d.scenarios))
+      .catch(() => {})
+      .finally(() => setLoadingScenarios(false));
+  }, [router]);
+
+  const handleSelectScenario = useCallback(async (scenarioId: string) => {
+    setStartingId(scenarioId);
+    try {
+      const res = await apiStartEmergency(scenarioId);
+      const matched = scenarios.find((s) => s.id === scenarioId);
+      if (!matched) return;
+      setSession({
+        sessionId: res.session_id,
+        scenario: matched,
+        step: res.step,
+        stepIndex: res.step_index,
+        totalSteps: res.total_steps,
+      });
+      setFlowStep("guided");
+    } catch {
+      // fallback: show error inline instead of breaking
+    } finally {
+      setStartingId(null);
+    }
+  }, [scenarios]);
+
+  const handleAnswer = useCallback(async (answer: string) => {
+    if (!session || answering) return;
+    setSelectedAnswer(answer);
+    setAnswering(true);
+
+    try {
+      const res = await apiRespondEmergency(session.sessionId, session.stepIndex, answer);
+
+      if (res.completed && res.action_plan) {
+        setActionPlan(res.action_plan);
+        setFlowStep("plan");
+      } else if (res.step) {
+        setSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                step: res.step!,
+                stepIndex: res.step_index,
+                totalSteps: res.total_steps,
+              }
+            : null
+        );
+        setSelectedAnswer(undefined);
+      }
+    } catch {
+      setSelectedAnswer(undefined);
+    } finally {
+      setAnswering(false);
+    }
+  }, [session, answering]);
+
+  const handleResolve = useCallback(async () => {
+    if (!session) return;
+    setResolving(true);
+    try {
+      await apiResolveEmergency(session.sessionId);
+      setFlowStep("resolved");
+    } catch {
+      // still show resolved state
+      setFlowStep("resolved");
+    } finally {
+      setResolving(false);
+    }
+  }, [session]);
+
+  const handleBack = () => {
+    if (flowStep === "guided" || flowStep === "plan") {
+      setFlowStep("landing");
+      setSession(null);
+      setActionPlan(null);
+      setSelectedAnswer(undefined);
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0F]">
+      {/* Header */}
+      <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1E1E2E]">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+          <button
+            onClick={handleBack}
+            className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-[#F0F0FF] font-bold leading-tight">
+              🆘 Emergency Помощь
+            </h1>
+            <p className="text-[#8B8BA7] text-xs">Срочная помощь в USA</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <AnimatePresence mode="wait">
+          {/* ── Landing ── */}
+          {flowStep === "landing" && (
+            <motion.div
+              key="landing"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* Banner */}
+              <div className="bg-gradient-to-r from-[#FF6B6B]/10 to-[#F59E0B]/10 border border-[#FF6B6B]/20 rounded-2xl p-5 mb-6">
+                <div className="text-3xl mb-2">🆘</div>
+                <h2 className="text-[#F0F0FF] font-bold text-lg mb-1">Что-то пошло не так?</h2>
+                <p className="text-[#8B8BA7] text-sm leading-relaxed">
+                  Выбери ситуацию — получишь пошаговый план действий и контакты для связи.
+                  Не паникуй: большинство проблем решаемы.
+                </p>
+              </div>
+
+              {/* Scenario list */}
+              {loadingScenarios ? (
+                <div className="flex justify-center py-12">
+                  <div className="w-8 h-8 border-2 border-[#FF6B6B]/30 border-t-[#FF6B6B] rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {scenarios.map((scenario, i) => (
+                    <ScenarioCard
+                      key={scenario.id}
+                      scenario={scenario}
+                      index={i}
+                      onClick={handleSelectScenario}
+                      loading={startingId === scenario.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ── Guided Q&A ── */}
+          {flowStep === "guided" && session && (
+            <motion.div
+              key="guided"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+            >
+              <GuidedStep
+                step={session.step}
+                stepIndex={session.stepIndex}
+                totalSteps={session.totalSteps}
+                scenarioTitle={session.scenario.title}
+                scenarioIcon={session.scenario.icon}
+                onAnswer={handleAnswer}
+                loading={answering}
+                selectedAnswer={selectedAnswer}
+              />
+            </motion.div>
+          )}
+
+          {/* ── Action Plan ── */}
+          {flowStep === "plan" && actionPlan && session && (
+            <motion.div
+              key="plan"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ActionPlan
+                plan={actionPlan}
+                scenarioTitle={session.scenario.title}
+                scenarioIcon={session.scenario.icon}
+                onResolve={handleResolve}
+                resolving={resolving}
+              />
+            </motion.div>
+          )}
+
+          {/* ── Resolved ── */}
+          {flowStep === "resolved" && (
+            <motion.div
+              key="resolved"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col items-center text-center gap-5 py-12"
+            >
+              <div className="text-6xl">✅</div>
+              <div>
+                <h2 className="text-[#F0F0FF] font-bold text-xl mb-2">
+                  Рад, что всё разрешилось!
+                </h2>
+                <p className="text-[#8B8BA7] text-sm max-w-xs">
+                  Ситуация отмечена как решённая. Если нужна дополнительная помощь — возвращайся.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-bold text-sm"
+              >
+                На главную
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}

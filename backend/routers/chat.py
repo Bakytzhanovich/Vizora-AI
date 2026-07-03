@@ -1,0 +1,151 @@
+import json
+import uuid
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import AsyncSessionLocal, get_db
+from app.core.security import get_current_user_id
+from app.models.chat import ChatMessage
+from app.models.profile import StudentProfile
+from app.services.ai_service import generate_chat_response
+from app.services.rag_service import search_knowledge
+
+router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+class MessageRequest(BaseModel):
+    message: str
+    session_id: str | None = None
+
+
+@router.post("/message")
+async def send_message(
+    body: MessageRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    if not body.message.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message is empty")
+
+    session_id = body.session_id or str(uuid.uuid4())
+
+    # Load student profile for personalization
+    profile_result = await db.execute(
+        select(StudentProfile).where(StudentProfile.user_id == user_id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    student_profile: dict = {}
+    if profile:
+        student_profile = {
+            "country": profile.country,
+            "course_year": profile.course_year,
+            "english_level": profile.english_level,
+            "travel_history": profile.travel_history,
+            "financial_source": profile.financial_source,
+            "interview_date": profile.interview_date.isoformat() if profile.interview_date else None,
+        }
+
+    # Load recent chat history for context
+    history_result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.user_id == user_id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(10)
+    )
+    history_rows = list(reversed(history_result.scalars().all()))
+    chat_history = [{"role": m.role, "content": m.content} for m in history_rows]
+
+    # RAG: find relevant knowledge
+    knowledge_context = await search_knowledge(body.message, top_k=3, db=db)
+
+    # Save user message
+    user_msg = ChatMessage(
+        user_id=user_id,
+        session_id=session_id,
+        role="user",
+        content=body.message.strip(),
+        created_at=datetime.utcnow(),
+    )
+    db.add(user_msg)
+    await db.commit()
+
+    # Stream AI response and collect full text
+    async def event_stream():
+        full_response = ""
+        try:
+            async for chunk in generate_chat_response(
+                user_message=body.message,
+                student_profile=student_profile,
+                knowledge_context=knowledge_context,
+                chat_history=chat_history,
+            ):
+                full_response += chunk
+                yield chunk
+        except Exception as e:
+            error_msg = "Что-то пошло не так. Попробуй ещё раз."
+            yield error_msg
+            full_response = error_msg
+
+        # Use a fresh session — the dependency-injected one closes when the
+        # route handler returns StreamingResponse, before this generator runs.
+        async with AsyncSessionLocal() as save_db:
+            ai_msg = ChatMessage(
+                user_id=user_id,
+                session_id=session_id,
+                role="assistant",
+                content=full_response,
+                created_at=datetime.utcnow(),
+            )
+            save_db.add(ai_msg)
+            await save_db.commit()
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "X-Session-ID": session_id,
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.get("/history")
+async def get_history(
+    limit: int = Query(default=50, le=100),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.user_id == user_id)
+        .order_by(ChatMessage.created_at.asc())
+        .limit(limit)
+    )
+    messages = result.scalars().all()
+    return {
+        "messages": [
+            {
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at.isoformat(),
+            }
+            for m in messages
+        ]
+    }
+
+
+@router.delete("/history")
+async def clear_history(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    await db.execute(delete(ChatMessage).where(ChatMessage.user_id == user_id))
+    await db.commit()
+    return {"success": True}

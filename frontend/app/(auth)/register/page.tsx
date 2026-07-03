@@ -1,0 +1,203 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { AxiosError } from "axios";
+import { ReferralBanner } from "@/components/referral/ReferralBanner";
+import { track } from "@/lib/analytics";
+
+interface FormErrors {
+  email?: string;
+  password?: string;
+  confirm?: string;
+  general?: string;
+}
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const { register } = useAuth();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [refCode, setRefCode] = useState<string | null>(null);
+  const [refName, setRefName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("ref");
+    if (code) {
+      setRefCode(code.toUpperCase());
+      // Try to fetch referrer name
+      const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      fetch(`${BASE}/api/referral/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer preview" },
+        body: JSON.stringify({ referral_code: code }),
+      })
+        .then((r) => r.json())
+        .then((d) => { if (d.referrer_name) setRefName(d.referrer_name); })
+        .catch(() => {});
+    }
+  }, []);
+
+  const validate = (): boolean => {
+    const e: FormErrors = {};
+    if (!email.trim()) e.email = "Заполните это поле";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Некорректный email";
+    if (!password) e.password = "Заполните это поле";
+    else if (password.length < 8) e.password = "Пароль должен содержать минимум 8 символов";
+    if (!confirm) e.confirm = "Заполните это поле";
+    else if (password !== confirm) e.confirm = "Пароли не совпадают";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    setErrors({});
+    try {
+      track("register_start", { has_referral: !!refCode });
+      await register(email, password, refCode ?? undefined);
+      track("register_complete", { has_referral: !!refCode });
+      router.push("/onboarding");
+    } catch (err) {
+      const axErr = err as AxiosError<{ detail: string }>;
+      if (axErr.response?.status === 409) {
+        setErrors({ email: "Email уже используется" });
+      } else {
+        setErrors({ general: "Что-то пошло не так. Попробуй снова." });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center px-4 py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+      >
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 mb-6">
+            <span className="text-[#6C63FF] text-2xl font-bold">◈</span>
+            <span className="text-[#F0F0FF] font-bold text-xl">
+              Vizora <span className="text-[#6C63FF]">AI</span>
+            </span>
+          </Link>
+          <h1 className="text-2xl font-bold text-[#F0F0FF] mb-2">Создай аккаунт</h1>
+          <p className="text-[#8B8BA7] text-sm">
+            Начни подготовку к интервью прямо сейчас
+          </p>
+        </div>
+
+        {refName && <ReferralBanner referrerName={refName} />}
+
+        <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-6 sm:p-8">
+          {errors.general && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-5 bg-[#FF6B6B]/10 border border-[#FF6B6B]/20 text-[#FF6B6B] text-sm rounded-xl px-4 py-3"
+            >
+              {errors.general}
+            </motion.div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+            {/* Email */}
+            <div>
+              <label className="block text-[#8B8BA7] text-xs font-semibold uppercase tracking-wide mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }}
+                placeholder="student@example.com"
+                className={`w-full bg-[#0A0A0F] border rounded-xl px-4 py-3.5 text-sm text-[#F0F0FF] placeholder-[#8B8BA7]/40 outline-none transition-colors duration-200 ${errors.email ? "border-[#FF6B6B]/60 focus:border-[#FF6B6B]" : "border-[#1E1E2E] focus:border-[#6C63FF]/50"}`}
+                autoComplete="email"
+              />
+              {errors.email && <p className="text-[#FF6B6B] text-xs mt-1.5">{errors.email}</p>}
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-[#8B8BA7] text-xs font-semibold uppercase tracking-wide mb-2">
+                Пароль
+              </label>
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors((p) => ({ ...p, password: undefined })); }}
+                  placeholder="Минимум 8 символов"
+                  className={`w-full bg-[#0A0A0F] border rounded-xl px-4 py-3.5 pr-11 text-sm text-[#F0F0FF] placeholder-[#8B8BA7]/40 outline-none transition-colors duration-200 ${errors.password ? "border-[#FF6B6B]/60 focus:border-[#FF6B6B]" : "border-[#1E1E2E] focus:border-[#6C63FF]/50"}`}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+                >
+                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-[#FF6B6B] text-xs mt-1.5">{errors.password}</p>}
+            </div>
+
+            {/* Confirm password */}
+            <div>
+              <label className="block text-[#8B8BA7] text-xs font-semibold uppercase tracking-wide mb-2">
+                Повтори пароль
+              </label>
+              <input
+                type={showPass ? "text" : "password"}
+                value={confirm}
+                onChange={(e) => { setConfirm(e.target.value); if (errors.confirm) setErrors((p) => ({ ...p, confirm: undefined })); }}
+                placeholder="Повтори пароль"
+                className={`w-full bg-[#0A0A0F] border rounded-xl px-4 py-3.5 text-sm text-[#F0F0FF] placeholder-[#8B8BA7]/40 outline-none transition-colors duration-200 ${errors.confirm ? "border-[#FF6B6B]/60 focus:border-[#FF6B6B]" : "border-[#1E1E2E] focus:border-[#6C63FF]/50"}`}
+                autoComplete="new-password"
+              />
+              {errors.confirm && <p className="text-[#FF6B6B] text-xs mt-1.5">{errors.confirm}</p>}
+            </div>
+
+            <motion.button
+              type="submit"
+              disabled={loading}
+              whileHover={!loading ? { scale: 1.02 } : {}}
+              whileTap={!loading ? { scale: 0.97 } : {}}
+              className="w-full bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#6C63FF]/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm transition-all duration-200 mt-2"
+            >
+              {loading ? (
+                <><Loader2 size={16} className="animate-spin" /> Создаём аккаунт...</>
+              ) : (
+                "Зарегистрироваться →"
+              )}
+            </motion.button>
+          </form>
+        </div>
+
+        <p className="text-center text-[#8B8BA7] text-sm mt-6">
+          Уже есть аккаунт?{" "}
+          <Link href="/login" className="text-[#6C63FF] hover:text-[#9C8BFF] font-semibold transition-colors">
+            Войти
+          </Link>
+        </p>
+      </motion.div>
+    </div>
+  );
+}
