@@ -463,7 +463,7 @@ function InviteModal({
                 placeholder="Данияр Мухамедов"
                 required
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm text-gray-900 placeholder-gray-400 caret-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
               />
             </div>
             <div>
@@ -474,7 +474,7 @@ function InviteModal({
                 onChange={set("email")}
                 placeholder="manager@agency.kz"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm text-gray-900 placeholder-gray-400 caret-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
               />
             </div>
             <div>

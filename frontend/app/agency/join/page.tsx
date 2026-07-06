@@ -112,7 +112,7 @@ function JoinForm() {
                 onChange={set("name")}
                 required
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm text-gray-900 placeholder-gray-400 caret-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
               />
             </div>
             <div>
@@ -132,7 +132,7 @@ function JoinForm() {
                 onChange={set("password")}
                 placeholder="Минимум 6 символов"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm text-gray-900 placeholder-gray-400 caret-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
               />
             </div>
             <div>
@@ -143,7 +143,7 @@ function JoinForm() {
                 onChange={set("confirmPassword")}
                 placeholder="Повтори пароль"
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-sm text-gray-900 placeholder-gray-400 caret-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition"
               />
             </div>
             {error && (
