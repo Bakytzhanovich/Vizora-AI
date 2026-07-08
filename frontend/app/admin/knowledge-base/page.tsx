@@ -1,24 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { adminHeaders } from "@/lib/admin-api";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-// Secret is never embedded in the JS bundle. It lives only in sessionStorage
-// (cleared when the browser tab closes) and is validated against the API before
-// the page renders.
-function storedSecret(): string {
-  return typeof window !== "undefined"
-    ? sessionStorage.getItem("adminSecret") ?? ""
-    : "";
-}
-
-function adminHeaders(secret: string) {
-  return {
-    "Content-Type": "application/json",
-    "X-Admin-Secret": secret,
-  };
-}
 
 interface KbEntry {
   id: string;
@@ -41,6 +27,12 @@ interface ScraperRun {
   error_message: string | null;
 }
 
+interface ScraperStatus {
+  knowledge_base_size: number;
+  next_scheduled_run: string | null;
+  last_run: ScraperRun | null;
+}
+
 const TRUST_COLORS: Record<string, string> = {
   "официальный источник": "bg-green-900/40 text-green-300 border-green-700/40",
   "по данным агентств": "bg-blue-900/40 text-blue-300 border-blue-700/40",
@@ -53,17 +45,12 @@ const STATUS_COLORS: Record<string, string> = {
   failed: "text-red-400",
 };
 
-export default function KnowledgeBaseAdmin() {
-  const [secret, setSecret] = useState("");
-  const [authed, setAuthed] = useState<boolean | null>(null); // null = checking
-  const [authError, setAuthError] = useState("");
-  const [secretInput, setSecretInput] = useState("");
-
+function KnowledgeBaseContent({ secret }: { secret: string }) {
   const [entries, setEntries] = useState<KbEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [runs, setRuns] = useState<ScraperRun[]>([]);
-  const [scraperStatus, setScraperStatus] = useState<any>(null);
+  const [scraperStatus, setScraperStatus] = useState<ScraperStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [runLoading, setRunLoading] = useState(false);
   const [filterCategory, setFilterCategory] = useState("");
@@ -72,34 +59,7 @@ export default function KnowledgeBaseAdmin() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const PAGE_SIZE = 30;
 
-  // On mount: try the stored secret; show login form if absent or invalid.
-  useEffect(() => {
-    const stored = storedSecret();
-    if (!stored) { setAuthed(false); return; }
-    fetch(`${API}/api/admin/scraper/status`, { headers: adminHeaders(stored) })
-      .then((r) => {
-        if (r.ok) { setSecret(stored); setAuthed(true); }
-        else { sessionStorage.removeItem("adminSecret"); setAuthed(false); }
-      })
-      .catch(() => setAuthed(false));
-  }, []);
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setAuthError("");
-    const r = await fetch(`${API}/api/admin/scraper/status`, {
-      headers: adminHeaders(secretInput),
-    });
-    if (r.ok) {
-      sessionStorage.setItem("adminSecret", secretInput);
-      setSecret(secretInput);
-      setAuthed(true);
-    } else {
-      setAuthError("Неверный секрет");
-    }
-  }
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -128,9 +88,9 @@ export default function KnowledgeBaseAdmin() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filterCategory, filterTrust, page, secret]);
 
-  useEffect(() => { if (authed) loadData(); }, [authed, page, filterCategory, filterTrust]);
+  useEffect(() => { if (secret) loadData(); }, [secret, loadData]);
 
   async function triggerScraper() {
     setRunLoading(true);
@@ -169,48 +129,14 @@ export default function KnowledgeBaseAdmin() {
 
   const totalEntries = scraperStatus?.knowledge_base_size ?? total;
 
-  if (authed === null) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center font-mono text-[#8B8BA7]">
-        Проверка...
-      </div>
-    );
-  }
-
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center font-mono">
-        <form onSubmit={handleLogin} className="bg-[#13131A] border border-[#1E1E2E] rounded-xl p-8 w-full max-w-sm">
-          <h1 className="text-lg font-bold text-[#F0F0FF] mb-6">Vizora AI — Admin</h1>
-          <label className="block text-xs text-[#8B8BA7] mb-1">Admin secret</label>
-          <input
-            type="password"
-            value={secretInput}
-            onChange={(e) => setSecretInput(e.target.value)}
-            className="w-full bg-[#0A0A0F] border border-[#1E1E2E] rounded-lg px-3 py-2 text-sm text-[#F0F0FF] outline-none focus:border-[#6C63FF] mb-4"
-            autoFocus
-          />
-          {authError && <p className="text-red-400 text-xs mb-3">{authError}</p>}
-          <button
-            type="submit"
-            className="w-full bg-[#6C63FF] hover:bg-[#5a52e0] text-white py-2 rounded-lg text-sm font-semibold transition-colors"
-          >
-            Войти
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-[#F0F0FF] p-6 font-mono">
-      <div className="max-w-7xl mx-auto">
+    <div className="font-mono text-[#F0F0FF]">
+      <div className="max-w-7xl">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Vizora AI — Knowledge Base</h1>
-            <p className="text-[#8B8BA7] text-sm mt-1">Внутренний инструмент. Всего записей: {totalEntries}</p>
+            <p className="text-[#8B8BA7] text-sm">Всего записей: {totalEntries}</p>
           </div>
           <button
             onClick={triggerScraper}
@@ -427,5 +353,17 @@ export default function KnowledgeBaseAdmin() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function KnowledgeBaseAdmin() {
+  return (
+    <AdminShell
+      title="Knowledge Base"
+      subtitle="Раздел Admin Panel для базы знаний AI, scraper-а и качества источников."
+      active="Knowledge Base"
+    >
+      {(secret) => <KnowledgeBaseContent secret={secret} />}
+    </AdminShell>
   );
 }
