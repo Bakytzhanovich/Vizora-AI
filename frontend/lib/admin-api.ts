@@ -1,65 +1,34 @@
 "use client";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { api } from "@/lib/api";
 
-export function getStoredAdminSecret() {
-  if (typeof window === "undefined") return "";
-  return sessionStorage.getItem("adminSecret") ?? "";
+async function adminFetch<T>(path: string): Promise<T> {
+  const { data } = await api.get<T>(path);
+  return data;
 }
 
-export function setStoredAdminSecret(secret: string) {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem("adminSecret", secret);
+export function getAdminOverview() {
+  return adminFetch<AdminOverview>("/admin/overview");
 }
 
-export function clearStoredAdminSecret() {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem("adminSecret");
+export function getAdminUsers() {
+  return adminFetch<AdminUsersResponse>("/admin/users?limit=100");
 }
 
-export function adminHeaders(secret: string) {
-  return {
-    "Content-Type": "application/json",
-    "X-Admin-Secret": secret,
-  };
+export function getAdminAgencies() {
+  return adminFetch<AdminAgenciesResponse>("/admin/agencies?limit=100");
 }
 
-async function adminFetch<T>(path: string, secret: string): Promise<T> {
-  const response = await fetch(`${API}${path}`, {
-    headers: adminHeaders(secret),
-  });
-  if (!response.ok) {
-    throw new Error(response.status === 403 ? "Forbidden" : `Admin API ${response.status}`);
-  }
-  return response.json();
+export function getAdminManagers() {
+  return adminFetch<AdminManagersResponse>("/admin/managers?limit=100");
 }
 
-export function validateAdminSecret(secret: string) {
-  return adminFetch<AdminSystem>("/api/admin/system", secret);
+export function getAdminAnalytics() {
+  return adminFetch<AdminAnalytics>("/admin/analytics");
 }
 
-export function getAdminOverview(secret: string) {
-  return adminFetch<AdminOverview>("/api/admin/overview", secret);
-}
-
-export function getAdminUsers(secret: string) {
-  return adminFetch<AdminUsersResponse>("/api/admin/users?limit=100", secret);
-}
-
-export function getAdminAgencies(secret: string) {
-  return adminFetch<AdminAgenciesResponse>("/api/admin/agencies?limit=100", secret);
-}
-
-export function getAdminManagers(secret: string) {
-  return adminFetch<AdminManagersResponse>("/api/admin/managers?limit=100", secret);
-}
-
-export function getAdminAnalytics(secret: string) {
-  return adminFetch<AdminAnalytics>("/api/admin/analytics", secret);
-}
-
-export function getAdminSystem(secret: string) {
-  return adminFetch<AdminSystem>("/api/admin/system", secret);
+export function getAdminSystem() {
+  return adminFetch<AdminSystem>("/admin/system");
 }
 
 export interface AdminOverview {

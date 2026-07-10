@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { adminHeaders } from "@/lib/admin-api";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { api } from "@/lib/api";
 
 interface KbEntry {
   id: string;
@@ -45,7 +43,7 @@ const STATUS_COLORS: Record<string, string> = {
   failed: "text-red-400",
 };
 
-function KnowledgeBaseContent({ secret }: { secret: string }) {
+function KnowledgeBaseContent() {
   const [entries, setEntries] = useState<KbEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<Record<string, number>>({});
@@ -70,36 +68,30 @@ function KnowledgeBaseContent({ secret }: { secret: string }) {
       if (filterTrust) params.set("trust_level", filterTrust);
 
       const [kbRes, statusRes, logsRes] = await Promise.all([
-        fetch(`${API}/api/admin/knowledge-base?${params}`, { headers: adminHeaders(secret) }),
-        fetch(`${API}/api/admin/scraper/status`, { headers: adminHeaders(secret) }),
-        fetch(`${API}/api/admin/scraper/logs?limit=5`, { headers: adminHeaders(secret) }),
+        api.get(`/admin/knowledge-base?${params}`),
+        api.get("/admin/scraper/status"),
+        api.get("/admin/scraper/logs?limit=5"),
       ]);
 
-      if (kbRes.ok) {
-        const d = await kbRes.json();
-        setEntries(d.entries);
-        setTotal(d.total);
-        setStats(d.stats_by_trust ?? {});
-      }
-      if (statusRes.ok) setScraperStatus(await statusRes.json());
-      if (logsRes.ok) setRuns((await logsRes.json()).runs);
+      setEntries(kbRes.data.entries);
+      setTotal(kbRes.data.total);
+      setStats(kbRes.data.stats_by_trust ?? {});
+      setScraperStatus(statusRes.data);
+      setRuns(logsRes.data.runs);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [filterCategory, filterTrust, page, secret]);
+  }, [filterCategory, filterTrust, page]);
 
-  useEffect(() => { if (secret) loadData(); }, [secret, loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   async function triggerScraper() {
     setRunLoading(true);
     try {
-      const r = await fetch(`${API}/api/admin/scraper/run-now`, {
-        method: "POST",
-        headers: adminHeaders(secret),
-      });
-      if (r.ok) {
+      const r = await api.post("/admin/scraper/run-now");
+      if (r.status >= 200 && r.status < 300) {
         alert("Парсинг запущен в фоне. Обновите страницу через несколько минут.");
       } else {
         alert("Ошибка: " + r.status);
@@ -110,19 +102,13 @@ function KnowledgeBaseContent({ secret }: { secret: string }) {
   }
 
   async function verifyEntry(id: string) {
-    await fetch(`${API}/api/admin/knowledge-base/${id}/verify`, {
-      method: "PATCH",
-      headers: adminHeaders(secret),
-    });
+    await api.patch(`/admin/knowledge-base/${id}/verify`);
     setEntries((prev) => prev.map((e) => e.id === id ? { ...e, verified: true } : e));
   }
 
   async function deleteEntry(id: string) {
     if (!confirm("Удалить эту запись?")) return;
-    await fetch(`${API}/api/admin/knowledge-base/${id}`, {
-      method: "DELETE",
-      headers: adminHeaders(secret),
-    });
+    await api.delete(`/admin/knowledge-base/${id}`);
     setEntries((prev) => prev.filter((e) => e.id !== id));
     setTotal((t) => t - 1);
   }
@@ -363,7 +349,7 @@ export default function KnowledgeBaseAdmin() {
       subtitle="Раздел Admin Panel для базы знаний AI, scraper-а и качества источников."
       active="Knowledge Base"
     >
-      {(secret) => <KnowledgeBaseContent secret={secret} />}
+      <KnowledgeBaseContent />
     </AdminShell>
   );
 }

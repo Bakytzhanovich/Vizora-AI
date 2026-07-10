@@ -3,7 +3,7 @@ import hmac
 import json
 import secrets
 import urllib.parse
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -17,6 +17,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    get_current_user_id,
     hash_password,
     verify_password,
 )
@@ -52,7 +53,6 @@ class RefreshRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    refresh_token: str
     user_id: str
     referrer_name: str | None = None
 
@@ -70,9 +70,40 @@ class TelegramAuthRequest(BaseModel):
 
 class TelegramTokenResponse(BaseModel):
     access_token: str
-    refresh_token: str
     user_id: str
     is_new_user: bool
+
+
+REFRESH_COOKIE_NAME = "refresh_token"
+
+
+def _refresh_cookie_options() -> dict[str, object]:
+    secure = not settings.FRONTEND_URL.startswith("http://localhost")
+    return {
+        "httponly": True,
+        "secure": secure,
+        "samesite": "lax",
+        "path": "/api/auth",
+        "max_age": settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    }
+
+
+def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+    response.set_cookie(REFRESH_COOKIE_NAME, refresh_token, **_refresh_cookie_options())
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/api/auth")
+
+
+def _hash_refresh_token(refresh_token: str) -> str:
+    return hashlib.sha256(refresh_token.encode()).hexdigest()
+
+
+def _validate_origin(request: Request) -> None:
+    origin = request.headers.get("origin")
+    if origin and origin not in settings.ALLOWED_ORIGINS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid origin")
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -80,6 +111,7 @@ class TelegramTokenResponse(BaseModel):
 async def register(
     request: Request,
     body: RegisterRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     user = User(email=body.email.lower(), password_hash=hash_password(body.password))
@@ -124,9 +156,13 @@ async def register(
                 if referrer_profile:
                     referrer_name = referrer_profile.name.split()[0]
 
+    refresh_token = create_refresh_token(user.id)
+    user.refresh_token_hash = _hash_refresh_token(refresh_token)
+    await db.commit()
+    _set_refresh_cookie(response, refresh_token)
+
     return TokenResponse(
         access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
         user_id=user.id,
         referrer_name=referrer_name,
     )
@@ -137,6 +173,7 @@ async def register(
 async def login(
     request: Request,
     body: LoginRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(User).where(User.email == body.email.lower()))
@@ -145,17 +182,51 @@ async def login(
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
 
+    refresh_token = create_refresh_token(user.id)
+    user.refresh_token_hash = _hash_refresh_token(refresh_token)
+    await db.commit()
+    _set_refresh_cookie(response, refresh_token)
+
     return TokenResponse(
         access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
         user_id=user.id,
     )
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
-async def refresh(body: RefreshRequest):
-    user_id = decode_token(body.refresh_token, expected_type="refresh")
+async def refresh(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    _validate_origin(request)
+    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    user_id = decode_token(refresh_token, expected_type="refresh")
+    user = await db.get(User, user_id)
+    if not user or user.refresh_token_hash != _hash_refresh_token(refresh_token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    new_refresh_token = create_refresh_token(user.id)
+    user.refresh_token_hash = _hash_refresh_token(new_refresh_token)
+    await db.commit()
+    _set_refresh_cookie(response, new_refresh_token)
+
     return AccessTokenResponse(access_token=create_access_token(user_id))
+
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    response: Response,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    _validate_origin(request)
+    user = await db.get(User, user_id)
+    if user:
+        user.refresh_token_hash = None
+        await db.commit()
+    _clear_refresh_cookie(response)
+    return {"success": True}
 
 
 def _validate_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
@@ -193,6 +264,7 @@ def _validate_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
 async def telegram_auth(
     request: Request,
     body: TelegramAuthRequest,
+    response: Response,
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate via Telegram WebApp initData. Creates account if new user."""
@@ -264,9 +336,13 @@ async def telegram_auth(
         select(StudentProfile).where(StudentProfile.user_id == user.id)
     )
 
+    refresh_token = create_refresh_token(user.id)
+    user.refresh_token_hash = _hash_refresh_token(refresh_token)
+    await db.commit()
+    _set_refresh_cookie(response, refresh_token)
+
     return TelegramTokenResponse(
         access_token=create_access_token(user.id),
-        refresh_token=create_refresh_token(user.id),
         user_id=user.id,
         is_new_user=has_profile is None,
     )

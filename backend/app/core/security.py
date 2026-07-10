@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import uuid
 
 import bcrypt
 import jwt
@@ -6,6 +7,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.config import settings
+from app.core.database import get_db
+from app.models.user import User
+from sqlalchemy.ext.asyncio import AsyncSession
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -22,6 +26,7 @@ def create_access_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
         "type": "access",
+        "jti": str(uuid.uuid4()),
         "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
         "iat": datetime.now(timezone.utc),
     }
@@ -32,6 +37,7 @@ def create_refresh_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
         "type": "refresh",
+        "jti": str(uuid.uuid4()),
         "exp": datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         "iat": datetime.now(timezone.utc),
     }
@@ -48,6 +54,8 @@ def decode_token(token: str, expected_type: str = "access") -> str:
 
     if payload.get("type") != expected_type:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong token type")
+    if not payload.get("jti"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     return payload["sub"]
 
@@ -58,3 +66,13 @@ def get_current_user_id(
     if not credentials:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return decode_token(credentials.credentials, expected_type="access")
+
+
+async def get_current_user(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return user

@@ -6,6 +6,7 @@ export const api = axios.create({
   baseURL: `${BASE_URL}/api`,
   headers: { "Content-Type": "application/json" },
   timeout: 15000,
+  withCredentials: true,
 });
 
 // Attach access token to every request
@@ -28,22 +29,20 @@ api.interceptors.response.use(
       typeof window !== "undefined"
     ) {
       original._retry = true;
-      const refreshToken = localStorage.getItem("refresh_token");
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
-          localStorage.setItem("access_token", data.access_token);
-          original.headers.Authorization = `Bearer ${data.access_token}`;
-          return api(original);
-        } catch (refreshError) {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          localStorage.removeItem("user_id");
-          window.location.href = "/login";
-          return Promise.reject(refreshError);
-        }
+      try {
+        const { data } = await axios.post(
+          `${BASE_URL}/api/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+        localStorage.setItem("access_token", data.access_token);
+        original.headers.Authorization = `Bearer ${data.access_token}`;
+        return api(original);
+      } catch (refreshError) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user_id");
+        window.location.href = "/login";
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);
@@ -65,33 +64,28 @@ export async function fetchWithAuth(
   const headers = new Headers(options.headers as HeadersInit | undefined);
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...options, headers, credentials: "include" });
 
   if (res.status !== 401) return res;
 
   // Try to refresh
-  const refreshToken = localStorage.getItem("refresh_token");
-  if (refreshToken) {
-    try {
-      const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-      if (refreshRes.ok) {
-        const { access_token } = await refreshRes.json();
-        localStorage.setItem("access_token", access_token);
-        headers.set("Authorization", `Bearer ${access_token}`);
-        return fetch(url, { ...options, headers });
-      }
-    } catch {
-      // fall through to redirect
+  try {
+    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (refreshRes.ok) {
+      const { access_token } = await refreshRes.json();
+      localStorage.setItem("access_token", access_token);
+      headers.set("Authorization", `Bearer ${access_token}`);
+      return fetch(url, { ...options, headers, credentials: "include" });
     }
+  } catch {
+    // fall through to redirect
   }
 
   // Refresh failed — wipe session and send to login
   localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
   localStorage.removeItem("user_id");
   window.location.href = "/login";
   throw new Error("Session expired");
@@ -106,7 +100,6 @@ export async function apiRegister(
 ) {
   const { data } = await api.post<{
     access_token: string;
-    refresh_token: string;
     user_id: string;
     referrer_name?: string | null;
   }>("/auth/register", { email, password, ...(referral_code ? { referral_code } : {}) });
@@ -116,7 +109,6 @@ export async function apiRegister(
 export async function apiLogin(email: string, password: string) {
   const { data } = await api.post<{
     access_token: string;
-    refresh_token: string;
     user_id: string;
   }>("/auth/login", { email, password });
   return data;
@@ -188,6 +180,10 @@ export async function apiGetMe() {
     risk_profile: RiskProfile | null;
   }>("/profile/me");
   return data;
+}
+
+export async function apiLogout() {
+  await api.post("/auth/logout");
 }
 
 // ─── Documents ────────────────────────────────────────────────────────────────

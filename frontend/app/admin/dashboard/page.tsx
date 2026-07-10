@@ -483,7 +483,7 @@ function SystemSection({ data }: { data: AdminSystem }) {
   );
 }
 
-function DashboardContent({ secret, section }: { secret: string; section: Section }) {
+function DashboardContent({ section }: { section: Section }) {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [users, setUsers] = useState<AdminUsersResponse | null>(null);
   const [agencies, setAgencies] = useState<AdminAgenciesResponse | null>(null);
@@ -498,12 +498,12 @@ function DashboardContent({ secret, section }: { secret: string; section: Sectio
     setError("");
     try {
       const [overviewData, usersData, agenciesData, managersData, analyticsData, systemData] = await Promise.all([
-        getAdminOverview(secret),
-        getAdminUsers(secret),
-        getAdminAgencies(secret),
-        getAdminManagers(secret),
-        getAdminAnalytics(secret),
-        getAdminSystem(secret),
+        getAdminOverview(),
+        getAdminUsers(),
+        getAdminAgencies(),
+        getAdminManagers(),
+        getAdminAnalytics(),
+        getAdminSystem(),
       ]);
       setOverview(overviewData);
       setUsers(usersData);
@@ -521,7 +521,7 @@ function DashboardContent({ secret, section }: { secret: string; section: Sectio
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secret]);
+  }, []);
 
   if (loading) {
     return (
@@ -589,14 +589,12 @@ function DashboardRoute() {
       subtitle="Owner dashboard: пользователи, агентства, команда, аналитика и системное состояние."
       active={active}
     >
-      {(secret) => (
-        <>
-          <div className="mb-5">
-            <SectionTabs section={section} setSection={setSection} />
-          </div>
-          <DashboardContent secret={secret} section={section} />
-        </>
-      )}
+      <>
+        <div className="mb-5">
+          <SectionTabs section={section} setSection={setSection} />
+        </div>
+        <DashboardContent section={section} />
+      </>
     </AdminShell>
   );
 }

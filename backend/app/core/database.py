@@ -30,6 +30,7 @@ async def create_tables():
             "ALTER TABLE agencies ADD COLUMN white_label_enabled BOOLEAN DEFAULT 0",
             "ALTER TABLE users ADD COLUMN telegram_id VARCHAR(20)",
             "ALTER TABLE users ADD COLUMN telegram_username VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN refresh_token_hash VARCHAR(255)",
         ]:
             try:
                 await conn.execute(text(col_sql))

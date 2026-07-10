@@ -53,7 +53,6 @@ export function getTelegramWebApp(): TelegramWebApp | null {
 
 export interface TelegramAuthResult {
   access_token: string;
-  refresh_token: string;
   user_id: string;
   is_new_user: boolean;
 }
@@ -68,6 +67,7 @@ export async function authenticateWithTelegram(
     const res = await fetch(`${BASE}/api/auth/telegram`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({
         init_data: tg.initData,
         telegram_id: tg.initDataUnsafe?.user?.id,

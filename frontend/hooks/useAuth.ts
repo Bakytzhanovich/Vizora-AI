@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiLogin, apiRegister, apiGetMe } from "@/lib/api";
+import { apiLogin, apiRegister, apiGetMe, apiLogout } from "@/lib/api";
 import type { UserProfile, RiskProfile } from "@/lib/api";
 
 interface AuthUser {
@@ -29,15 +29,13 @@ export function useAuth() {
     isLoading: true,
   });
 
-  const setTokens = (accessToken: string, refreshToken: string, userId: string) => {
+  const setTokens = (accessToken: string, userId: string) => {
     localStorage.setItem("access_token", accessToken);
-    localStorage.setItem("refresh_token", refreshToken);
     localStorage.setItem("user_id", userId);
   };
 
   const clearTokens = () => {
     localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
     localStorage.removeItem("user_id");
   };
 
@@ -75,7 +73,7 @@ export function useAuth() {
 
   const register = async (email: string, password: string, referral_code?: string) => {
     const data = await apiRegister(email, password, referral_code);
-    setTokens(data.access_token, data.refresh_token, data.user_id);
+    setTokens(data.access_token, data.user_id);
     if (data.referrer_name) {
       localStorage.setItem("referral_from", data.referrer_name);
     }
@@ -84,11 +82,16 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     const data = await apiLogin(email, password);
-    setTokens(data.access_token, data.refresh_token, data.user_id);
+    setTokens(data.access_token, data.user_id);
     await loadUser();
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await apiLogout();
+    } catch {
+      // Best-effort server-side revocation; local cleanup still runs.
+    }
     clearTokens();
     setState({ user: null, profile: null, riskProfile: null, isAuthenticated: false, isLoading: false });
     router.push("/login");

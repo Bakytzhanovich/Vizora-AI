@@ -22,17 +22,30 @@ from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from app.core.security import get_current_user
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
 # Keeps strong references to background tasks so the GC doesn't cancel them.
 _bg_tasks: set[asyncio.Task] = set()
 
 
-def _check_admin(request: Request) -> None:
-    secret = request.headers.get("X-Admin-Secret", "")
-    if not settings.ADMIN_SECRET or secret != settings.ADMIN_SECRET:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+def _audit_admin_action(action: str, admin_user: User, **details) -> None:
+    import logging
+
+    logging.getLogger(__name__).info(
+        "admin_action action=%s admin_id=%s admin_email=%s details=%s",
+        action,
+        admin_user.id,
+        admin_user.email,
+        details,
+    )
 
 
 # ─── Owner dashboard endpoints ───────────────────────────────────────────────
@@ -70,8 +83,6 @@ async def admin_overview(
     db: AsyncSession = Depends(get_db),
 ):
     """High-level owner dashboard numbers and recent activity."""
-    _check_admin(request)
-
     now = datetime.utcnow()
     since_7d = now - timedelta(days=7)
     since_30d = now - timedelta(days=30)
@@ -175,8 +186,6 @@ async def admin_users(
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated user list with profile and agency context."""
-    _check_admin(request)
-
     base = (
         select(User)
         .outerjoin(StudentProfile, StudentProfile.user_id == User.id)
@@ -249,8 +258,6 @@ async def admin_agencies(
     db: AsyncSession = Depends(get_db),
 ):
     """Agency list with ownership-level operational counts."""
-    _check_admin(request)
-
     members = (
         select(
             AgencyMember.agency_id.label("agency_id"),
@@ -328,8 +335,6 @@ async def admin_managers(
     db: AsyncSession = Depends(get_db),
 ):
     """Agency members across every agency."""
-    _check_admin(request)
-
     students = (
         select(
             AgencyStudent.assigned_manager_id.label("member_id"),
@@ -396,8 +401,6 @@ async def admin_analytics(
     db: AsyncSession = Depends(get_db),
 ):
     """Global activity, product usage, and funnel metrics."""
-    _check_admin(request)
-
     now = datetime.utcnow()
     since = now - timedelta(days=13)
     dates = [(now.date() - timedelta(days=i)).isoformat() for i in range(13, -1, -1)]
@@ -474,8 +477,6 @@ async def admin_system(
     db: AsyncSession = Depends(get_db),
 ):
     """Non-secret system health and configuration summary."""
-    _check_admin(request)
-
     last_run = await db.scalar(
         select(ScraperRun).order_by(ScraperRun.started_at.desc()).limit(1)
     )
@@ -519,10 +520,12 @@ async def admin_system(
 # ─── Scraper endpoints ───────────────────────────────────────────────────────
 
 @router.post("/scraper/run-now", status_code=202)
-async def run_scraper_now(request: Request):
+async def run_scraper_now(
+    request: Request,
+    admin_user: User = Depends(get_current_user),
+):
     """Manually trigger the scraping pipeline in the background."""
-    _check_admin(request)
-
+    _audit_admin_action("scraper.run-now", admin_user)
     run_id = str(uuid.uuid4())
 
     # Import here to avoid circular deps at module load
@@ -542,8 +545,6 @@ async def scraper_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Return last run stats, next scheduled run, KB size."""
-    _check_admin(request)
-
     last_run = await db.scalar(
         select(ScraperRun).order_by(ScraperRun.started_at.desc()).limit(1)
     )
@@ -580,8 +581,6 @@ async def scraper_logs(
     db: AsyncSession = Depends(get_db),
 ):
     """Return history of pipeline runs."""
-    _check_admin(request)
-
     rows = await db.execute(
         select(ScraperRun).order_by(ScraperRun.started_at.desc()).limit(limit)
     )
@@ -616,8 +615,6 @@ async def list_knowledge_base(
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated list of KB entries with optional filters."""
-    _check_admin(request)
-
     q = select(KnowledgeBase).order_by(KnowledgeBase.created_at.desc())
     if category:
         q = q.where(KnowledgeBase.category == category)
@@ -662,11 +659,11 @@ async def list_knowledge_base(
 async def verify_entry(
     request: Request,
     entry_id: str,
+    admin_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a KB entry as manually verified."""
-    _check_admin(request)
-
+    _audit_admin_action("knowledge-base.verify", admin_user, entry_id=entry_id)
     entry = await db.get(KnowledgeBase, entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
@@ -679,11 +676,11 @@ async def verify_entry(
 async def delete_entry(
     request: Request,
     entry_id: str,
+    admin_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a KB entry (e.g. bad data from scraper)."""
-    _check_admin(request)
-
+    _audit_admin_action("knowledge-base.delete", admin_user, entry_id=entry_id)
     entry = await db.get(KnowledgeBase, entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")

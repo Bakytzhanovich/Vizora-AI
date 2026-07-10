@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, String, BigInteger
+from sqlalchemy import Column, DateTime, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -14,6 +14,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False, default="student")
+    refresh_token_hash = Column(String(255), nullable=True)
     telegram_id = Column(String(20), unique=True, nullable=True, index=True)
     telegram_username = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

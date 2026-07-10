@@ -38,7 +38,6 @@ export function TelegramAuthHandler() {
       if (!result) return;
 
       localStorage.setItem("access_token", result.access_token);
-      localStorage.setItem("refresh_token", result.refresh_token);
       localStorage.setItem("user_id", result.user_id);
 
       if (result.is_new_user) {

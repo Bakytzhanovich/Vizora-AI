@@ -14,12 +14,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import {
-  clearStoredAdminSecret,
-  getStoredAdminSecret,
-  setStoredAdminSecret,
-  validateAdminSecret,
-} from "@/lib/admin-api";
+import { apiGetMe, apiLogout } from "@/lib/api";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -35,52 +30,41 @@ interface AdminShellProps {
   subtitle?: string;
   active?: string;
   actions?: ReactNode;
-  children: (secret: string) => ReactNode;
+  children: ReactNode;
 }
 
 export function AdminShell({ title, subtitle, active, actions, children }: AdminShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [secret, setSecret] = useState("");
-  const [secretInput, setSecretInput] = useState("");
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    const stored = getStoredAdminSecret();
-    if (!stored) {
-      setAuthed(false);
-      return;
-    }
-    validateAdminSecret(stored)
-      .then(() => {
-        setSecret(stored);
-        setAuthed(true);
+    apiGetMe()
+      .then(({ user }) => {
+        if (user.role === "admin") {
+          setAuthed(true);
+          return;
+        }
+        setAuthError("Admin access required");
+        setAuthed(false);
       })
       .catch(() => {
-        clearStoredAdminSecret();
         setAuthed(false);
       });
   }, []);
 
-  async function handleLogin(event: React.FormEvent) {
-    event.preventDefault();
-    setAuthError("");
+  async function logout() {
     try {
-      await validateAdminSecret(secretInput);
-      setStoredAdminSecret(secretInput);
-      setSecret(secretInput);
-      setAuthed(true);
+      await apiLogout();
     } catch {
-      setAuthError("Неверный admin secret");
+      // Best-effort revocation.
     }
-  }
-
-  function logout() {
-    clearStoredAdminSecret();
-    setSecret("");
-    setAuthed(false);
-    router.replace("/admin");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user_id");
+    }
+    router.replace("/login");
   }
 
   if (authed === null) {
@@ -94,10 +78,7 @@ export function AdminShell({ title, subtitle, active, actions, children }: Admin
   if (!authed) {
     return (
       <div className="min-h-screen bg-[#090A0F] flex items-center justify-center px-4">
-        <form
-          onSubmit={handleLogin}
-          className="w-full max-w-sm bg-[#12141C] border border-[#242837] rounded-xl p-7 shadow-2xl"
-        >
+        <div className="w-full max-w-sm bg-[#12141C] border border-[#242837] rounded-xl p-7 shadow-2xl">
           <div className="flex items-center gap-3 mb-7">
             <div className="w-10 h-10 rounded-lg bg-blue-600/15 border border-blue-500/30 flex items-center justify-center">
               <ShieldCheck size={20} className="text-blue-300" />
@@ -107,22 +88,14 @@ export function AdminShell({ title, subtitle, active, actions, children }: Admin
               <p className="text-xs text-[#81889B]">Owner access</p>
             </div>
           </div>
-          <label className="block text-xs font-medium text-[#A3A8B8] mb-2">Admin secret</label>
-          <input
-            type="password"
-            value={secretInput}
-            onChange={(event) => setSecretInput(event.target.value)}
-            className="w-full bg-[#090A0F] border border-[#2A3040] rounded-lg px-3 py-2.5 text-sm text-[#F5F7FF] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 mb-4"
-            autoFocus
-          />
-          {authError && <p className="text-sm text-red-300 mb-3">{authError}</p>}
+          <p className="text-sm text-[#A3A8B8]">{authError || "Войдите обычной учётной записью с ролью admin."}</p>
           <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            onClick={() => router.replace("/login")}
+            className="mt-5 w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors"
           >
             Войти
           </button>
-        </form>
+        </div>
       </div>
     );
   }
@@ -195,7 +168,7 @@ export function AdminShell({ title, subtitle, active, actions, children }: Admin
         </header>
 
         <main className="px-4 py-5 sm:px-6">
-          {children(secret)}
+          {children}
         </main>
       </div>
     </div>
