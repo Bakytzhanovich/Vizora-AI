@@ -38,10 +38,12 @@ export default function LoginPage() {
     setLoading(true);
     setErrors({});
     try {
-      await login(email, password);
-      // Check if profile exists — redirect accordingly
-      const hasProfile = !!localStorage.getItem("has_profile");
-      router.push(hasProfile ? "/dashboard" : "/onboarding");
+      const { user, profile } = await login(email, password);
+      if (user.role === "admin") {
+        router.push("/admin/dashboard");
+        return;
+      }
+      router.push(profile ? "/dashboard" : "/onboarding");
     } catch (err) {
       const axErr = err as AxiosError<{ detail: string }>;
       if (axErr.response?.status === 401) {

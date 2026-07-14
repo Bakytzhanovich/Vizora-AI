@@ -39,21 +39,16 @@ export function useAuth() {
     localStorage.removeItem("user_id");
   };
 
-  const loadUser = useCallback(async () => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setState((s) => ({ ...s, isLoading: false }));
-      return;
-    }
-    try {
-      const { user, profile, risk_profile } = await apiGetMe();
-      // Sync has_profile with server truth
+  const applyUserState = useCallback(
+    ({ user, profile, risk_profile }: Awaited<ReturnType<typeof apiGetMe>>) => {
+      // Sync has_profile with server truth.
       if (profile) {
         localStorage.setItem("has_profile", "true");
         localStorage.setItem("user_name", profile.name || "");
       } else {
         localStorage.removeItem("has_profile");
       }
+
       setState({
         user,
         profile,
@@ -61,11 +56,24 @@ export function useAuth() {
         isAuthenticated: true,
         isLoading: false,
       });
+    },
+    []
+  );
+
+  const loadUser = useCallback(async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      setState((s) => ({ ...s, isLoading: false }));
+      return;
+    }
+    try {
+      const me = await apiGetMe();
+      applyUserState(me);
     } catch {
       clearTokens();
       setState({ user: null, profile: null, riskProfile: null, isAuthenticated: false, isLoading: false });
     }
-  }, []);
+  }, [applyUserState]);
 
   useEffect(() => {
     loadUser();
@@ -83,7 +91,9 @@ export function useAuth() {
   const login = async (email: string, password: string) => {
     const data = await apiLogin(email, password);
     setTokens(data.access_token, data.user_id);
-    await loadUser();
+    const me = await apiGetMe();
+    applyUserState(me);
+    return me;
   };
 
   const logout = async () => {

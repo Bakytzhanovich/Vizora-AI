@@ -48,6 +48,10 @@ export default function DashboardPage() {
       apiGetReferralCode().catch(() => null),
     ])
       .then(([me, roadmap, av, ref]) => {
+        if (me.user.role === "admin") {
+          router.replace("/admin/dashboard");
+          return;
+        }
         if (!me.profile) {
           router.replace("/onboarding");
           return;
