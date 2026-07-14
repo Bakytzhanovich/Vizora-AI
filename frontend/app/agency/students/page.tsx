@@ -24,15 +24,6 @@ const SORT_OPTIONS = [
 
 type FilterTab = "all" | "unassigned" | string;
 
-function formatLastActive(iso: string | null) {
-  if (!iso) return "Никогда";
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (diff === 0) return "Сегодня";
-  if (diff === 1) return "Вчера";
-  if (diff < 7) return `${diff} дн. назад`;
-  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-}
-
 export default function AgencyStudentsPage() {
   const [students, setStudents] = useState<AgencyStudent[]>([]);
   const [total, setTotal] = useState(0);
@@ -79,7 +70,11 @@ export default function AgencyStudentsPage() {
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };

@@ -23,7 +23,7 @@ interface Props {
   onBack: () => void;
 }
 
-export function InterviewScreen({ mode, difficulty: _difficulty, sessionId, openingQuestion, onEnd, onBack }: Props) {
+export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBack }: Props) {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     { id: makeId(), role: "officer", content: openingQuestion },
   ]);

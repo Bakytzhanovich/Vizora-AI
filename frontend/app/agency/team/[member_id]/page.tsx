@@ -13,11 +13,6 @@ import {
   type AgencyTeamMember,
 } from "@/lib/agency-api";
 
-function daysUntil(dateStr: string | null) {
-  if (!dateStr) return null;
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
-}
-
 function InterviewBadge({ days }: { days: number | null }) {
   if (days === null) return <span className="text-gray-400 text-xs">—</span>;
   if (days < 0) return <span className="text-xs text-gray-400">Прошло</span>;
@@ -74,7 +69,11 @@ export default function MemberDetailPage() {
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };

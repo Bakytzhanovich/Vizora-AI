@@ -153,7 +153,7 @@ export default function AgencySettingsPage() {
             <h2 className="font-semibold text-gray-900">White-label брендинг</h2>
           </div>
           <p className="text-xs text-gray-400 mb-5">
-            Студенты увидят ваш бренд вместо "Vizora AI"
+            Студенты увидят ваш бренд вместо &quot;Vizora AI&quot;
           </p>
 
           {/* Toggle */}
