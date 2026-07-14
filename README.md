@@ -34,16 +34,62 @@ Main frontend routes:
 /admin/knowledge-base  Owner knowledge base and scraper panel
 ```
 
+## PostgreSQL With Docker
+
+The project is prepared to run PostgreSQL locally through Docker Compose.
+
+Copy the Docker env example:
+
+```bash
+cp .env.example .env
+```
+
+Start PostgreSQL and pgAdmin:
+
+```bash
+docker compose up -d postgres pgadmin
+```
+
+Check service status:
+
+```bash
+docker compose ps
+docker compose logs postgres
+```
+
+PostgreSQL connection:
+
+```text
+Host: localhost
+Port: 5432
+Database: vizora
+User: vizora
+Password: secure_password
+```
+
+pgAdmin:
+
+```text
+URL: http://localhost:5050
+Email: admin@vizora.local
+Password: secure_pgadmin_password
+```
+
+The Postgres container uses a persistent Docker volume:
+
+```text
+postgres_data
+```
+
 ## Backend Setup
 
-Run backend from the `backend` directory so the local SQLite path resolves to `backend/vizora.db`.
+Run backend from the `backend` directory.
 
 ```bash
 cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Backend env file:
@@ -71,10 +117,33 @@ ADMIN_SECRET
 FRONTEND_URL
 ```
 
-For local SQLite:
+For local Docker PostgreSQL:
 
 ```text
-DATABASE_URL=sqlite+aiosqlite:///./vizora.db
+DATABASE_URL=postgresql+asyncpg://vizora:secure_password@localhost:5432/vizora
+AUTO_CREATE_TABLES=false
+```
+
+For quick local SQLite fallback only:
+
+```text
+# DATABASE_URL=sqlite+aiosqlite:///./vizora.db
+```
+
+Run Alembic migrations before starting the backend:
+
+```bash
+cd backend
+source venv/bin/activate
+alembic upgrade head
+```
+
+Start FastAPI:
+
+```bash
+cd backend
+source venv/bin/activate
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Frontend Setup
@@ -96,6 +165,82 @@ Local API setting:
 ```text
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
+
+## Alembic Migrations
+
+Alembic is configured in:
+
+```text
+backend/alembic.ini
+backend/alembic/
+```
+
+Current initial migration:
+
+```text
+backend/alembic/versions/20260714_0001_initial_schema.py
+```
+
+Run migrations:
+
+```bash
+cd backend
+source venv/bin/activate
+alembic upgrade head
+```
+
+Create a new migration after model changes:
+
+```bash
+cd backend
+source venv/bin/activate
+alembic revision --autogenerate -m "describe change"
+alembic upgrade head
+```
+
+Production should use migrations, not automatic table creation:
+
+```text
+AUTO_CREATE_TABLES=false
+```
+
+Local backward compatibility is still available with:
+
+```text
+AUTO_CREATE_TABLES=true
+```
+
+## Migrating Existing SQLite Data To PostgreSQL
+
+Start Postgres and run migrations first:
+
+```bash
+docker compose up -d postgres
+cd backend
+source venv/bin/activate
+alembic upgrade head
+```
+
+Copy existing SQLite data from `backend/vizora.db` into PostgreSQL:
+
+```bash
+cd backend
+source venv/bin/activate
+python scripts/migrate_sqlite_to_postgres.py \
+  --sqlite-path vizora.db \
+  --postgres-url postgresql+asyncpg://vizora:secure_password@localhost:5432/vizora
+```
+
+For a clean target database, add `--truncate`:
+
+```bash
+python scripts/migrate_sqlite_to_postgres.py \
+  --sqlite-path vizora.db \
+  --postgres-url postgresql+asyncpg://vizora:secure_password@localhost:5432/vizora \
+  --truncate
+```
+
+The script copies rows table-by-table using current SQLAlchemy metadata and preserves existing UUID primary keys.
 
 ## Roles And Access
 
@@ -166,6 +311,20 @@ Check agency members:
 sqlite3 backend/vizora.db "select email, role, status from agency_members order by email;"
 ```
 
+Check Postgres tables:
+
+```bash
+docker compose exec postgres psql -U vizora -d vizora -c "\dt"
+```
+
+Check backend can connect to Postgres:
+
+```bash
+cd backend
+source venv/bin/activate
+python -c "from app.core.config import settings; print(settings.database_url_async.split('@')[-1])"
+```
+
 ## Owner Admin API
 
 Owner admin frontend uses these backend endpoints:
@@ -189,9 +348,41 @@ users.role = admin
 
 `X-Admin-Secret` is not used for owner panel access.
 
+## Railway Deployment Notes
+
+Recommended backend environment variables on Railway:
+
+```text
+DATABASE_URL=<Railway Postgres URL>
+AUTO_CREATE_TABLES=false
+ALLOWED_ORIGINS=["https://your-vercel-domain.vercel.app"]
+FRONTEND_URL=https://your-vercel-domain.vercel.app
+JWT_SECRET=<long random secret>
+AI_PROVIDER=openai
+OPENAI_API_KEY=<secret>
+TELEGRAM_BOT_TOKEN=<optional secret>
+NOTIFICATION_SECRET=<optional secret>
+ADMIN_SECRET=<optional secret>
+```
+
+The app accepts Railway-style `postgresql://...` URLs and normalizes them internally to `postgresql+asyncpg://...`.
+
+Backend start command:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+Run migrations during deploy/release:
+
+```bash
+alembic upgrade head
+```
+
 ## Notes
 
 - Keep real `.env` files private.
-- `backend/vizora.db` is the local development database.
+- `backend/vizora.db` is the legacy/local SQLite development database.
+- PostgreSQL is the target production database.
 - If a role changes in the database, log out and log in again in the browser.
 - If Next.js keeps old behavior during development, restart `npm run dev` and hard reload the browser.

@@ -49,20 +49,8 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await create_tables()
-    # Migrations for new columns (idempotent — silently skip if already exist)
-    from sqlalchemy import text as _text
-    from app.core.database import AsyncSessionLocal as _ASL
-    async with _ASL() as _db:
-        for _stmt in [
-            "ALTER TABLE agency_students ADD COLUMN assigned_manager_id VARCHAR(36)",
-            "ALTER TABLE agency_members ADD COLUMN last_login TIMESTAMP",
-        ]:
-            try:
-                await _db.execute(_text(_stmt))
-                await _db.commit()
-            except Exception:
-                pass
+    if settings.AUTO_CREATE_TABLES:
+        await create_tables()
     # Seed the knowledge base with 20 hand-verified entries if empty
     from app.services.rag_service import seed_knowledge_base
     await seed_knowledge_base()

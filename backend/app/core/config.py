@@ -1,8 +1,13 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./vizora.db"
+    AUTO_CREATE_TABLES: bool = True
     ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "https://vizora.ai"]
 
     JWT_SECRET: str  # Required — set via .env (no default so startup fails if missing)
@@ -26,8 +31,17 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost:3000"  # Set to the real domain in production .env
 
+    @property
+    def database_url_async(self) -> str:
+        """Return a SQLAlchemy async URL, including Railway-style Postgres URLs."""
+        if self.DATABASE_URL.startswith("postgres://"):
+            return self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+        if self.DATABASE_URL.startswith("postgresql://"):
+            return self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return self.DATABASE_URL
+
     class Config:
-        env_file = ".env"
+        env_file = BACKEND_DIR / ".env"
         extra = "ignore"
 
 
