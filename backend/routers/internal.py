@@ -2,13 +2,14 @@
 
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import hash_password
 from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
@@ -21,6 +22,18 @@ def _check_secret(request: Request) -> None:
     secret = request.headers.get("X-Notification-Secret", "")
     if not settings.NOTIFICATION_SECRET or secret != settings.NOTIFICATION_SECRET:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+def _check_admin_secret(request: Request) -> None:
+    secret = request.headers.get("X-Admin-Secret", "")
+    if not settings.ADMIN_SECRET or secret != settings.ADMIN_SECRET:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+
+class BootstrapAdminRequest(BaseModel):
+    email: EmailStr
+    password: str | None = None
+    reset_password: bool = False
 
 
 def _safe_int(value: str | None) -> int | None:
@@ -36,6 +49,50 @@ NOTIFICATION_TYPES = {
     "interview_1day",
     "roadmap_stuck",
 }
+
+
+@router.post("/bootstrap-admin")
+async def bootstrap_admin(
+    request: Request,
+    body: BootstrapAdminRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    _check_admin_secret(request)
+
+    email = body.email.lower()
+    user = await db.scalar(select(User).where(User.email == email))
+    created = False
+    password_changed = False
+
+    if user:
+        user.role = "admin"
+        if body.reset_password:
+            if not body.password or len(body.password) < 8:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Password must contain at least 8 characters",
+                )
+            user.password_hash = hash_password(body.password)
+            password_changed = True
+    else:
+        if not body.password or len(body.password) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password is required and must contain at least 8 characters",
+            )
+        user = User(email=email, password_hash=hash_password(body.password), role="admin")
+        db.add(user)
+        created = True
+        password_changed = True
+
+    await db.commit()
+
+    return {
+        "email": email,
+        "role": "admin",
+        "created": created,
+        "password_changed": password_changed,
+    }
 
 
 @router.get("/notifications/due")
