@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     NOTIFICATION_SECRET: str = ""  # Shared secret for internal notification endpoint
     ADMIN_SECRET: str = ""         # Secret for /admin/* endpoints (set before deploying)
 
+    # Optional production bootstrap for platforms without a shell.
+    # If BOOTSTRAP_ADMIN_EMAIL is set, startup promotes that user to users.role=admin.
+    # If the user does not exist, BOOTSTRAP_ADMIN_PASSWORD is required to create it.
+    BOOTSTRAP_ADMIN_EMAIL: str = ""
+    BOOTSTRAP_ADMIN_PASSWORD: str = ""
+    BOOTSTRAP_ADMIN_RESET_PASSWORD: bool = False
+
     FRONTEND_URL: str = "http://localhost:3000"  # Set to the real domain in production .env
 
     @property

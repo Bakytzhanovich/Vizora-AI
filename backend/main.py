@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 from app.api.early_access import router as early_access_router
 from app.core.config import settings
-from app.core.database import create_tables
+from app.core.database import AsyncSessionLocal, create_tables
+from app.core.security import hash_password
 # Import models so SQLAlchemy registers them before create_all
 import app.models.user  # noqa: F401
 import app.models.profile  # noqa: F401
@@ -29,6 +31,7 @@ import app.models.after_visa  # noqa: F401
 import app.models.referral  # noqa: F401
 import app.models.analytics  # noqa: F401
 import app.models.knowledge_base  # noqa: F401
+from app.models.user import User
 from routers.auth import router as auth_router
 from routers.profile import router as profile_router
 from routers.chat import router as chat_router
@@ -47,10 +50,47 @@ from routers.admin import router as admin_router
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
+async def bootstrap_admin_user() -> None:
+    email = settings.BOOTSTRAP_ADMIN_EMAIL.strip().lower()
+    if not email:
+        return
+
+    password = settings.BOOTSTRAP_ADMIN_PASSWORD
+    async with AsyncSessionLocal() as db:
+        user = await db.scalar(select(User).where(User.email == email))
+
+        if user:
+            changed = False
+            if user.role != "admin":
+                user.role = "admin"
+                changed = True
+            if settings.BOOTSTRAP_ADMIN_RESET_PASSWORD:
+                if not password:
+                    raise RuntimeError("BOOTSTRAP_ADMIN_RESET_PASSWORD requires BOOTSTRAP_ADMIN_PASSWORD")
+                if len(password) < 8:
+                    raise RuntimeError("BOOTSTRAP_ADMIN_PASSWORD must contain at least 8 characters")
+                user.password_hash = hash_password(password)
+                changed = True
+            if changed:
+                await db.commit()
+                logger.info("Bootstrap admin updated: %s", email)
+            return
+
+        if not password:
+            raise RuntimeError("BOOTSTRAP_ADMIN_PASSWORD is required to create bootstrap admin")
+        if len(password) < 8:
+            raise RuntimeError("BOOTSTRAP_ADMIN_PASSWORD must contain at least 8 characters")
+
+        db.add(User(email=email, password_hash=hash_password(password), role="admin"))
+        await db.commit()
+        logger.info("Bootstrap admin created: %s", email)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.AUTO_CREATE_TABLES:
         await create_tables()
+    await bootstrap_admin_user()
     # Seed the knowledge base with 20 hand-verified entries if empty
     from app.services.rag_service import seed_knowledge_base
     await seed_knowledge_base()
