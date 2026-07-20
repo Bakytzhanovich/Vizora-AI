@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, LayoutDashboard, Users, BarChart2, Settings, UsersRound } from "lucide-react";
 import { agencyLogout } from "@/lib/agency-api";
+import { VizoraMark } from "@/components/VizoraMark";
 
 const ADMIN_NAV = [
   { href: "/agency/dashboard", label: "Дашборд", icon: LayoutDashboard },
@@ -34,7 +35,7 @@ export function AgencyNavbar({ agencyName, role = "admin", memberName }: Props) 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
         {/* Logo */}
         <Link href="/agency/dashboard" className="flex items-center gap-2 shrink-0">
-          <span className="text-blue-600 font-black text-xl">◈</span>
+          <VizoraMark className="h-8 w-8" priority />
           <span className="font-bold text-gray-900 text-sm sm:text-base">
             {agencyName || "Vizora"}{" "}
             <span className="text-blue-600 font-semibold text-xs bg-blue-50 px-1.5 py-0.5 rounded-full ml-1">

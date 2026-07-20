@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AxiosError } from "axios";
+import { VizoraMark } from "@/components/VizoraMark";
 
 interface FormErrors {
   email?: string;
@@ -67,7 +68,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <span className="text-[#6C63FF] text-2xl font-bold">◈</span>
+            <VizoraMark className="h-9 w-9" priority />
             <span className="text-[#F0F0FF] font-bold text-xl">
               Vizora <span className="text-[#6C63FF]">AI</span>
             </span>

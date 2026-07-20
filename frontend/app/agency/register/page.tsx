@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { agencyRegister } from "@/lib/agency-api";
 import { track } from "@/lib/analytics";
+import { VizoraMark } from "@/components/VizoraMark";
 
 const COUNTRIES = ["KZ", "RU", "UZ", "KG", "TJ", "AM", "AZ", "GE", "UA", "BY"];
 
@@ -54,7 +55,7 @@ export default function AgencyRegisterPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <span className="text-blue-600 font-black text-2xl">◈</span>
+            <VizoraMark className="h-9 w-9" priority />
             <span className="font-bold text-gray-900 text-xl">Vizora Agency</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Создать кабинет агентства</h1>

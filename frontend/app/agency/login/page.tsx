@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { agencyLogin } from "@/lib/agency-api";
+import { VizoraMark } from "@/components/VizoraMark";
 
 export default function AgencyLoginPage() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function AgencyLoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <span className="text-blue-600 font-black text-2xl">◈</span>
+            <VizoraMark className="h-9 w-9" priority />
             <span className="font-bold text-gray-900 text-xl">Vizora Agency</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Войти в кабинет</h1>

@@ -1,3 +1,5 @@
+import { VizoraMark } from "@/components/VizoraMark";
+
 interface Props {
   name: string;
   logoUrl: string | null;
@@ -15,7 +17,7 @@ export function WhiteLabelPreview({ name, logoUrl, primaryColor }: Props) {
           {logoUrl ? (
             <img src={logoUrl} alt={name} className="w-7 h-7 rounded-lg object-cover" />
           ) : (
-            <span className="text-lg font-bold" style={{ color: primaryColor }}>◈</span>
+            <VizoraMark className="h-7 w-7" />
           )}
           <span className="text-[#F0F0FF] font-bold text-sm">{name || "Vizora AI"}</span>
         </div>

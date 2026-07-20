@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { VizoraMark } from "@/components/VizoraMark";
 
 type FooterLink = { label: string; href: string; external?: boolean };
 
@@ -38,7 +39,7 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-[#6C63FF] text-xl font-bold">◈</span>
+              <VizoraMark className="h-8 w-8" />
               <span className="text-[#F0F0FF] font-bold text-lg tracking-tight">
                 Vizora <span className="text-[#6C63FF]">AI</span>
               </span>

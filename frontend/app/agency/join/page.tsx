@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { agencyGetJoinInfo, agencyJoin } from "@/lib/agency-api";
+import { VizoraMark } from "@/components/VizoraMark";
 
 function JoinForm() {
   const router = useRouter();
@@ -93,7 +94,7 @@ function JoinForm() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <span className="text-blue-600 font-black text-2xl">◈</span>
+            <VizoraMark className="h-9 w-9" priority />
             <span className="font-bold text-gray-900 text-xl">{info.agency_name}</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Вас пригласили в команду</h1>

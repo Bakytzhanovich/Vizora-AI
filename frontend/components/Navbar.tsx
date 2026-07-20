@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { VizoraMark } from "@/components/VizoraMark";
 
 const navLinks = [
   { href: "#students", label: "Студентам" },
@@ -52,7 +53,7 @@ export function Navbar() {
               className="flex items-center gap-2 group"
               whileHover={{ scale: 1.02 }}
             >
-              <span className="text-[#6C63FF] text-xl font-bold">◈</span>
+              <VizoraMark className="h-8 w-8" priority />
               <span className="text-[#F0F0FF] font-bold text-lg tracking-tight">
                 Vizora{" "}
                 <span className="text-[#6C63FF]">AI</span>
