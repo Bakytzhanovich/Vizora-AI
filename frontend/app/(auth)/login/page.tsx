@@ -8,6 +8,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AxiosError } from "axios";
 import { VizoraMark } from "@/components/VizoraMark";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 
 interface FormErrors {
   email?: string;
@@ -17,13 +18,31 @@ interface FormErrors {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const redirectAfterAuth = (user: { role: string }, profile: unknown) => {
+    if (user.role === "admin") {
+      router.push("/admin/dashboard");
+      return;
+    }
+    router.push(profile ? "/dashboard" : "/onboarding");
+  };
+
+  const handleGoogleSuccess = async (idToken: string) => {
+    setErrors({});
+    try {
+      const { user, profile } = await loginWithGoogle(idToken);
+      redirectAfterAuth(user, profile);
+    } catch {
+      setErrors({ general: "Не удалось войти через Google. Попробуй снова." });
+    }
+  };
 
   const validate = (): boolean => {
     const e: FormErrors = {};
@@ -40,11 +59,7 @@ export default function LoginPage() {
     setErrors({});
     try {
       const { user, profile } = await login(email, password);
-      if (user.role === "admin") {
-        router.push("/admin/dashboard");
-        return;
-      }
-      router.push(profile ? "/dashboard" : "/onboarding");
+      redirectAfterAuth(user, profile);
     } catch (err) {
       const axErr = err as AxiosError<{ detail: string }>;
       if (axErr.response?.status === 401) {
@@ -142,6 +157,8 @@ export default function LoginPage() {
               )}
             </motion.button>
           </form>
+
+          <GoogleAuthButton onSuccess={handleGoogleSuccess} />
         </div>
 
         <p className="text-center text-[#8B8BA7] text-sm mt-6">

@@ -3,6 +3,8 @@ import hmac
 import json
 import secrets
 import urllib.parse
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import select
@@ -45,6 +47,10 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str
 
 
 class RefreshRequest(BaseModel):
@@ -104,6 +110,22 @@ def _validate_origin(request: Request) -> None:
     origin = request.headers.get("origin")
     if origin and origin not in settings.ALLOWED_ORIGINS:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid origin")
+
+
+async def _issue_login_response(
+    user: User, response: Response, db: AsyncSession
+) -> TokenResponse:
+    """Issue an access token, rotate the refresh token/cookie, and persist it.
+
+    Shared by every login path (/auth/login, /auth/google, ...) so token
+    issuance and cookie semantics stay in one place.
+    """
+    refresh_token = create_refresh_token(user.id)
+    user.refresh_token_hash = _hash_refresh_token(refresh_token)
+    await db.commit()
+    _set_refresh_cookie(response, refresh_token)
+
+    return TokenResponse(access_token=create_access_token(user.id), user_id=user.id)
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -179,18 +201,65 @@ async def login(
     result = await db.execute(select(User).where(User.email == body.email.lower()))
     user = result.scalar_one_or_none()
 
-    if not user or not verify_password(body.password, user.password_hash):
+    if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
 
-    refresh_token = create_refresh_token(user.id)
-    user.refresh_token_hash = _hash_refresh_token(refresh_token)
-    await db.commit()
-    _set_refresh_cookie(response, refresh_token)
+    return await _issue_login_response(user, response, db)
 
-    return TokenResponse(
-        access_token=create_access_token(user.id),
-        user_id=user.id,
-    )
+
+@router.post("/google", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def google_auth(
+    request: Request,
+    body: GoogleAuthRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google login is not configured")
+
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            body.id_token, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+        )
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
+
+    if not idinfo.get("email_verified"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google email not verified")
+
+    email = idinfo["email"].lower()
+    google_id = idinfo["sub"]
+    avatar_url = idinfo.get("picture")
+
+    user = await db.scalar(select(User).where(User.email == email))
+
+    if user:
+        if user.oauth_provider is None:
+            # Existing email/password account signing in with Google for the first time — link it.
+            user.oauth_provider = "google"
+            user.oauth_id = google_id
+            if avatar_url:
+                user.avatar_url = avatar_url
+    else:
+        user = User(
+            email=email,
+            password_hash=None,
+            oauth_provider="google",
+            oauth_id=google_id,
+            avatar_url=avatar_url,
+        )
+        db.add(user)
+        try:
+            await db.commit()
+            await db.refresh(user)
+        except IntegrityError:
+            await db.rollback()
+            user = await db.scalar(select(User).where(User.email == email))
+            if not user:
+                raise HTTPException(status_code=500, detail="Не удалось создать аккаунт")
+
+    return await _issue_login_response(user, response, db)
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)

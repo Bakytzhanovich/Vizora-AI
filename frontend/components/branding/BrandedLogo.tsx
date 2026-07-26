@@ -9,9 +9,9 @@ interface Props {
 }
 
 const sizes = {
-  sm: { logo: "h-6 w-6", text: "text-sm" },
-  md: { logo: "h-7 w-7", text: "text-base" },
-  lg: { logo: "h-9 w-9", text: "text-xl" },
+  sm: { logo: "h-6 w-6", diamond: "text-base", text: "text-sm" },
+  md: { logo: "h-7 w-7", diamond: "text-lg", text: "text-base" },
+  lg: { logo: "h-9 w-9", diamond: "text-2xl", text: "text-xl" },
 };
 
 export function BrandedLogo({ size = "md", className = "" }: Props) {
@@ -26,6 +26,10 @@ export function BrandedLogo({ size = "md", className = "" }: Props) {
           alt={branding.name}
           className={`${s.logo} rounded-lg object-cover`}
         />
+      ) : branding.isWhiteLabel ? (
+        <span className={`${s.diamond} font-bold`} style={{ color: branding.primaryColor }}>
+          ◈
+        </span>
       ) : (
         <VizoraMark className={s.logo} />
       )}

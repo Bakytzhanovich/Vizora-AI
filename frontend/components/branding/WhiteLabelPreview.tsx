@@ -4,9 +4,10 @@ interface Props {
   name: string;
   logoUrl: string | null;
   primaryColor: string;
+  isWhiteLabel?: boolean;
 }
 
-export function WhiteLabelPreview({ name, logoUrl, primaryColor }: Props) {
+export function WhiteLabelPreview({ name, logoUrl, primaryColor, isWhiteLabel = false }: Props) {
   return (
     <div className="bg-[#0A0A0F] rounded-2xl p-4 border border-gray-700">
       <p className="text-xs text-gray-500 mb-3 uppercase tracking-wide">Предпросмотр</p>
@@ -16,6 +17,8 @@ export function WhiteLabelPreview({ name, logoUrl, primaryColor }: Props) {
         <div className="flex items-center gap-2">
           {logoUrl ? (
             <img src={logoUrl} alt={name} className="w-7 h-7 rounded-lg object-cover" />
+          ) : isWhiteLabel ? (
+            <span className="text-lg font-bold" style={{ color: primaryColor }}>◈</span>
           ) : (
             <VizoraMark className="h-7 w-7" />
           )}

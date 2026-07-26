@@ -10,6 +10,7 @@ import { AxiosError } from "axios";
 import { ReferralBanner } from "@/components/referral/ReferralBanner";
 import { track } from "@/lib/analytics";
 import { VizoraMark } from "@/components/VizoraMark";
+import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
 
 interface FormErrors {
   email?: string;
@@ -20,7 +21,7 @@ interface FormErrors {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,6 +49,22 @@ export default function RegisterPage() {
         .catch(() => {});
     }
   }, []);
+
+  const handleGoogleSuccess = async (idToken: string) => {
+    setErrors({});
+    try {
+      track("register_start", { has_referral: !!refCode, method: "google" });
+      const { user, profile } = await loginWithGoogle(idToken);
+      track("register_complete", { has_referral: !!refCode, method: "google" });
+      if (user.role === "admin") {
+        router.push("/admin/dashboard");
+        return;
+      }
+      router.push(profile ? "/dashboard" : "/onboarding");
+    } catch {
+      setErrors({ general: "Не удалось войти через Google. Попробуй снова." });
+    }
+  };
 
   const validate = (): boolean => {
     const e: FormErrors = {};
@@ -190,6 +207,8 @@ export default function RegisterPage() {
               )}
             </motion.button>
           </form>
+
+          <GoogleAuthButton onSuccess={handleGoogleSuccess} />
         </div>
 
         <p className="text-center text-[#8B8BA7] text-sm mt-6">

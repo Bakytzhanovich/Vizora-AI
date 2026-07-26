@@ -114,6 +114,14 @@ export async function apiLogin(email: string, password: string) {
   return data;
 }
 
+export async function apiGoogleLogin(idToken: string) {
+  const { data } = await api.post<{
+    access_token: string;
+    user_id: string;
+  }>("/auth/google", { id_token: idToken });
+  return data;
+}
+
 // ─── Profile ─────────────────────────────────────────────────────────────────
 
 export interface OnboardingPayload {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiLogin, apiRegister, apiGetMe, apiLogout } from "@/lib/api";
+import { apiLogin, apiGoogleLogin, apiRegister, apiGetMe, apiLogout } from "@/lib/api";
 import type { UserProfile, RiskProfile } from "@/lib/api";
 
 interface AuthUser {
@@ -96,6 +96,14 @@ export function useAuth() {
     return me;
   };
 
+  const loginWithGoogle = async (idToken: string) => {
+    const data = await apiGoogleLogin(idToken);
+    setTokens(data.access_token, data.user_id);
+    const me = await apiGetMe();
+    applyUserState(me);
+    return me;
+  };
+
   const logout = async () => {
     try {
       await apiLogout();
@@ -109,5 +117,5 @@ export function useAuth() {
 
   const refreshProfile = () => loadUser();
 
-  return { ...state, login, logout, register, refreshProfile };
+  return { ...state, login, loginWithGoogle, logout, register, refreshProfile };
 }

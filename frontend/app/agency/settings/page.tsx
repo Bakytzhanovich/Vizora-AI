@@ -220,6 +220,7 @@ export default function AgencySettingsPage() {
               name={wlEnabled && wlName ? wlName : "Vizora AI"}
               logoUrl={wlEnabled ? wlLogoUrl : null}
               primaryColor={wlEnabled ? wlColor : "#6C63FF"}
+              isWhiteLabel={wlEnabled}
             />
           </div>
 

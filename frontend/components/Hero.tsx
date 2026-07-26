@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 
@@ -61,6 +62,7 @@ function StatCard({
 }
 
 export function Hero() {
+  const router = useRouter();
   const [inView, setInView] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -139,7 +141,7 @@ export function Hero() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
         >
           <motion.button
-            onClick={() => handleScroll("#early-access")}
+            onClick={() => router.push("/register")}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             className="flex items-center gap-2 bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-semibold px-8 py-4 rounded-xl shadow-lg shadow-[#6C63FF]/30 transition-all duration-200 text-base"
