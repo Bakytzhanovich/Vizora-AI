@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
@@ -28,6 +29,7 @@ function makeId() {
 
 export default function ChatPage() {
   const router = useRouter();
+  const { t } = useTranslation("chat");
   const { branding } = useBranding();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -135,14 +137,14 @@ export default function ChatPage() {
           .concat({
             id: assistantId,
             role: "assistant",
-            content: "Что-то пошло не так. Попробуй ещё раз.",
+            content: t("error"),
           })
       );
     } finally {
       reader?.cancel();
       setIsStreaming(false);
     }
-  }, [isStreaming, sessionId, scrollToBottom]);
+  }, [isStreaming, sessionId, scrollToBottom, t]);
 
   const clearHistory = async () => {
     await fetchWithAuth(`${API_URL}/api/chat/history`, { method: "DELETE" });
@@ -170,9 +172,9 @@ export default function ChatPage() {
               </div>
               <div>
                 <div className="text-[#F0F0FF] font-semibold text-sm leading-none">
-                  AI Помощник
+                  {t("title")}
                 </div>
-                <div className="text-[#00D4AA] text-xs mt-0.5">онлайн</div>
+                <div className="text-[#00D4AA] text-xs mt-0.5">{t("online")}</div>
               </div>
             </div>
           </div>
@@ -181,7 +183,7 @@ export default function ChatPage() {
             <button
               onClick={clearHistory}
               className="text-[#8B8BA7] hover:text-[#FF6B6B] transition-colors p-1.5"
-              title="Очистить историю"
+              title={t("clear")}
             >
               <Trash2 size={16} />
             </button>
@@ -204,10 +206,12 @@ export default function ChatPage() {
                 <div>
                   <div className="text-5xl mb-4">🤖</div>
                   <h2 className="text-xl font-bold text-[#F0F0FF] mb-2">
-                    Привет{userName ? `, ${userName}` : ""}! Я {branding.name}
+                    {userName
+                      ? t("empty_state.title_named", { name: userName, brand: branding.name })
+                      : t("empty_state.title", { brand: branding.name })}
                   </h2>
                   <p className="text-[#8B8BA7] text-sm max-w-xs">
-                    Задай любой вопрос по Work & Travel USA — отвечу быстро и по делу
+                    {t("empty_state.subtitle")}
                   </p>
                 </div>
                 <QuickQuestions onSelect={sendMessage} />
@@ -236,7 +240,7 @@ export default function ChatPage() {
         <div className="shrink-0 px-4 pb-2">
           <div className="max-w-2xl mx-auto">
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {["Документы?", "Почему отказ?", "SEVIS сбор?", "Job Offer?"].map((q) => (
+              {(t("quick_questions_short", { returnObjects: true }) as string[]).map((q) => (
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}

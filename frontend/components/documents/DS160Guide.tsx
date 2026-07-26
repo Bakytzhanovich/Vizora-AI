@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import type { DS160Step as DS160StepType } from "@/lib/api";
 import { DS160Step } from "./DS160Step";
 
@@ -9,11 +10,12 @@ interface Props {
 }
 
 export function DS160Guide({ steps }: Props) {
+  const { t } = useTranslation("documents");
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-[#F0F0FF] font-bold text-lg">Как заполнить DS-160</h2>
-        <p className="text-[#8B8BA7] text-sm mt-1">Пошаговый гайд на русском</p>
+        <h2 className="text-[#F0F0FF] font-bold text-lg">{t("ds160.title")}</h2>
+        <p className="text-[#8B8BA7] text-sm mt-1">{t("ds160.subtitle")}</p>
       </div>
 
       <div className="flex gap-1.5 flex-wrap mb-6">
@@ -41,10 +43,9 @@ export function DS160Guide({ steps }: Props) {
       </div>
 
       <div className="mt-6 bg-[#00D4AA]/5 border border-[#00D4AA]/20 rounded-2xl p-4">
-        <p className="text-[#00D4AA] text-xs font-semibold mb-1">💡 Совет</p>
+        <p className="text-[#00D4AA] text-xs font-semibold mb-1">{t("ds160.tip_title")}</p>
         <p className="text-[#8B8BA7] text-xs leading-relaxed">
-          Используй Chrome или Firefox. Safari иногда вызывает проблемы с сайтом CEAC.
-          Не оставляй анкету незаполненной более 30 минут — может истечь сессия.
+          {t("ds160.tip_text")}
         </p>
       </div>
     </div>

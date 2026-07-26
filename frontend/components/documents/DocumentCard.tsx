@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import type { DocumentItem } from "@/lib/api";
 
 interface Props {
@@ -21,6 +22,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export function DocumentCard({ doc, onToggle, disabled }: Props) {
+  const { t } = useTranslation("documents");
   const [expanded, setExpanded] = useState(false);
   const isRisk = Boolean(doc.risk_note);
 
@@ -45,7 +47,7 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
               ? "bg-[#00D4AA] border-[#00D4AA]"
               : "border-[#3E3E5E] hover:border-[#6C63FF]"
           } disabled:opacity-50`}
-          aria-label={doc.completed ? "Отметить как не готово" : "Отметить как готово"}
+          aria-label={doc.completed ? t("mark_undone_aria") : t("mark_done_aria")}
         >
           {doc.completed && (
             <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
@@ -62,7 +64,7 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
             </span>
             {isRisk && !doc.completed && (
               <span className="text-[10px] font-bold text-[#F59E0B] bg-[#F59E0B]/10 px-1.5 py-0.5 rounded">
-                РИСК
+                {t("risk_badge")}
               </span>
             )}
           </div>
@@ -79,7 +81,7 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
             className="flex items-center gap-1 mt-1.5 text-[#6C63FF] text-xs hover:text-[#9C8BFF] transition-colors"
           >
             <span>💡</span>
-            <span>{expanded ? "Скрыть подсказку" : "Подсказка"}</span>
+            <span>{expanded ? t("hide_tip") : t("show_tip")}</span>
           </button>
 
           <AnimatePresence initial={false}>

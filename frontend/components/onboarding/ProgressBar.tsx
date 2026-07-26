@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   current: number;
@@ -8,12 +9,13 @@ interface Props {
 }
 
 export function ProgressBar({ current, total }: Props) {
+  const { t } = useTranslation("onboarding");
   const pct = Math.round((current / total) * 100);
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-2">
         <span className="text-[#8B8BA7] text-xs font-medium">
-          Шаг {current} из {total}
+          {t("step", { current, total })}
         </span>
         <span className="text-[#6C63FF] text-xs font-bold">{pct}%</span>
       </div>

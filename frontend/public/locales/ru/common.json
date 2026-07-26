@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "dashboard": "Главная",
+    "chat": "AI Помощник",
+    "simulator": "Симулятор",
+    "documents": "Документы",
+    "roadmap": "Roadmap",
+    "emergency": "Помощь",
+    "after_visa": "После визы",
+    "referral": "Пригласить друзей",
+    "logout": "Выйти"
+  },
+  "common": {
+    "loading": "Загрузка...",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "back": "Назад",
+    "next": "Далее",
+    "start": "Начать",
+    "finish": "Завершить",
+    "retry": "Попробовать снова",
+    "home": "На главную",
+    "yes": "Да",
+    "no": "Нет",
+    "days": "дней",
+    "sessions": "сессий",
+    "of": "из",
+    "powered_by": "Powered by Vizora AI"
+  },
+  "errors": {
+    "generic": "Что-то пошло не так. Попробуй ещё раз.",
+    "network": "Ошибка соединения. Проверь интернет.",
+    "auth": "Неверный email или пароль",
+    "email_exists": "Email уже используется",
+    "password_short": "Пароль минимум 8 символов",
+    "passwords_no_match": "Пароли не совпадают",
+    "fill_field": "Заполни это поле"
+  }
+}

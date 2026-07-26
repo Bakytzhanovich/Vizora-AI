@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   question: string;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function OfficerCard({ question, mode, isStreaming, isPlaying }: Props) {
+  const { t } = useTranslation("simulator");
   return (
     <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5">
       <div className="flex items-center gap-3 mb-4">
@@ -18,20 +20,20 @@ export function OfficerCard({ question, mode, isStreaming, isPlaying }: Props) {
         </div>
         <div>
           <div className="text-[#F0F0FF] text-sm font-semibold">
-            {mode === "consul" ? "Офицер консульства США" : "Тренер Vizora AI"}
+            {mode === "consul" ? t("interview.officer") : t("interview.officer_trainer")}
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             {(isStreaming || isPlaying) ? (
               <>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
                 <span className="text-[#00D4AA] text-xs">
-                  {isStreaming ? "печатает..." : "говорит..."}
+                  {isStreaming ? t("interview.typing") : t("interview.speaking")}
                 </span>
               </>
             ) : (
               <>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#8B8BA7]" />
-                <span className="text-[#8B8BA7] text-xs">ждёт ответа</span>
+                <span className="text-[#8B8BA7] text-xs">{t("interview.waiting")}</span>
               </>
             )}
           </div>

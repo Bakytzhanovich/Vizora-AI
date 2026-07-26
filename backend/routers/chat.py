@@ -12,6 +12,7 @@ from app.core.database import AsyncSessionLocal, get_db
 from app.core.security import get_current_user_id
 from app.models.chat import ChatMessage
 from app.models.profile import StudentProfile
+from app.models.user import User
 from app.services.ai_service import generate_chat_response
 from app.services.rag_service import search_knowledge
 
@@ -33,6 +34,9 @@ async def send_message(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message is empty")
 
     session_id = body.session_id or str(uuid.uuid4())
+
+    user = await db.get(User, user_id)
+    language = user.language if user else "ru"
 
     # Load student profile for personalization
     profile_result = await db.execute(
@@ -83,11 +87,16 @@ async def send_message(
                 student_profile=student_profile,
                 knowledge_context=knowledge_context,
                 chat_history=chat_history,
+                language=language,
             ):
                 full_response += chunk
                 yield chunk
         except Exception as e:
-            error_msg = "Что-то пошло не так. Попробуй ещё раз."
+            error_msg = (
+                "Что-то пошло не так. Попробуй ещё раз."
+                if language != "kz"
+                else "Бірдеңе дұрыс болмады. Қайталап көр."
+            )
             yield error_msg
             full_response = error_msg
 

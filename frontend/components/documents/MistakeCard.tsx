@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import type { CommonMistake } from "@/lib/api";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function MistakeCard({ mistake, index }: Props) {
+  const { t } = useTranslation("documents");
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -23,13 +25,13 @@ export function MistakeCard({ mistake, index }: Props) {
       <div className="flex items-start gap-2">
         <span className="text-[#F59E0B] text-sm shrink-0 mt-0.5">⚡</span>
         <p className="text-[#F59E0B] text-xs leading-relaxed">
-          <span className="font-semibold">Последствие:</span> {mistake.consequence}
+          <span className="font-semibold">{t("mistakes.consequence")}:</span> {mistake.consequence}
         </p>
       </div>
       <div className="flex items-start gap-2">
         <span className="text-[#00D4AA] text-sm shrink-0 mt-0.5">✅</span>
         <p className="text-[#00D4AA] text-xs leading-relaxed">
-          <span className="font-semibold">Решение:</span> {mistake.solution}
+          <span className="font-semibold">{t("mistakes.solution")}:</span> {mistake.solution}
         </p>
       </div>
     </motion.div>

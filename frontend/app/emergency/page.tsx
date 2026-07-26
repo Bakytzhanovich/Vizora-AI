@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 import { ScenarioCard } from "@/components/emergency/ScenarioCard";
 import { GuidedStep } from "@/components/emergency/GuidedStep";
@@ -30,6 +31,7 @@ interface ActiveSession {
 
 export default function EmergencyPage() {
   const router = useRouter();
+  const { t } = useTranslation("emergency");
 
   const [flowStep, setFlowStep] = useState<FlowStep>("landing");
   const [scenarios, setScenarios] = useState<EmergencyScenario[]>([]);
@@ -142,9 +144,9 @@ export default function EmergencyPage() {
           </button>
           <div>
             <h1 className="text-[#F0F0FF] font-bold leading-tight">
-              🆘 Emergency Помощь
+              🆘 {t("title")}
             </h1>
-            <p className="text-[#8B8BA7] text-xs">Срочная помощь в USA</p>
+            <p className="text-[#8B8BA7] text-xs">{t("subtitle")}</p>
           </div>
         </div>
       </div>
@@ -164,10 +166,9 @@ export default function EmergencyPage() {
               {/* Banner */}
               <div className="bg-gradient-to-r from-[#FF6B6B]/10 to-[#F59E0B]/10 border border-[#FF6B6B]/20 rounded-2xl p-5 mb-6">
                 <div className="text-3xl mb-2">🆘</div>
-                <h2 className="text-[#F0F0FF] font-bold text-lg mb-1">Что-то пошло не так?</h2>
+                <h2 className="text-[#F0F0FF] font-bold text-lg mb-1">{t("header")}</h2>
                 <p className="text-[#8B8BA7] text-sm leading-relaxed">
-                  Выбери ситуацию — получишь пошаговый план действий и контакты для связи.
-                  Не паникуй: большинство проблем решаемы.
+                  {t("desc")}
                 </p>
               </div>
 
@@ -245,17 +246,17 @@ export default function EmergencyPage() {
               <div className="text-6xl">✅</div>
               <div>
                 <h2 className="text-[#F0F0FF] font-bold text-xl mb-2">
-                  Рад, что всё разрешилось!
+                  {t("resolved_state.title")}
                 </h2>
                 <p className="text-[#8B8BA7] text-sm max-w-xs">
-                  Ситуация отмечена как решённая. Если нужна дополнительная помощь — возвращайся.
+                  {t("resolved_state.desc")}
                 </p>
               </div>
               <button
                 onClick={() => router.push("/dashboard")}
                 className="px-8 py-4 rounded-2xl bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-bold text-sm"
               >
-                На главную
+                {t("common:common.home")}
               </button>
             </motion.div>
           )}

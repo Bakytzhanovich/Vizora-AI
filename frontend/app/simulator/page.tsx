@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 import { ModeSelector } from "@/components/simulator/ModeSelector";
 import { InterviewScreen } from "@/components/simulator/InterviewScreen";
@@ -33,6 +34,7 @@ interface HistoryItem {
 
 export default function SimulatorPage() {
   const router = useRouter();
+  const { t } = useTranslation("simulator");
   const [step, setStep] = useState<Step>("mode_select");
   const [isStarting, setIsStarting] = useState(false);
   const [session, setSession] = useState<SessionData | null>(null);
@@ -77,7 +79,7 @@ export default function SimulatorPage() {
       track("simulator_start", { mode, difficulty });
       setStep("interview");
     } catch {
-      alert("Не удалось запустить симулятор. Попробуй ещё раз.");
+      alert(t("start_error"));
     } finally {
       setIsStarting(false);
     }

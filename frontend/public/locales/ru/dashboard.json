@@ -1,0 +1,49 @@
+{
+  "greeting": "Привет, {{name}}!",
+  "interview_date": "До интервью: {{days}} дней",
+  "no_interview_date": "Дата интервью ещё не назначена",
+  "progress": "Прогресс подготовки",
+  "profile_complete": "Профиль заполнен",
+  "risk_profile": "Твой профиль риска",
+  "risk_high": "Высокий риск",
+  "risk_medium": "Средний риск",
+  "risk_low": "Низкий риск",
+  "no_risks": "🎉 Явных рисков не обнаружено. Отличный профиль!",
+  "modules": "Модули подготовки",
+  "module_titles": {
+    "chat": "AI Помощник",
+    "simulator": "Симулятор интервью",
+    "documents": "Документы",
+    "roadmap": "Roadmap"
+  },
+  "coming_soon": "Скоро",
+  "open": "Открыть",
+  "emergency_banner": {
+    "title": "Emergency Помощь",
+    "badge": "Всегда доступно",
+    "desc": "Если что-то пошло не так в США — план действий за 2 минуты"
+  },
+  "my_profile": "Твой профиль",
+  "university": "Университет",
+  "course": "Курс",
+  "course_suffix": "курс",
+  "english": "Английский",
+  "country": "Страна",
+  "job_offer": "Job Offer",
+  "job_offer_status": {
+    "yes": "Есть",
+    "no": "Нет",
+    "in_progress": "В процессе"
+  },
+  "financing": "Финансирование",
+  "financing_source": {
+    "self": "Свои",
+    "parents": "Родители",
+    "scholarship": "Стипендия"
+  },
+  "english_levels": {
+    "weak": "Слабый",
+    "medium": "Средний",
+    "good": "Хороший"
+  }
+}

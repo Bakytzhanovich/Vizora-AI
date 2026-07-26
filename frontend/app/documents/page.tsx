@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 import { DocumentChecklist } from "@/components/documents/DocumentChecklist";
 import { DS160Guide } from "@/components/documents/DS160Guide";
@@ -22,15 +23,16 @@ import { track } from "@/lib/analytics";
 
 type Tab = "checklist" | "ds160" | "mistakes";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "checklist", label: "Чек-лист", icon: "📋" },
-  { id: "ds160", label: "DS-160", icon: "📝" },
-  { id: "mistakes", label: "Ошибки", icon: "⚠️" },
-];
-
 export default function DocumentsPage() {
   const router = useRouter();
+  const { t } = useTranslation("documents");
   const [activeTab, setActiveTab] = useState<Tab>("checklist");
+
+  const TABS: { id: Tab; label: string; icon: string }[] = [
+    { id: "checklist", label: t("tabs.checklist"), icon: "📋" },
+    { id: "ds160", label: t("tabs.ds160"), icon: "📝" },
+    { id: "mistakes", label: t("tabs.mistakes"), icon: "⚠️" },
+  ];
 
   const [checklist, setChecklist] = useState<DocumentItem[]>([]);
   const [progress, setProgress] = useState(0);
@@ -89,12 +91,12 @@ export default function DocumentsPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-[#FF6B6B] text-sm">Не удалось загрузить данные</p>
+        <p className="text-[#FF6B6B] text-sm">{t("load_error")}</p>
         <button
           onClick={() => router.push("/dashboard")}
           className="text-[#6C63FF] text-sm underline"
         >
-          Вернуться на главную
+          {t("back_home")}
         </button>
       </div>
     );
@@ -114,8 +116,8 @@ export default function DocumentsPage() {
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-[#F0F0FF] font-bold leading-tight">Документы</h1>
-              <p className="text-[#8B8BA7] text-xs">Персональный чек-лист и DS-160</p>
+              <h1 className="text-[#F0F0FF] font-bold leading-tight">{t("title")}</h1>
+              <p className="text-[#8B8BA7] text-xs">{t("subtitle")}</p>
             </div>
           </div>
 

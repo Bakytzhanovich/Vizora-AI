@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export type VoiceState = "idle" | "recording" | "processing" | "playing";
 
@@ -11,34 +12,14 @@ interface Props {
   disabled?: boolean;
 }
 
-const config = {
-  idle: {
-    bg: "bg-[#6C63FF]",
-    ring: "ring-[#6C63FF]/30",
-    label: "Нажми и говори",
-    pulse: false,
-  },
-  recording: {
-    bg: "bg-[#FF6B6B]",
-    ring: "ring-[#FF6B6B]/40",
-    label: "Говорю... (нажми чтобы остановить)",
-    pulse: true,
-  },
-  processing: {
-    bg: "bg-[#F59E0B]",
-    ring: "ring-[#F59E0B]/30",
-    label: "Обрабатываю...",
-    pulse: false,
-  },
-  playing: {
-    bg: "bg-[#00D4AA]",
-    ring: "ring-[#00D4AA]/30",
-    label: "Офицер отвечает...",
-    pulse: true,
-  },
-};
-
 export function VoiceButton({ state, onClick, disabled = false }: Props) {
+  const { t } = useTranslation("simulator");
+  const config = {
+    idle: { bg: "bg-[#6C63FF]", ring: "ring-[#6C63FF]/30", label: t("voice.idle"), pulse: false },
+    recording: { bg: "bg-[#FF6B6B]", ring: "ring-[#FF6B6B]/40", label: t("voice.recording"), pulse: true },
+    processing: { bg: "bg-[#F59E0B]", ring: "ring-[#F59E0B]/30", label: t("voice.processing"), pulse: false },
+    playing: { bg: "bg-[#00D4AA]", ring: "ring-[#00D4AA]/30", label: t("voice.playing"), pulse: true },
+  };
   const cfg = config[state];
 
   return (

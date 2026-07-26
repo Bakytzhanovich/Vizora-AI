@@ -1,21 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-
-const QUICK_QUESTIONS = [
-  "Что такое DS-160?",
-  "Какие документы на интервью?",
-  "Почему отказывают в визе?",
-  "Что такое SEVIS?",
-  "Как вернуть налоги?",
-  "Можно работать на второй работе?",
-];
+import { useTranslation } from "react-i18next";
 
 interface Props {
   onSelect: (question: string) => void;
 }
 
 export function QuickQuestions({ onSelect }: Props) {
+  const { t } = useTranslation("chat");
+  const QUICK_QUESTIONS = t("quick_questions", { returnObjects: true }) as string[];
   return (
     <div className="flex flex-wrap gap-2 justify-center">
       {QUICK_QUESTIONS.map((q, i) => (

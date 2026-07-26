@@ -23,6 +23,7 @@ class User(Base):
     oauth_provider = Column(String(20), nullable=True)  # e.g. "google"; null for email/password users
     oauth_id = Column(String(255), nullable=True)  # provider's unique user ID
     avatar_url = Column(String(500), nullable=True)
+    language = Column(String(5), nullable=False, default="ru")  # "ru" | "kz"
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     profile = relationship("StudentProfile", back_populates="user", uselist=False)

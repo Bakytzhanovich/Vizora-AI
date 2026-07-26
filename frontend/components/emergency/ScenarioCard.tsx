@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import type { EmergencyScenario } from "@/lib/api";
 
 interface ScenarioCardProps {
@@ -22,13 +23,8 @@ const urgencyDot: Record<string, string> = {
   medium: "bg-[#8B8BA7]",
 };
 
-const urgencyLabel: Record<string, string> = {
-  critical: "Критично",
-  high: "Срочно",
-  medium: "Важно",
-};
-
 export function ScenarioCard({ scenario, index, onClick, loading }: ScenarioCardProps) {
+  const { t } = useTranslation("emergency");
   return (
     <motion.button
       initial={{ opacity: 0, y: 12 }}
@@ -55,12 +51,12 @@ export function ScenarioCard({ scenario, index, onClick, loading }: ScenarioCard
               }`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${urgencyDot[scenario.urgency]}`} />
-              {urgencyLabel[scenario.urgency]}
+              {t(`urgency.${scenario.urgency}`)}
             </span>
           </div>
           <p className="text-[#8B8BA7] text-sm leading-snug">{scenario.description}</p>
           <div className="mt-2 text-xs text-[#8B8BA7]">
-            {scenario.total_steps} {scenario.total_steps === 1 ? "вопрос" : "вопроса"} → план действий
+            {t(scenario.total_steps === 1 ? "steps_label_one" : "steps_label_other", { n: scenario.total_steps })}
           </div>
         </div>
         <div className="shrink-0 text-[#8B8BA7] mt-1">›</div>

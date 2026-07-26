@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 type Mode = "trainer" | "consul";
 type Difficulty = "easy" | "medium" | "hard";
@@ -11,37 +12,27 @@ interface Props {
   isLoading: boolean;
 }
 
-const difficulties: { value: Difficulty; label: string; emoji: string }[] = [
-  { value: "easy", label: "Лёгкий", emoji: "🟢" },
-  { value: "medium", label: "Средний", emoji: "🟡" },
-  { value: "hard", label: "Строгий", emoji: "🔴" },
-];
-
-const trainerFeatures = [
-  "Фидбек после каждого ответа",
-  "Подсказки и лучшие формулировки",
-  "Объяснение ошибок на русском",
-  "Идеально для начинающих",
-];
-
-const consulFeatures = [
-  "Реальный офицер без подсказок",
-  "Follow-up вопросы на слабые ответы",
-  "Только английский язык",
-  "Финальная проверка готовности",
-];
-
 export function ModeSelector({ onStart, isLoading }: Props) {
+  const { t } = useTranslation("simulator");
   const [selectedMode, setSelectedMode] = useState<Mode | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
+
+  const difficulties: { value: Difficulty; label: string; emoji: string }[] = [
+    { value: "easy", label: t("difficulty.easy"), emoji: "🟢" },
+    { value: "medium", label: t("difficulty.medium"), emoji: "🟡" },
+    { value: "hard", label: t("difficulty.hard"), emoji: "🔴" },
+  ];
+
+  const trainerFeatures = t("trainer.features", { returnObjects: true }) as string[];
+  const consulFeatures = t("consul.features", { returnObjects: true }) as string[];
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-8 max-w-2xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🎤</div>
-          <h1 className="text-2xl font-bold text-[#F0F0FF] mb-2">Симулятор интервью</h1>
-          <p className="text-[#8B8BA7]">Выбери режим подготовки</p>
+          <h1 className="text-2xl font-bold text-[#F0F0FF] mb-2">{t("title")}</h1>
+          <p className="text-[#8B8BA7]">{t("subtitle")}</p>
         </div>
 
         {/* Mode cards */}
@@ -57,8 +48,8 @@ export function ModeSelector({ onStart, isLoading }: Props) {
             }`}
           >
             <div className="text-3xl mb-3">🎓</div>
-            <h2 className="text-[#F0F0FF] font-bold mb-1">Режим Тренер</h2>
-            <p className="text-[#8B8BA7] text-xs mb-4">Мягкий и обучающий</p>
+            <h2 className="text-[#F0F0FF] font-bold mb-1">{t("trainer.title")}</h2>
+            <p className="text-[#8B8BA7] text-xs mb-4">{t("trainer.desc")}</p>
             <ul className="space-y-1.5 mb-5">
               {trainerFeatures.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-xs text-[#8B8BA7]">
@@ -75,7 +66,7 @@ export function ModeSelector({ onStart, isLoading }: Props) {
                   : "border-[#6C63FF] text-[#6C63FF] hover:bg-[#6C63FF]/10"
               }`}
             >
-              Начать тренировку
+              {t("trainer.button")}
             </button>
           </motion.div>
 
@@ -90,8 +81,8 @@ export function ModeSelector({ onStart, isLoading }: Props) {
             }`}
           >
             <div className="text-3xl mb-3">🏛️</div>
-            <h2 className="text-[#F0F0FF] font-bold mb-1">Режим Консул</h2>
-            <p className="text-[#8B8BA7] text-xs mb-4">Строгий и реалистичный</p>
+            <h2 className="text-[#F0F0FF] font-bold mb-1">{t("consul.title")}</h2>
+            <p className="text-[#8B8BA7] text-xs mb-4">{t("consul.desc")}</p>
             <ul className="space-y-1.5 mb-5">
               {consulFeatures.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-xs text-[#8B8BA7]">
@@ -108,14 +99,14 @@ export function ModeSelector({ onStart, isLoading }: Props) {
                   : "bg-[#6C63FF] text-white hover:bg-[#7C75FF]"
               }`}
             >
-              Начать интервью
+              {t("consul.button")}
             </button>
           </motion.div>
         </div>
 
         {/* Difficulty */}
         <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-4 mb-6">
-          <p className="text-[#8B8BA7] text-xs mb-3">Уровень сложности</p>
+          <p className="text-[#8B8BA7] text-xs mb-3">{t("difficulty.label")}</p>
           <div className="flex gap-2">
             {difficulties.map((d) => (
               <button
@@ -140,7 +131,11 @@ export function ModeSelector({ onStart, isLoading }: Props) {
           onClick={() => selectedMode && onStart(selectedMode, difficulty)}
           className="w-full bg-[#6C63FF] hover:bg-[#7C75FF] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all text-base shadow-lg shadow-[#6C63FF]/20"
         >
-          {isLoading ? "Запускаем..." : selectedMode ? `Начать (${selectedMode === "trainer" ? "Тренер" : "Консул"})` : "Выбери режим выше"}
+          {isLoading
+            ? t("start_button.starting")
+            : selectedMode
+            ? t(selectedMode === "trainer" ? "start_button.start_trainer" : "start_button.start_consul")
+            : t("start_button.select_first")}
         </motion.button>
       </motion.div>
     </div>

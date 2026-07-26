@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Send, Mic } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   onSend: (message: string) => void;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function ChatInput({ onSend, disabled = false }: Props) {
+  const { t } = useTranslation("chat");
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -45,7 +47,7 @@ export function ChatInput({ onSend, disabled = false }: Props) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
-          placeholder="Задай любой вопрос по Work & Travel..."
+          placeholder={t("placeholder")}
           rows={1}
           disabled={disabled}
           className="w-full bg-transparent text-[#F0F0FF] placeholder-[#8B8BA7] text-sm resize-none outline-none leading-relaxed disabled:opacity-50"
@@ -62,7 +64,7 @@ export function ChatInput({ onSend, disabled = false }: Props) {
           <Mic size={18} />
         </button>
         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#13131A] border border-[#1E1E2E] text-[#8B8BA7] text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          Скоро
+          {t("voice_soon")}
         </div>
       </div>
 

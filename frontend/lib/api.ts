@@ -183,10 +183,18 @@ export async function apiOnboarding(payload: OnboardingPayload) {
 
 export async function apiGetMe() {
   const { data } = await api.get<{
-    user: { id: string; email: string; role: string };
+    user: { id: string; email: string; role: string; language: string };
     profile: UserProfile | null;
     risk_profile: RiskProfile | null;
   }>("/profile/me");
+  return data;
+}
+
+export async function apiUpdateLanguage(language: "ru" | "kz") {
+  const { data } = await api.post<{ success: boolean; language: string }>(
+    "/profile/language",
+    { language }
+  );
   return data;
 }
 

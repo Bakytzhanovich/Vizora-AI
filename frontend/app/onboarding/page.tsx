@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 import { ProgressBar } from "@/components/onboarding/ProgressBar";
 import { OnboardingStep } from "@/components/onboarding/OnboardingStep";
@@ -54,6 +55,7 @@ type SubmitStatus = "idle" | "loading" | "analyzing" | "done" | "error";
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { t } = useTranslation("onboarding");
   const [step, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(defaultData);
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
@@ -146,17 +148,17 @@ export default function OnboardingPage() {
           {submitStatus === "done" ? (
             <>
               <div className="text-6xl">🎯</div>
-              <h2 className="text-2xl font-bold text-[#F0F0FF]">Профиль готов!</h2>
-              <p className="text-[#8B8BA7]">Переходим в дашборд...</p>
+              <h2 className="text-2xl font-bold text-[#F0F0FF]">{t("complete")}</h2>
+              <p className="text-[#8B8BA7]">{t("redirecting")}</p>
             </>
           ) : (
             <>
               <div className="w-16 h-16 rounded-full border-2 border-[#6C63FF]/30 border-t-[#6C63FF] animate-spin" />
               <h2 className="text-xl font-bold text-[#F0F0FF]">
-                Vizora AI анализирует твой профиль...
+                {t("analyzing")}
               </h2>
               <p className="text-[#8B8BA7] text-sm max-w-xs">
-                Определяем зоны риска и готовим персональный план подготовки
+                {t("analyzing_desc")}
               </p>
             </>
           )}
@@ -166,16 +168,16 @@ export default function OnboardingPage() {
   }
 
   const stepTitles: Record<number, { title: string; subtitle?: string }> = {
-    1: { title: "Как тебя зовут?", subtitle: "Это поможет сделать подготовку персональной" },
-    2: { title: "В каком университете ты учишься?" },
-    3: { title: "На каком ты курсе?" },
-    4: { title: "Когда твоё интервью в консульстве?", subtitle: "Поможем рассчитать план подготовки" },
-    5: { title: "Как ты оцениваешь свой английский?" },
-    6: { title: "Ты уже выезжал за границу?" },
-    7: { title: "Кто финансирует твою поездку?" },
-    8: { title: "У тебя уже есть Job Offer?" },
-    9: { title: "Из какой ты страны?" },
-    10: { title: "Как ты оформляешься на программу?" },
+    1: { title: t("steps.name.question"), subtitle: t("steps.name.subtitle") },
+    2: { title: t("steps.university.question") },
+    3: { title: t("steps.course.question") },
+    4: { title: t("steps.interview_date.question"), subtitle: t("steps.interview_date.subtitle") },
+    5: { title: t("steps.english.question") },
+    6: { title: t("steps.travel.question") },
+    7: { title: t("steps.financial.question") },
+    8: { title: t("steps.job_offer.question") },
+    9: { title: t("steps.country.question") },
+    10: { title: t("steps.agency.question") },
   };
 
   return (
@@ -281,12 +283,12 @@ export default function OnboardingPage() {
               animate={{ opacity: 1 }}
               className="mt-4 bg-[#FF6B6B]/10 border border-[#FF6B6B]/20 text-[#FF6B6B] text-sm rounded-xl px-4 py-3 text-center"
             >
-              Ошибка при сохранении. Попробуй снова.
+              {t("save_error")}
               <button
                 onClick={() => setSubmitStatus("idle")}
                 className="ml-2 underline"
               >
-                Повторить
+                {t("common:common.retry")}
               </button>
             </motion.div>
           )}

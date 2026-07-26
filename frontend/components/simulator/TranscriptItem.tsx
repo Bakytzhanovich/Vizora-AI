@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 export interface TranscriptEntry {
   id: string;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function TranscriptItem({ entry, index, mode }: Props) {
+  const { t } = useTranslation("simulator");
   const isOfficer = entry.role === "officer";
 
   return (
@@ -30,7 +32,7 @@ export function TranscriptItem({ entry, index, mode }: Props) {
 
       <div className={`max-w-[85%] ${isOfficer ? "" : "items-end flex flex-col"}`}>
         <span className="text-[#8B8BA7] text-[10px] mb-1 px-1">
-          {isOfficer ? (mode === "consul" ? "Офицер" : "Тренер") : "Вы"}
+          {isOfficer ? (mode === "consul" ? t("transcript.officer") : t("transcript.trainer")) : t("transcript.you")}
         </span>
         <div
           className={`px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${

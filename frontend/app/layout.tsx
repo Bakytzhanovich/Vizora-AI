@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { BrandingProvider } from "@/context/BrandingContext";
 import { TelegramAuthHandler } from "@/components/TelegramAuthHandler";
+import { I18nInit } from "@/components/I18nInit";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -90,6 +91,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#0A0A0F] text-[#F0F0FF] antialiased font-sans">
+        <I18nInit />
         <BrandingProvider>
           <TelegramAuthHandler />
           {children}

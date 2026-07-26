@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   stepIndex: number;
@@ -19,6 +20,7 @@ const variants = {
 };
 
 export function OnboardingStep({ stepIndex, title, subtitle, children, onBack, canGoBack }: Props) {
+  const { t } = useTranslation("common");
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -38,7 +40,7 @@ export function OnboardingStep({ stepIndex, title, subtitle, children, onBack, c
               className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-sm transition-colors duration-200"
             >
               <ArrowLeft size={16} />
-              Назад
+              {t("common.back")}
             </button>
           )}
         </div>

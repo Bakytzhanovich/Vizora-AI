@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   value: string | null;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function Step4({ value, onChange, onNext }: Props) {
+  const { t } = useTranslation("onboarding");
   const [noDate, setNoDate] = useState(!value);
 
   const handleNoDate = () => {
@@ -47,7 +49,7 @@ export function Step4({ value, onChange, onNext }: Props) {
         <span className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${noDate ? "bg-[#6C63FF] border-[#6C63FF]" : "border-[#1E1E2E]"}`}>
           {noDate && <span className="text-white text-xs">✓</span>}
         </span>
-        Ещё не записался на интервью
+        {t("steps.interview_date.no_date")}
       </button>
 
       <motion.button
@@ -57,7 +59,7 @@ export function Step4({ value, onChange, onNext }: Props) {
         whileTap={canContinue ? { scale: 0.97 } : {}}
         className="w-full bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-bold py-4 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed text-sm transition-all duration-200"
       >
-        Продолжить →
+        {t("continue")}
       </motion.button>
     </div>
   );

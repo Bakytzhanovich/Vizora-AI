@@ -1,0 +1,49 @@
+{
+  "greeting": "Сәлем, {{name}}!",
+  "interview_date": "Интервьюге дейін: {{days}} күн",
+  "no_interview_date": "Интервью күні белгіленбеген",
+  "progress": "Дайындық үрдісі",
+  "profile_complete": "Профиль толтырылды",
+  "risk_profile": "Тәуекел профилің",
+  "risk_high": "Жоғары тәуекел",
+  "risk_medium": "Орташа тәуекел",
+  "risk_low": "Төмен тәуекел",
+  "no_risks": "🎉 Айқын тәуекелдер табылмады. Керемет профиль!",
+  "modules": "Дайындық модульдері",
+  "module_titles": {
+    "chat": "AI Көмекші",
+    "simulator": "Интервью симуляторы",
+    "documents": "Құжаттар",
+    "roadmap": "Жол картасы"
+  },
+  "coming_soon": "Жақында",
+  "open": "Ашу",
+  "emergency_banner": {
+    "title": "Шұғыл Көмек",
+    "badge": "Әрдайым қолжетімді",
+    "desc": "АҚШ-та бірдеңе дұрыс болмаса — 2 минутта іс-қимыл жоспары"
+  },
+  "my_profile": "Менің профилім",
+  "university": "Университет",
+  "course": "Курс",
+  "course_suffix": "курс",
+  "english": "Ағылшын тілі",
+  "country": "Ел",
+  "job_offer": "Жұмыс ұсынысы",
+  "job_offer_status": {
+    "yes": "Бар",
+    "no": "Жоқ",
+    "in_progress": "Үдерісте"
+  },
+  "financing": "Қаржыландыру",
+  "financing_source": {
+    "self": "Өзім",
+    "parents": "Ата-анам",
+    "scholarship": "Стипендия"
+  },
+  "english_levels": {
+    "weak": "Әлсіз",
+    "medium": "Орташа",
+    "good": "Жақсы"
+  }
+}

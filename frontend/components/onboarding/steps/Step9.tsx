@@ -1,14 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { OptionButton } from "../OptionButton";
-
-const options = [
-  { value: "KZ", icon: "🇰🇿", label: "Казахстан" },
-  { value: "UZ", icon: "🇺🇿", label: "Узбекистан" },
-  { value: "KG", icon: "🇰🇬", label: "Кыргызстан" },
-  { value: "AM", icon: "🇦🇲", label: "Армения" },
-  { value: "other", icon: "🌍", label: "Другая" },
-];
 
 interface Props {
   value: string;
@@ -17,6 +10,14 @@ interface Props {
 }
 
 export function Step9({ value, onChange, onNext }: Props) {
+  const { t } = useTranslation("onboarding");
+  const options = [
+    { value: "KZ", icon: "🇰🇿", label: t("steps.country.options.KZ") },
+    { value: "UZ", icon: "🇺🇿", label: t("steps.country.options.UZ") },
+    { value: "KG", icon: "🇰🇬", label: t("steps.country.options.KG") },
+    { value: "AM", icon: "🇦🇲", label: t("steps.country.options.AM") },
+    { value: "other", icon: "🌍", label: t("steps.country.options.other") },
+  ];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {options.map((opt) => (

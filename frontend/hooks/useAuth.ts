@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiLogin, apiGoogleLogin, apiRegister, apiGetMe, apiLogout } from "@/lib/api";
 import type { UserProfile, RiskProfile } from "@/lib/api";
+import i18n, { setStoredLanguage, type SupportedLanguage } from "@/lib/i18n";
 
 interface AuthUser {
   id: string;
   email: string;
   role: string;
+  language: string;
 }
 
 interface AuthState {
@@ -47,6 +49,12 @@ export function useAuth() {
         localStorage.setItem("user_name", profile.name || "");
       } else {
         localStorage.removeItem("has_profile");
+      }
+
+      if (user.language === "ru" || user.language === "kz") {
+        const lang = user.language as SupportedLanguage;
+        setStoredLanguage(lang);
+        i18n.changeLanguage(lang);
       }
 
       setState({

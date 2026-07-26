@@ -1,12 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { OptionButton } from "../OptionButton";
-
-const options = [
-  { value: "yes", icon: "✅", label: "Да, есть" },
-  { value: "in_progress", icon: "🔄", label: "В процессе" },
-  { value: "no", icon: "❌", label: "Ещё нет" },
-];
 
 interface Props {
   value: string;
@@ -15,6 +10,12 @@ interface Props {
 }
 
 export function Step8({ value, onChange, onNext }: Props) {
+  const { t } = useTranslation("onboarding");
+  const options = [
+    { value: "yes", icon: "✅", label: t("steps.job_offer.yes") },
+    { value: "in_progress", icon: "🔄", label: t("steps.job_offer.in_progress") },
+    { value: "no", icon: "❌", label: t("steps.job_offer.no") },
+  ];
   return (
     <div className="space-y-3">
       {options.map((opt) => (

@@ -12,10 +12,12 @@
     "@react-oauth/google": "^0.13.5",
     "axios": "^1.18.1",
     "framer-motion": "^12.42.0",
+    "i18next": "^26.3.6",
     "lucide-react": "^1.22.0",
     "next": "14.2.35",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "react-i18next": "^17.0.11"
   },
   "devDependencies": {
     "@types/node": "^20",

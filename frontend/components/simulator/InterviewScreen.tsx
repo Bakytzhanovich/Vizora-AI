@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { OfficerCard } from "./OfficerCard";
 import { TranscriptItem, TranscriptEntry } from "./TranscriptItem";
 import { VoiceButton, VoiceState } from "./VoiceButton";
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBack }: Props) {
+  const { t } = useTranslation("simulator");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     { id: makeId(), role: "officer", content: openingQuestion },
   ]);
@@ -217,10 +219,10 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
       onEnd({
         scores: { confidence: 5, language: 5, content: 5, overall: 5 },
         strong_points: [],
-        weak_points: ["Не удалось загрузить анализ"],
+        weak_points: [t("interview.load_analysis_error")],
         phrases_to_use: [],
         risk_flags: [],
-        recommendation: "Повтори сессию.",
+        recommendation: t("interview.retry_session"),
       });
     }
   };
@@ -237,7 +239,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
               <ArrowLeft size={20} />
             </button>
             <span className="text-[#F0F0FF] font-semibold text-sm">
-              {mode === "consul" ? "🏛️ Режим Консул" : "🎓 Режим Тренер"}
+              {mode === "consul" ? `🏛️ ${t("consul.title")}` : `🎓 ${t("trainer.title")}`}
             </span>
           </div>
 
@@ -256,7 +258,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
               disabled={isEnding}
               className="text-xs text-[#FF6B6B] border border-[#FF6B6B]/30 px-3 py-1.5 rounded-lg hover:bg-[#FF6B6B]/10 transition-all disabled:opacity-50"
             >
-              {isEnding ? "Анализируем..." : "Завершить"}
+              {isEnding ? t("interview.analyzing") : t("interview.finish")}
             </button>
           </div>
         </div>
@@ -298,7 +300,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
                 onClick={() => setHasMic(false)}
                 className="text-[#8B8BA7] text-xs hover:text-[#F0F0FF] transition-colors"
               >
-                Нет микрофона? Написать текстом
+                {t("interview.no_mic")}
               </button>
             </div>
           ) : (
@@ -308,7 +310,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !isBusy && handleTextSubmit()}
-                placeholder="Введи ответ на английском..."
+                placeholder={t("interview.type_placeholder")}
                 disabled={isBusy}
                 className="flex-1 bg-[#13131A] border border-[#1E1E2E] focus:border-[#6C63FF]/50 rounded-xl px-4 py-3 text-[#F0F0FF] placeholder-[#8B8BA7] text-sm outline-none transition-colors disabled:opacity-50"
               />

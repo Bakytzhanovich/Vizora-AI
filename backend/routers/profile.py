@@ -22,6 +22,10 @@ from app.services.risk_service import generate_risk_profile
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
+class LanguageRequest(BaseModel):
+    language: str
+
+
 class OnboardingRequest(BaseModel):
     name: str
     university: str
@@ -106,6 +110,24 @@ async def onboarding(
     }
 
 
+@router.post("/language")
+async def update_language(
+    body: LanguageRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    if body.language not in ("ru", "kz"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported language")
+
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.language = body.language
+    await db.commit()
+    return {"success": True, "language": user.language}
+
+
 @router.get("/me")
 async def get_me(
     user_id: str = Depends(get_current_user_id),
@@ -140,7 +162,7 @@ async def get_me(
                 }
 
     return {
-        "user": {"id": user.id, "email": user.email, "role": user.role},
+        "user": {"id": user.id, "email": user.email, "role": user.role, "language": user.language},
         "profile": {
             "id": profile.id,
             "name": profile.name,

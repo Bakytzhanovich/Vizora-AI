@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { ScoreCard } from "./ScoreCard";
 
 interface Scores {
@@ -191,6 +192,7 @@ function PhraseCard({ item, index }: { item: PhraseToMemorize; index: number }) 
 
 export function ResultsScreen({ feedback, history, onRetry }: Props) {
   const router = useRouter();
+  const { t } = useTranslation("simulator");
   const { scores } = feedback;
   const overall = scores.overall ?? ((scores.confidence + scores.language + scores.content) / 3);
   const pct = Math.round((overall / 10) * 100);
@@ -212,8 +214,8 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-xl font-bold text-[#F0F0FF]">Результаты интервью</h1>
-          <p className="text-[#8B8BA7] text-xs mt-1">Детальный разбор каждого ответа</p>
+          <h1 className="text-xl font-bold text-[#F0F0FF]">{t("results.title")}</h1>
+          <p className="text-[#8B8BA7] text-xs mt-1">{t("results.subtitle")}</p>
         </div>
 
         {/* Score circle */}
@@ -242,19 +244,19 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
 
         {/* Score bars */}
         <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5 mb-4">
-          <h2 className="text-[#F0F0FF] text-sm font-semibold mb-4">Детальные оценки</h2>
-          <ScoreCard label="Уверенность" score={scores.confidence} delay={0.1} />
-          <ScoreCard label="Язык" score={scores.language} delay={0.2} />
-          <ScoreCard label="Содержание" score={scores.content} delay={0.3} />
+          <h2 className="text-[#F0F0FF] text-sm font-semibold mb-4">{t("results.detailed_scores")}</h2>
+          <ScoreCard label={t("results.confidence")} score={scores.confidence} delay={0.1} />
+          <ScoreCard label={t("results.language")} score={scores.language} delay={0.2} />
+          <ScoreCard label={t("results.content")} score={scores.content} delay={0.3} />
           <div className="border-t border-[#1E1E2E] pt-3 mt-1">
-            <ScoreCard label="Итого" score={overall} color="#00D4AA" delay={0.4} />
+            <ScoreCard label={t("results.total")} score={overall} color="#00D4AA" delay={0.4} />
           </div>
         </div>
 
         {/* Recommendation */}
         {feedback.recommendation && (
           <div className="bg-[#6C63FF]/10 border border-[#6C63FF]/20 rounded-2xl p-4 mb-6">
-            <p className="text-[#9C8BFF] text-xs font-semibold mb-1">Итоговая рекомендация</p>
+            <p className="text-[#9C8BFF] text-xs font-semibold mb-1">{t("results.recommendation")}</p>
             <p className="text-[#F0F0FF] text-sm leading-relaxed">{feedback.recommendation}</p>
           </div>
         )}
@@ -337,7 +339,7 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
           <div className="space-y-4 mb-6">
             {feedback.strong_points.length > 0 && (
               <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-4">
-                <h3 className="text-[#00D4AA] text-xs font-bold mb-3">✅ Сильные стороны</h3>
+                <h3 className="text-[#00D4AA] text-xs font-bold mb-3">✅ {t("results.strong")}</h3>
                 <ul className="space-y-2">
                   {feedback.strong_points.map((p, i) => (
                     <li key={i} className="text-[#8B8BA7] text-xs leading-relaxed">{p}</li>
@@ -347,7 +349,7 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
             )}
             {(feedback.weak_points ?? []).length > 0 && (
               <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-4">
-                <h3 className="text-[#F59E0B] text-xs font-bold mb-3">⚠️ Нужно проработать</h3>
+                <h3 className="text-[#F59E0B] text-xs font-bold mb-3">⚠️ {t("results.improve")}</h3>
                 <ul className="space-y-2">
                   {(feedback.weak_points ?? []).map((p, i) => (
                     <li key={i} className="text-[#8B8BA7] text-xs leading-relaxed">{p}</li>
@@ -357,7 +359,7 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
             )}
             {(feedback.risk_flags ?? []).length > 0 && (
               <div className="bg-[#FF6B6B]/5 border border-[#FF6B6B]/20 rounded-2xl p-4">
-                <h3 className="text-[#FF6B6B] text-xs font-bold mb-3">🚩 Красные флаги</h3>
+                <h3 className="text-[#FF6B6B] text-xs font-bold mb-3">🚩 {t("results.flags")}</h3>
                 <ul className="space-y-2">
                   {(feedback.risk_flags ?? []).map((f, i) => (
                     <li key={i} className="text-[#FF6B6B]/80 text-xs leading-relaxed">{f}</li>
@@ -367,7 +369,7 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
             )}
             {(feedback.phrases_to_use ?? []).length > 0 && (
               <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-4">
-                <h3 className="text-[#6C63FF] text-xs font-bold mb-3">💡 Рекомендуемые фразы</h3>
+                <h3 className="text-[#6C63FF] text-xs font-bold mb-3">💡 {t("results.phrases")}</h3>
                 <ul className="space-y-2">
                   {(feedback.phrases_to_use ?? []).map((p, i) => (
                     <li key={i} className="text-[#8B8BA7] text-xs leading-relaxed italic">&ldquo;{p}&rdquo;</li>
@@ -384,28 +386,28 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
             onClick={onRetry}
             className="flex-1 border border-[#6C63FF] text-[#6C63FF] font-semibold py-3 rounded-xl hover:bg-[#6C63FF]/10 transition-all text-sm"
           >
-            Пройти снова
+            {t("results.retry")}
           </button>
           <button
             onClick={() => router.push("/dashboard")}
             className="flex-1 bg-[#6C63FF] text-white font-semibold py-3 rounded-xl hover:bg-[#7C75FF] transition-all text-sm"
           >
-            На главную
+            {t("results.home")}
           </button>
         </div>
 
         {/* History */}
         {history.length > 1 && (
           <div>
-            <h2 className="text-[#F0F0FF] text-sm font-semibold mb-3">История сессий</h2>
+            <h2 className="text-[#F0F0FF] text-sm font-semibold mb-3">{t("results.history")}</h2>
             <div className="space-y-2">
               {history.slice(0, 5).map((s) => (
                 <div key={s.id} className="bg-[#13131A] border border-[#1E1E2E] rounded-xl px-4 py-3 flex items-center justify-between">
                   <div>
                     <span className="text-[#F0F0FF] text-xs font-medium">
-                      {s.mode === "trainer" ? "🎓 Тренер" : "🏛️ Консул"}
+                      {s.mode === "trainer" ? t("results.trainer_short") : t("results.consul_short")}
                     </span>
-                    <span className="text-[#8B8BA7] text-xs ml-2">{s.question_count} вопросов</span>
+                    <span className="text-[#8B8BA7] text-xs ml-2">{t("results.questions_count", { n: s.question_count })}</span>
                   </div>
                   <div className="text-right">
                     {s.scores && (
