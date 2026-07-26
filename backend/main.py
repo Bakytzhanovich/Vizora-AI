@@ -58,20 +58,20 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 def run_migrations() -> None:
     """Apply pending Alembic migrations. Runs on every startup so platforms
     without shell/job access (e.g. Render free tier) still get schema changes.
+
+    Uses print() and inherited stdout/stderr (not the logging module) so the
+    output always reaches the platform's log stream — uvicorn reconfigures
+    logging via dictConfig on startup, which can silently disable loggers
+    that were set up before it (e.g. via logging.basicConfig at import time).
     """
     if not settings.RUN_MIGRATIONS_ON_STARTUP:
         return
 
-    result = subprocess.run(
-        ["alembic", "upgrade", "head"],
-        cwd=BACKEND_DIR,
-        capture_output=True,
-        text=True,
-    )
+    print("Running `alembic upgrade head`...", flush=True)
+    result = subprocess.run(["alembic", "upgrade", "head"], cwd=BACKEND_DIR)
     if result.returncode != 0:
-        logger.error("Alembic migration failed:\n%s", result.stdout + result.stderr)
-        raise RuntimeError("Database migration failed")
-    logger.info("Alembic migrations applied (or already up to date)")
+        raise RuntimeError(f"Database migration failed (alembic exit code {result.returncode})")
+    print("Alembic migrations applied (or already up to date)", flush=True)
 
 
 async def bootstrap_admin_user() -> None:
