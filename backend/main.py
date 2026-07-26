@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -11,10 +12,14 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+# No handler is configured anywhere else, so without this every logger.info() in
+# the app (bootstrap admin, migrations, ...) is silently dropped by the default
+# root level (WARNING).
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 from app.api.early_access import router as early_access_router
-from app.core.config import settings
+from app.core.config import settings, BACKEND_DIR
 from app.core.database import AsyncSessionLocal, create_tables
 from app.core.security import hash_password
 # Import models so SQLAlchemy registers them before create_all
@@ -48,6 +53,25 @@ from routers.internal import router as internal_router
 from routers.admin import router as admin_router
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+
+
+def run_migrations() -> None:
+    """Apply pending Alembic migrations. Runs on every startup so platforms
+    without shell/job access (e.g. Render free tier) still get schema changes.
+    """
+    if not settings.RUN_MIGRATIONS_ON_STARTUP:
+        return
+
+    result = subprocess.run(
+        ["alembic", "upgrade", "head"],
+        cwd=BACKEND_DIR,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        logger.error("Alembic migration failed:\n%s", result.stdout + result.stderr)
+        raise RuntimeError("Database migration failed")
+    logger.info("Alembic migrations applied (or already up to date)")
 
 
 async def bootstrap_admin_user() -> None:
@@ -88,6 +112,7 @@ async def bootstrap_admin_user() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    run_migrations()
     if settings.AUTO_CREATE_TABLES:
         await create_tables()
     await bootstrap_admin_user()
