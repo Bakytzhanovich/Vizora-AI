@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   const redirectAfterAuth = (user: { role: string }, profile: unknown) => {
@@ -57,6 +58,7 @@ export default function LoginPage() {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
+    const slowTimer = setTimeout(() => setSlowLoading(true), 4000);
     try {
       const { user, profile } = await login(email, password);
       redirectAfterAuth(user, profile);
@@ -68,6 +70,8 @@ export default function LoginPage() {
         setErrors({ general: "Что-то пошло не так. Попробуй снова." });
       }
     } finally {
+      clearTimeout(slowTimer);
+      setSlowLoading(false);
       setLoading(false);
     }
   };
@@ -156,6 +160,16 @@ export default function LoginPage() {
                 "Войти →"
               )}
             </motion.button>
+
+            {slowLoading && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[#8B8BA7] text-xs text-center"
+              >
+                Сервер просыпается после простоя — это может занять до минуты. Спасибо за терпение 🙏
+              </motion.p>
+            )}
           </form>
 
           <GoogleAuthButton onSuccess={handleGoogleSuccess} />

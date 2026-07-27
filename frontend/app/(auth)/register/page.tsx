@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [refCode, setRefCode] = useState<string | null>(null);
   const [refName, setRefName] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export default function RegisterPage() {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
+    const slowTimer = setTimeout(() => setSlowLoading(true), 4000);
     try {
       track("register_start", { has_referral: !!refCode });
       await register(email, password, refCode ?? undefined);
@@ -96,6 +98,8 @@ export default function RegisterPage() {
         setErrors({ general: "Что-то пошло не так. Попробуй снова." });
       }
     } finally {
+      clearTimeout(slowTimer);
+      setSlowLoading(false);
       setLoading(false);
     }
   };
@@ -206,6 +210,16 @@ export default function RegisterPage() {
                 "Зарегистрироваться →"
               )}
             </motion.button>
+
+            {slowLoading && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-[#8B8BA7] text-xs text-center"
+              >
+                Сервер просыпается после простоя — это может занять до минуты. Спасибо за терпение 🙏
+              </motion.p>
+            )}
           </form>
 
           <GoogleAuthButton onSuccess={handleGoogleSuccess} />

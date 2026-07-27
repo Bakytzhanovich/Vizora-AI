@@ -4,6 +4,7 @@ Queries the knowledge_base table first; falls back to in-memory seed entries
 if the table is empty (e.g. first run before migration seeds the data).
 """
 
+import re
 from typing import Any
 
 from sqlalchemy import func, select
@@ -371,6 +372,92 @@ _SEED_KB: list[dict[str, Any]] = [
         "trust_level": "по данным агентств",
         "source_url": None,
     },
+
+    # ── Казахстанские агентства Work & Travel — профили (аналитика Vizora AI, июль 2026) ──
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Какие агентства Work and Travel есть в Казахстане?",
+        "answer": "Основные операторы: KCET, USCOM, ABC Universe, Opportunity (workandtravelusa.kz), Airtravel, IEC Kazakhstan (МЦО), Globus Exchange и Columbus. У каждого свои сильные стороны: KCET — 20+ лет опыта, USCOM — премиальные работодатели, Opportunity — крупнейшие очные ярмарки вакансий, Airtravel — собственная авиакасса IATA, IEC — прямой партнёр InterExchange, Globus — премиум-сервис и выставки AKIEF, Columbus — сильная работа с регионами.",
+        "trust_level": "по данным агентств",
+        "source_url": None,
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Сколько в среднем стоит Work and Travel через разные агентства Казахстана?",
+        "answer": "Стоимость программы (без учёта SEVIS $220, консульского сбора $185 и авиабилетов) у большинства агентств Казахстана — примерно $1,300–$2,500. Ниже всего у IEC Kazakhstan при варианте Self-Arranged ($1,300–$1,500), выше всего у Globus Exchange за премиум-сервис ($1,800–$2,500). Точная цена зависит от пакета, даты подачи и того, кто подбирает работодателя — вы сами или агентство.",
+        "trust_level": "по данным агентств",
+        "source_url": None,
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое агентство KCET?",
+        "answer": "KCET (Kazakhstan Council for Educational Travel) — один из старейших операторов Work & Travel в Казахстане, работает с 2003 года, аккредитован Посольством и Консульством США для оформления виз J-1. Кроме W&T USA есть стажировки на круизных лайнерах и в Норвегии. Офис в Алматы (ул. Сатпаева 30А), сайт kcet.kz.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://kcet.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Сколько стоит Work and Travel через KCET и какие требования?",
+        "answer": "Стоимость программы через KCET — $1,600–$2,100 (плюс SEVIS $220 и консульский сбор $185, авиабилеты $900–$1,400 отдельно). Требования: возраст 18–23/24 года, очное обучение (1–3 курс при 4-летней программе, 1–4 при 5-летней), английский не ниже Intermediate (B1), без академических задолженностей и судимостей. Спонсоры в США: CIEE, InterExchange, Intrax, GeoVisions.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://kcet.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое агентство USCOM?",
+        "answer": "USCOM (United Students Company) — агентство с офисами в Алматы и Астане, более 15 лет на рынке, известно эксклюзивными контрактами с премиальными работодателями США (сети отелей Marriott, Hilton, Hyatt, крупные курорты и национальные парки). Часовая оплата у работодателей USCOM обычно выше средней — $14–19/час. Сайт uscom.kz.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://uscom.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Сколько стоит Work and Travel через USCOM и какие требования?",
+        "answer": "Стоимость через USCOM — $1,700–$2,300 (плюс SEVIS $220 и консульский сбор $185), зависит от пакета и условий проживания. Требования: очное обучение, 1–3 курс, разговорный английский B1–B2, загранпаспорт. Из минусов — популярные вакансии закрываются быстро, стоит подавать документы пораньше.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://uscom.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое агентство ABC Universe?",
+        "answer": "ABC Universe — молодёжное агентство Work & Travel в Алматы (пр. Сейфуллина 498) с активным продвижением в Instagram и TikTok (@abc_universe_kz). Полное сопровождение, вакансии в основном в сфере обслуживания и туризма на Атлантическом побережье США. Стоимость программы $1,800–$2,400 плюс SEVIS $220 и виза $185. Требования: очное обучение 1–3 курс, возраст 18–23 года.",
+        "trust_level": "по данным агентств",
+        "source_url": "http://abcuniverse.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое агентство Opportunity и что за ярмарки вакансий они проводят?",
+        "answer": "Opportunity (сайт workandtravelusa.kz) — один из крупнейших операторов W&T в Казахстане, известен ежегодными очными и онлайн Job Fairs (Ярмарками вакансий), где студент может пройти интервью и подписать Job Offer напрямую с американским работодателем за одну встречу. Доступ к 300+ проверенным работодателям, спонсоры CIEE, InterExchange, Greenheart. Офисы в Алматы (ул. Желтоксан 115) и Астане (ул. Кабанбай батыра 11). Стоимость $1,750–$2,200 плюс SEVIS $220 и виза $185.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://workandtravelusa.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое агентство Airtravel и в чём его особенность?",
+        "answer": "Airtravel (Air Travel International, Алматы, ул. Гоголя 86) совмещает туроператора и агентство Work & Travel. Главная особенность — собственная аккредитация IATA, поэтому Airtravel может выписывать гибкие студенческие авиабилеты по субсидированным тарифам (от $850) с бесплатным изменением даты вылета. Стоимость программы $1,650–$2,100 плюс SEVIS $220 и виза $185. Требования: 1–3 курс, английский от Intermediate.",
+        "trust_level": "по данным агентств",
+        "source_url": "http://airtravel.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое IEC Kazakhstan и чем отличается от других агентств?",
+        "answer": "IEC Kazakhstan (МЦО) — официальный прямой представитель американской спонсорской организации InterExchange, работает в Казахстане 18+ лет, филиалы в Алматы, Астане, Шымкенте и Караганде. Есть два варианта W&T USA: Self-Arranged (сам ищешь работу) — $1,300–$1,500, и Full Placement (агентство подбирает) — $1,800–$2,300. Также есть W&T Germany, Camp USA, Au Pair. Плюс SEVIS $220 и виза $185. Из плюсов — прямой статус со спонсором без посредников и помощь с возвратом налогов (Tax Refund) после программы.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://iec.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое агентство Globus Exchange?",
+        "answer": "Globus Exchange (Globus Education) — премиум-агентство с офисами в Алматы, Астане и Шымкенте, организатор международных образовательных выставок AKIEF. Помимо Work & Travel USA занимается поступлением в вузы за рубежом (Великобритания, США, Канада, Европа). W&T-сервис премиальный, с персональным менеджером. Стоимость $1,800–$2,500 плюс SEVIS $220 и виза $185 — самая высокая цена среди агентств Казахстана, но и самый полный спектр услуг.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://globusedu.kz",
+    },
+    {
+        "category": "agencies_kazakhstan",
+        "question": "Что такое агентство Columbus и подходит ли оно студентам из регионов?",
+        "answer": "Columbus (Columb-US) — агентство с фокусом на региональных студентов Казахстана: Петропавловск, Костанай, Караганда, Алматы. Хорошо подходит, если ты не из Алматы/Астаны — есть полностью дистанционное оформление и индивидуальное сопровождение. Требования: очная форма, 18–23 года, английский от Pre-Intermediate до Intermediate — порог ниже, чем у многих других агентств. Стоимость $1,600–$2,100 плюс SEVIS $220 и виза $185.",
+        "trust_level": "по данным агентств",
+        "source_url": "https://columb-us.kz",
+    },
 ]
 
 
@@ -382,13 +469,20 @@ _STOPWORDS = frozenset({
 })
 
 
+def _tokenize(text: str) -> list[str]:
+    """Word-boundary tokenization — a plain .split() leaves punctuation glued to
+    the adjacent word (e.g. "AKIEF." or "USCOM?"), which silently breaks exact
+    keyword matching for any term followed by a period, comma, or question mark."""
+    return re.findall(r"\w+", text.lower())
+
+
 def _keyword_score(query: str, item: dict) -> int:
     query_words = [
-        w for w in query.lower().split()
+        w for w in _tokenize(query)
         if len(w) > 2 and w not in _STOPWORDS
     ]
-    q_words = set(item["question"].lower().split())
-    a_words = set(item["answer"].lower().split())
+    q_words = set(_tokenize(item["question"]))
+    a_words = set(_tokenize(item["answer"]))
     score = 0
     for w in query_words:
         if w in q_words:
