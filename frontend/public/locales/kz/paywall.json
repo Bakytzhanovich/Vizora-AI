@@ -1,0 +1,14 @@
+{
+  "title": "⏰ Уақыт бітті",
+  "subtitle": "Тегін кезеңің аяқталды",
+  "summary_title": "7 күнде сен:",
+  "sessions_line": "{{count}} симулятор сеансынан өттің",
+  "score_line": "Score жақсарды: {{first}} → {{last}}",
+  "interview_line": "Сұхбатқа дейін: {{days}} күн",
+  "no_stats": "Симуляторды әлі байқаған жоқсың — бастауға уақыт келді",
+  "encourage": "Қазір тоқтама",
+  "stay_free_title": "Немесе тегін жалғастыр:",
+  "stay_free_desc": "AI FAQ (күніне 3 сұрақ)",
+  "stay_free_cta": "Қалу",
+  "loading": "Жүктелуде..."
+}

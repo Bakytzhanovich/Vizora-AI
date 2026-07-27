@@ -10,6 +10,7 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { QuickQuestions } from "@/components/chat/QuickQuestions";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { FaqLimitCard } from "@/components/chat/FaqLimitCard";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { useBranding } from "@/hooks/useBranding";
 import { track } from "@/lib/analytics";
@@ -35,6 +36,7 @@ export default function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [userName, setUserName] = useState("");
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [faqLimitHit, setFaqLimitHit] = useState(false);
   const [sessionId] = useState(() => makeId());
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +90,7 @@ export default function ChatPage() {
     if (isStreaming) return;
 
     track("chat_message_sent");
+    setFaqLimitHit(false);
     const userMsg: Message = { id: makeId(), role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
@@ -101,6 +104,16 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, session_id: sessionId }),
       });
+
+      if (response.status === 403) {
+        const body = await response.json().catch(() => null);
+        if (body?.detail?.error === "faq_limit_reached") {
+          setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
+          setFaqLimitHit(true);
+          setIsStreaming(false);
+          return;
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -231,6 +244,8 @@ export default function ChatPage() {
               <TypingIndicator />
             )}
 
+          {faqLimitHit && <FaqLimitCard />}
+
           <div ref={bottomRef} />
         </div>
       </div>
@@ -257,7 +272,7 @@ export default function ChatPage() {
       {/* Input */}
       <div className="shrink-0 border-t border-[#1E1E2E] bg-[#0A0A0F] px-4 py-3 pb-safe">
         <div className="max-w-2xl mx-auto">
-          <ChatInput onSend={sendMessage} disabled={isStreaming} />
+          <ChatInput onSend={sendMessage} disabled={isStreaming || faqLimitHit} />
         </div>
       </div>
     </div>

@@ -19,6 +19,7 @@ from app.services.simulator_service import (
     generate_simulator_response,
 )
 from app.services.stt_service import speech_to_text
+from app.services.subscription_service import check_feature_access, increment_simulator_usage
 from app.services.tts_service import text_to_speech
 
 router = APIRouter(prefix="/simulator", tags=["simulator"])
@@ -90,7 +91,20 @@ async def start_session(
     if body.mode not in ("trainer", "consul"):
         raise HTTPException(status_code=400, detail="mode must be 'trainer' or 'consul'")
 
+    has_access, reason = await check_feature_access(user_id, "simulator", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+        )
+
     if body.mode == "consul":
+        consul_ok, consul_reason = await check_feature_access(user_id, "consul_mode", db)
+        if not consul_ok:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error": "subscription_required", "reason": consul_reason, "upgrade_url": "/pricing"},
+            )
         # Phase 1 of the structured interview — the real opening question a visa officer asks.
         opening = "Good morning. What is the purpose of your visit to the United States?"
     else:
@@ -194,6 +208,8 @@ async def end_session(
     session.duration_seconds = body.duration_seconds
     db.add(session)
     await db.commit()
+
+    await increment_simulator_usage(user_id, db)
 
     return {"feedback": feedback, "session_id": session.id}
 

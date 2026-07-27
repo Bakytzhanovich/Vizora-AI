@@ -49,6 +49,15 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost:3000"  # Set to the real domain in production .env
 
+    # Kaspi Pay (subscriptions). No real self-serve API exists — see
+    # app/services/kaspi_pay_client.py docstring. Mock mode auto-enables
+    # whenever KASPI_API_KEY is empty, so the flow is testable without credentials.
+    KASPI_MOCK_MODE: bool = True
+    KASPI_API_KEY: str = ""
+    KASPI_MERCHANT_ID: str = ""
+    KASPI_API_BASE_URL: str = "https://api.kaspi.kz/pay/v1"
+    KASPI_WEBHOOK_SECRET: str = ""
+
     @property
     def database_url_async(self) -> str:
         """Return a SQLAlchemy async URL, including Railway-style Postgres URLs."""

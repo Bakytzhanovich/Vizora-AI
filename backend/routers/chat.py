@@ -15,6 +15,7 @@ from app.models.profile import StudentProfile
 from app.models.user import User
 from app.services.ai_service import generate_chat_response
 from app.services.rag_service import search_knowledge
+from app.services.subscription_service import check_feature_access, increment_faq_usage
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -32,6 +33,17 @@ async def send_message(
 ):
     if not body.message.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message is empty")
+
+    has_access, reason = await check_feature_access(user_id, "faq", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "faq_limit_reached",
+                "message": "Ты использовал 3 бесплатных вопроса сегодня",
+                "upgrade_url": "/pricing",
+            },
+        )
 
     session_id = body.session_id or str(uuid.uuid4())
 
@@ -77,6 +89,7 @@ async def send_message(
     )
     db.add(user_msg)
     await db.commit()
+    await increment_faq_usage(user_id, db)
 
     # Stream AI response and collect full text
     async def event_stream():

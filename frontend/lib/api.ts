@@ -184,11 +184,42 @@ export async function apiOnboarding(payload: OnboardingPayload) {
   }
 }
 
+export interface SubscriptionBanner {
+  type: "warning" | "danger" | "urgent";
+  color: "yellow" | "orange" | "red";
+  message: string;
+  cta: string;
+  cta_url: string;
+  show_discount?: boolean;
+}
+
+export type SubscriptionStatus = "trial" | "expired" | "active" | "canceled" | "past_due";
+export type SubscriptionPlan =
+  | "basic"
+  | "standard"
+  | "premium"
+  | "agency_starter"
+  | "agency_business"
+  | "agency_partner"
+  | null;
+
+export interface SubscriptionInfo {
+  status: SubscriptionStatus;
+  plan: SubscriptionPlan;
+  days_remaining: number | null;
+  trial_ends_at: string | null;
+  period_end: string | null;
+  sessions_used: number | null;
+  sessions_limit: number | null;
+  banner: SubscriptionBanner | null;
+}
+
 export async function apiGetMe() {
   const { data } = await api.get<{
     user: { id: string; email: string; role: string; language: string };
     profile: UserProfile | null;
     risk_profile: RiskProfile | null;
+    subscription: SubscriptionInfo;
   }>("/profile/me");
   return data;
 }
@@ -502,5 +533,93 @@ export async function apiUpdateAfterVisaProgress(
 
 export async function apiResolveEmergency(session_id: string) {
   const { data } = await api.post<{ success: boolean }>("/emergency/resolve", { session_id });
+  return data;
+}
+
+// ─── Payments (Kaspi Pay) ───────────────────────────────────────────────────
+
+export interface PlanLimits {
+  simulator_sessions_per_month: number | null;
+  faq_per_day: number | null;
+  consul_mode: boolean;
+  risk_analysis: boolean;
+  after_visa: boolean;
+  emergency: boolean;
+}
+
+export interface Plan {
+  id: string;
+  name: string;
+  prices_kzt: { monthly: number; yearly: number };
+  limits: PlanLimits;
+}
+
+export async function apiGetPlans() {
+  const { data } = await api.get<{
+    plans: Plan[];
+    trial_days: number;
+    trial_discount_code: string;
+    trial_discount_rate: number;
+  }>("/payments/plans");
+  return data;
+}
+
+export interface CreatePaymentResponse {
+  payment_id: string;
+  pay_url: string;
+  amount: number;
+  currency: string;
+  discount_applied: boolean;
+  mock_mode: boolean;
+}
+
+export async function apiCreatePayment(
+  plan: string,
+  billing_period: "monthly" | "yearly" = "monthly",
+  discount_code?: string
+) {
+  const { data } = await api.post<CreatePaymentResponse>("/payments/create-payment", {
+    plan,
+    billing_period,
+    ...(discount_code ? { discount_code } : {}),
+  });
+  return data;
+}
+
+export async function apiMockCompletePayment(payment_id: string) {
+  const { data } = await api.post<{ received: boolean; status: string }>(
+    `/payments/mock-complete/${payment_id}`
+  );
+  return data;
+}
+
+export interface PaymentStatus {
+  status: SubscriptionStatus;
+  full_access: boolean;
+  plan?: SubscriptionPlan;
+  days_remaining?: number;
+  trial_ends_at?: string;
+  period_end?: string | null;
+  sessions_used?: number;
+  sessions_limit?: number | null;
+  sessions_ok?: boolean;
+  limits: Record<string, unknown>;
+  billing_period: "monthly" | "yearly" | null;
+}
+
+export async function apiGetPaymentStatus() {
+  const { data } = await api.get<PaymentStatus>("/payments/status");
+  return data;
+}
+
+export interface TrialSummary {
+  sessions_count: number;
+  first_score: number | null;
+  last_score: number | null;
+  days_to_interview: number | null;
+}
+
+export async function apiGetTrialSummary() {
+  const { data } = await api.get<TrialSummary>("/payments/trial-summary");
   return data;
 }

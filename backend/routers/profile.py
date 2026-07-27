@@ -18,6 +18,8 @@ from app.services.referral_service import (
     grant_welcome_bonus,
 )
 from app.services.risk_service import generate_risk_profile
+from app.services.subscription_service import get_user_access
+from app.services.trial_notifications import get_subscription_banner
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -145,6 +147,21 @@ async def get_me(
 
     risk = json.loads(profile.risk_profile) if profile and profile.risk_profile else None
 
+    access = await get_user_access(user, db)
+    if not (access["full_access"] and access["limits"].get("risk_analysis")):
+        risk = None
+    banner = get_subscription_banner(access)
+    subscription = {
+        "status": access["status"],
+        "plan": access.get("plan"),
+        "days_remaining": access.get("days_remaining"),
+        "trial_ends_at": user.trial_ends_at.isoformat() if user.trial_ends_at else None,
+        "period_end": user.subscription_period_end.isoformat() if user.subscription_period_end else None,
+        "sessions_used": access.get("sessions_used"),
+        "sessions_limit": access.get("sessions_limit"),
+        "banner": banner,
+    }
+
     # Build branding block
     branding = {"name": "Vizora AI", "logo_url": None, "primary_color": "#6C63FF", "is_white_label": False}
     if profile and profile.via_agency:
@@ -178,4 +195,5 @@ async def get_me(
         } if profile else None,
         "risk_profile": risk,
         "branding": branding,
+        "subscription": subscription,
     }

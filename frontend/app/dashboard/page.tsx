@@ -13,8 +13,9 @@ import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
 import { ReferralCard } from "@/components/referral/ReferralCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { PlanBadge } from "@/components/PlanBadge";
 import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode } from "@/lib/api";
-import type { UserProfile, RiskProfile } from "@/lib/api";
+import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
 
 const moduleHrefs = ["/chat", "/simulator", "/documents", "/roadmap"] as const;
 const moduleIcons = ["🤖", "🎤", "📄", "🗺️"];
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const { t } = useTranslation(["common", "dashboard"]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [journeyProgress, setJourneyProgress] = useState(10);
   const [afterVisa, setAfterVisa] = useState<{ unlocked: boolean; pct: number; completed: number; total: number } | null>(null);
   const [referralStats, setReferralStats] = useState<{ totalActive: number; nextNeeded: number | null } | null>(null);
@@ -58,6 +60,7 @@ export default function DashboardPage() {
         }
         setProfile(me.profile);
         setRiskProfile(me.risk_profile);
+        setSubscription(me.subscription);
         if (roadmap) setJourneyProgress(roadmap.progress);
         if (av) setAfterVisa({ unlocked: av.unlocked, pct: av.overall_pct, completed: av.overall_completed, total: av.overall_total });
         if (ref) {
@@ -104,6 +107,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8">
         <BrandedLogo />
         <div className="flex items-center gap-3">
+          <PlanBadge subscription={subscription} />
           <LanguageSwitcher />
           <button
             onClick={logout}
