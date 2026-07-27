@@ -79,7 +79,7 @@ async def bootstrap_admin_user() -> None:
     if not email:
         return
 
-    password = settings.BOOTSTRAP_ADMIN_PASSWORD
+    password = settings.BOOTSTRAP_ADMIN_PASSWORD.strip()
     async with AsyncSessionLocal() as db:
         user = await db.scalar(select(User).where(User.email == email))
 
