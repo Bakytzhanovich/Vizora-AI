@@ -51,6 +51,7 @@ from routers.referral import router as referral_router
 from routers.analytics import router as analytics_router
 from routers.internal import router as internal_router
 from routers.admin import router as admin_router
+from routers.push import router as push_router
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -122,8 +123,12 @@ async def lifespan(app: FastAPI):
     # Start monthly KB scraping scheduler
     from scraper.scheduler import start_kb_scheduler, stop_kb_scheduler
     start_kb_scheduler()
+    # Start web push inactivity/interview reminder scheduler
+    from app.services.push_scheduler import start_push_scheduler, stop_push_scheduler
+    start_push_scheduler()
     yield
     stop_kb_scheduler()
+    stop_push_scheduler()
 
 
 app = FastAPI(
@@ -187,6 +192,7 @@ app.include_router(referral_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
 app.include_router(internal_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(push_router, prefix="/api")
 
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(_static_dir, exist_ok=True)

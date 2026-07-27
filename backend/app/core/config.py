@@ -34,6 +34,12 @@ class Settings(BaseSettings):
 
     GOOGLE_CLIENT_ID: str = ""  # OAuth client ID used to verify Google id_tokens
 
+    # Web Push (browser notifications for users without a Telegram account).
+    # Public key is also exposed to the frontend as NEXT_PUBLIC_VAPID_PUBLIC_KEY — same value.
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_CLAIM_EMAIL: str = "admin@vizora.ai"
+
     # Optional production bootstrap for platforms without a shell.
     # If BOOTSTRAP_ADMIN_EMAIL is set, startup promotes that user to users.role=admin.
     # If the user does not exist, BOOTSTRAP_ADMIN_PASSWORD is required to create it.
