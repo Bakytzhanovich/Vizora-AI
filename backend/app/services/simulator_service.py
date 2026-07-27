@@ -180,6 +180,57 @@ ANSWER_GUIDANCE: dict[str, str] = {
     ),
 }
 
+# Unexpected personal questions used by the SILENCE/WILDCARD techniques below —
+# these test whether the student sounds natural vs. rehearsed, distinct from the
+# scripted "wildcard" phase pool above (which stays on safe icebreaker topics).
+PERSONAL_WILDCARD_QUESTIONS: list[str] = [
+    "What did you eat for breakfast today?",
+    "What is your favorite American movie?",
+    "Do you know anyone who stayed in the US illegally?",
+    "What time did you wake up this morning?",
+    "What's the weather like in your city right now?",
+    "Have you ever missed a flight or a bus?",
+]
+
+_PERSONALITY_LABELS_RU: dict[str, str] = {
+    "neutral": "нейтральный",
+    "friendly": "дружелюбный",
+    "strict": "строгий",
+}
+
+_PERSONALITY_INSTRUCTIONS: dict[str, str] = {
+    "neutral": (
+        "Tone: neutral and businesslike. Brief acknowledgments only ('I see.', 'Okay.', 'Alright.') — never warm, never cold."
+    ),
+    "friendly": (
+        "Tone: slightly warmer than a typical officer, but still professional — this is NOT a friendly chat. "
+        "Occasionally use a marginally softer acknowledgment ('Okay, thank you.', 'Alright, good.') instead of the bare minimum. "
+        "Still never praise the content of an answer and still ask every question in the structure."
+    ),
+    "strict": (
+        "Tone: more skeptical and terse than usual. Favor the shortest acknowledgments ('Really?', 'Hm.') "
+        "or none at all. Push harder on vague answers — use FAST FOLLOW-UP more readily and take longer pauses "
+        "before responding to weak answers."
+    ),
+}
+
+
+def get_officer_personality(session_id: str | None) -> str:
+    """Deterministic per-session officer personality: neutral 50% / friendly 20% / strict 30%.
+
+    Seeded from session_id so the same session always gets the same officer
+    (consistent tone across turns) while different sessions vary.
+    """
+    rng = _session_rng(session_id)
+    return rng.choices(["neutral", "friendly", "strict"], weights=[50, 20, 30], k=1)[0]
+
+
+def _turn_rng(session_id: str | None, turn_index: int) -> random.Random:
+    """Deterministic per-turn RNG, independent of the per-session RNG used for question picks."""
+    seed_key = f"{session_id}:{turn_index}" if session_id else None
+    return random.Random(_seed_from_key(seed_key))
+
+
 RISK_QUESTIONS: dict[str, list[str]] = {
     "no_travel_history": [
         "You have never traveled abroad. Why should I trust you will return?",
@@ -207,16 +258,19 @@ RISK_QUESTIONS: dict[str, list[str]] = {
 }
 
 
+def _seed_from_key(key: str | None) -> int | None:
+    """Shared deterministic seed derivation. None → caller gets true randomness."""
+    if not key:
+        return None
+    return int(hashlib.sha256(key.encode()).hexdigest(), 16) % (2 ** 32)
+
+
 def _session_rng(session_id: str | None) -> random.Random:
     """Return a Random instance seeded from session_id.
     Same session → same question mix (reproducible).
     Different sessions → different mixes (variety).
     """
-    if session_id:
-        seed = int(hashlib.sha256(session_id.encode()).hexdigest(), 16) % (2 ** 32)
-    else:
-        seed = None  # truly random fallback
-    return random.Random(seed)
+    return random.Random(_seed_from_key(session_id))
 
 
 def _pick(rng: random.Random, pool: list[str], k: int) -> list[str]:
@@ -337,6 +391,8 @@ def get_consul_prompt(
     risks: list[dict[str, Any]],
     difficulty: str = "medium",
     session_id: str | None = None,
+    turn_index: int = 0,
+    transcript: list[dict[str, Any]] | None = None,
 ) -> str:
     rng = _session_rng(session_id)
 
@@ -358,6 +414,35 @@ def get_consul_prompt(
     risk_text = _fmt(risk_qs) if risk_qs else "\n  None — proceed to closing."
 
     difficulty_note = _DIFFICULTY_INSTRUCTIONS.get(difficulty, _DIFFICULTY_INSTRUCTIONS["medium"])
+
+    personality = get_officer_personality(session_id)
+    personality_note = _PERSONALITY_INSTRUCTIONS[personality]
+
+    # Per-turn deterministic directives for the low-probability techniques —
+    # rolled independently of the session RNG so they don't disturb the fixed
+    # question-bank sampling above, but still reproducible for a given turn.
+    # Exclude wildcard questions already asked this session so the 10%-per-turn roll can
+    # never make the officer repeat itself verbatim (which STRICT RULES forbids).
+    asked_texts = {e["content"] for e in (transcript or []) if e.get("role") == "officer"}
+    available_wildcards = [q for q in PERSONAL_WILDCARD_QUESTIONS if q not in asked_texts]
+
+    turn_rng = _turn_rng(session_id, turn_index)
+    use_silence = turn_rng.random() < 0.20
+    use_wildcard = turn_rng.random() < 0.10 and bool(available_wildcards)
+    wildcard_question = _pick(turn_rng, available_wildcards, 1)[0] if use_wildcard else None
+
+    turn_directives = []
+    if use_wildcard:
+        turn_directives.append(
+            f'THIS TURN: instead of the next planned question, ask this unexpected personal question '
+            f'verbatim to test naturalness: "{wildcard_question}"'
+        )
+    elif use_silence:
+        turn_directives.append(
+            "THIS TURN: use the SILENCE TECHNIQUE — do not acknowledge the previous answer at all "
+            "(no 'I see', no 'Okay', nothing). Go directly to the next question as if pausing to write notes first."
+        )
+    turn_directive_text = "\n".join(turn_directives) if turn_directives else "THIS TURN: proceed normally."
 
     return f"""You are a strict US consulate officer conducting a J-1 Work and Travel visa interview.
 
@@ -387,17 +472,57 @@ PHASE 8b — Wildcard (ask 1-2 if time allows — simulates real consul improvis
 
 PHASE 9 — Risk follow-ups for this student:{risk_text}
 
-PHASE 10 — Close:
-  Say ONLY: "Thank you. That will be all."
+PHASE 10 — Close (see INTERVIEW LENGTH below for when to trigger this):
+  Privately judge how the WHOLE interview went, then output ONLY the matching quoted sentence
+  below — verbatim, nothing before or after it, no explanation of which case matched, no
+  restating the condition:
+  - Case: answers were strong, confident, and consistent throughout, with no unresolved concerns.
+    Output exactly: "Congratulations. Your visa is approved. Welcome to the Work and Travel program."
+    (say it as a genuine motivating moment — the one time you may sound warm)
+  - Case: answers were mixed — acceptable overall but with some vague or weak moments.
+    Output exactly: "Thank you. Your application will be processed. You'll receive notification within 3 to 5 business days."
+  - Case: you had to press hard on multiple weak, evasive, or contradictory answers.
+    Output exactly: "Thank you. That will be all."
+  Do not default to the approval line — only use it when genuinely earned.
+
+=== INTERVIEW LENGTH ===
+So far there have been {turn_index} exchanges in this interview.
+- If the student's answers have been strong, consistent, and confident: move to PHASE 10 after 8-10 exchanges total.
+- If answers have been vague, evasive, or raised concerns you had to press on: extend to 15+ exchanges before closing.
+- Never end abruptly mid-phase — finish the current phase's minimum questions first, then close.
+
+=== EMOTIONAL REACTIONS (this is what makes you feel like a real officer, not a form) ===
+1. GOOD answer (clear, confident, complete): respond with ONE short neutral acknowledgment only —
+   "I see." / "Okay." / "Alright." — then immediately ask the next question. NEVER praise or encourage
+   ("Good job", "Great", "Well done" are forbidden).
+2. WEAK or VAGUE answer: imply a brief pause, then use ONE of — "Could you be more specific?" /
+   "I'm not sure I understand." / "Can you elaborate on that?" — before moving on.
+3. SUSPICIOUS answer: use a skeptical follow-up — "Really?" / "Are you sure about that?" /
+   "That's interesting. Tell me more." — in a doubtful tone.
+4. FAST FOLLOW-UP: when an answer raises questions (vague employer, vague dates, vague amounts),
+   fire off rapid, specific follow-ups instead of your normal single question — e.g.
+   "Who exactly? What company? Which city? What date? How much exactly?" Pick 1-2 of these, not all at once.
+5. CONTRADICTION CHECK: if the student's current answer conflicts with something they said earlier in
+   this conversation, call it out before moving on: "Wait, earlier you mentioned [X]. Now you're saying [Y].
+   Can you clarify?" — quote their actual earlier words.
+
+=== OFFICER PERSONALITY FOR THIS SESSION ===
+{personality_note}
+
+=== THIS TURN'S DIRECTIVE ===
+{turn_directive_text}
 
 === STRICT RULES ===
 1. Speak ONLY in English — never any other language.
-2. Ask EXACTLY ONE question per turn — never two at once.
+2. Ask ONE question per turn — never two at once (the FAST FOLLOW-UP rapid-fire above counts as one turn).
 3. Never repeat a question already asked in this conversation.
-4. No filler words ("OK", "I see", "Sure", "Thank you for that") — go straight to the question.
-5. Never explain, teach, or comment on answers — you are an officer, not a teacher.
+4. Acknowledgments are LIMITED to the short forms in EMOTIONAL REACTIONS above — never longer filler,
+   never "Thank you for that", never anything that sounds like encouragement or teaching.
+5. Never explain, teach, or comment on the correctness of an answer — you are an officer, not a teacher.
 6. Never break character; never acknowledge being an AI.
 7. After Phase 10, produce no more questions.
+8. On Phase 10, output ONLY the exact quoted closing sentence — never your reasoning, never which
+   case you matched, never any text besides that one sentence.
 
 === HANDLING OFF-TOPIC OR IRRELEVANT ANSWERS ===
 If the student does not answer your question:
@@ -411,7 +536,9 @@ If the student does not answer your question:
 {_profile_text_en(profile)}
 Risk flags: {_risks_text_en(risks)}
 
-Review the conversation, identify the current phase, ask the single most appropriate next question from THIS session's set."""
+Review the full conversation so far (check for contradictions with earlier answers), identify the
+current phase, and produce the single next officer turn following EMOTIONAL REACTIONS, THIS TURN'S
+DIRECTIVE, and the question set above."""
 
 
 async def generate_simulator_response(
@@ -422,11 +549,11 @@ async def generate_simulator_response(
     difficulty: str = "medium",
     session_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
-    system_prompt = (
-        get_trainer_prompt(profile, risks)
-        if mode == "trainer"
-        else get_consul_prompt(profile, risks, difficulty, session_id)
-    )
+    if mode == "trainer":
+        system_prompt = get_trainer_prompt(profile, risks)
+    else:
+        turn_index = len([e for e in transcript if e["role"] == "student"])
+        system_prompt = get_consul_prompt(profile, risks, difficulty, session_id, turn_index, transcript)
 
     messages: list[dict[str, str]] = []
     for entry in transcript:
@@ -466,9 +593,24 @@ _FEEDBACK_FALLBACK: dict[str, Any] = {
 }
 
 
+def _officer_reveal_text(personality: str, overall: float) -> str:
+    label = _PERSONALITY_LABELS_RU[personality]
+    displayed = round(overall)
+    # Derive the tier from the same rounded number we show, so the sentence never reads
+    # like "7/10 — хороший результат, но есть куда расти" for a borderline 6.8.
+    if displayed >= 7:
+        tier = "отличный результат"
+    elif displayed >= 5:
+        tier = "хороший результат, но есть куда расти"
+    else:
+        tier = "нужно больше практики"
+    return f"Тебе попался {label} офицер и ты справился на {displayed}/10 — {tier}."
+
+
 async def generate_feedback(
     transcript: list[dict[str, Any]],
     mode: str,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     # Build a numbered transcript so the model can cite specific exchanges
     pairs: list[str] = []
@@ -571,13 +713,34 @@ async def generate_feedback(
     if raw.endswith("```"):
         raw = raw[:-3].strip()
 
+    def _as_score(value: Any, default: float = 5.0) -> float:
+        """The model returns free-text JSON with no schema enforcement — coerce defensively
+        instead of trusting scores to already be numbers."""
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
     try:
         data = json.loads(raw)
-        # Ensure scores.overall is computed if missing
         s = data.get("scores", {})
-        if "overall" not in s or s["overall"] is None:
-            vals = [s.get("confidence", 5), s.get("language", 5), s.get("content", 5)]
-            s["overall"] = round(sum(vals) / len(vals), 1)
+        confidence = _as_score(s.get("confidence"))
+        language = _as_score(s.get("language"))
+        content = _as_score(s.get("content"))
+        overall = (
+            _as_score(s["overall"])
+            if "overall" in s and s["overall"] is not None
+            else round((confidence + language + content) / 3, 1)
+        )
+        data["scores"] = {**s, "confidence": confidence, "language": language, "content": content, "overall": overall}
+
+        # Reveal the randomly-assigned officer personality only for the strict consul mode —
+        # trainer mode has no officer roleplay to reveal.
+        if mode == "consul":
+            personality = get_officer_personality(session_id)
+            data["officer_personality"] = personality
+            data["officer_reveal"] = _officer_reveal_text(personality, overall)
+
         return data
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError, ValueError, KeyError):
         return _FEEDBACK_FALLBACK

@@ -45,6 +45,9 @@ export interface FeedbackData {
   phrases_to_memorize?: PhraseToMemorize[];
   next_session_focus?: string[];
   recommendation: string;
+  // Revealed only for consul-mode sessions, after the session ends
+  officer_personality?: "neutral" | "friendly" | "strict";
+  officer_reveal?: string;
   // Legacy fields (kept for backward compat)
   weak_points?: string[];
   phrases_to_use?: string[];
@@ -217,6 +220,14 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
           <h1 className="text-xl font-bold text-[#F0F0FF]">{t("results.title")}</h1>
           <p className="text-[#8B8BA7] text-xs mt-1">{t("results.subtitle")}</p>
         </div>
+
+        {/* Officer reveal — consul mode only */}
+        {feedback.officer_reveal && (
+          <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl px-4 py-3 mb-6 flex items-center gap-3">
+            <span className="text-2xl shrink-0">🏛️</span>
+            <p className="text-[#C8C8E0] text-sm leading-relaxed">{feedback.officer_reveal}</p>
+          </div>
+        )}
 
         {/* Score circle */}
         <div className="flex justify-center mb-6">

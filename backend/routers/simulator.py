@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from datetime import datetime
 
@@ -142,6 +143,7 @@ async def respond(
                 accumulated += chunk
                 yield chunk
         except Exception:
+            logging.getLogger(__name__).exception("Simulator response generation failed")
             yield "I'm sorry, there seems to be a technical issue. Please try again."
             return  # Don't commit error text as a real officer turn
 
@@ -184,7 +186,7 @@ async def end_session(
     session = await _load_session(db, body.session_id, user_id)
     transcript: list[dict] = json.loads(session.transcript)
 
-    feedback = await generate_feedback(transcript, session.mode)
+    feedback = await generate_feedback(transcript, session.mode, session.id)
 
     session.feedback = json.dumps(feedback, ensure_ascii=False)
     session.scores = json.dumps(feedback.get("scores", {}), ensure_ascii=False)
