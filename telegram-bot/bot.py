@@ -25,6 +25,8 @@ from telegram import (
 )
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
+from notifications import run_all, start_scheduler
+
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -136,11 +138,19 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
 
 
+async def _post_init(application: Application) -> None:
+    """Starts the inactivity/interview-reminder scheduler once the bot's event
+    loop is running — APScheduler's AsyncIOScheduler needs a live loop to bind to,
+    which only exists once run_polling() has handed control to the async runtime."""
+    start_scheduler()
+    await run_all()  # also run once immediately so a fresh deploy doesn't wait for 10:00/18:00
+
+
 def main() -> None:
     if not TELEGRAM_BOT_TOKEN:
         raise ValueError("TELEGRAM_BOT_TOKEN не установлен в .env")
 
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(_post_init).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("menu", menu))
