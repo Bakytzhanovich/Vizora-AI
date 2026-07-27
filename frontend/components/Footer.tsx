@@ -1,31 +1,31 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { VizoraMark } from "@/components/VizoraMark";
 
 type FooterLink = { label: string; href: string; external?: boolean };
 
-const footerLinks: Record<string, FooterLink[]> = {
-  Студентам: [
-    { label: "AI FAQ помощник", href: "#students" },
-    { label: "Симулятор интервью", href: "#solution" },
-    { label: "Документы", href: "#solution" },
-    { label: "Roadmap", href: "#how-it-works" },
-  ],
-  Агентствам: [
-    { label: "Возможности", href: "#agencies" },
-    { label: "Тарифы", href: "#agencies" },
-    { label: "White-label", href: "#agencies" },
-    { label: "Подключить", href: "#early-access" },
-  ],
-  Контакты: [
-    { label: "Telegram", href: "https://t.me/vizora_ai", external: true },
-    { label: "Instagram", href: "https://instagram.com/vizora_ai", external: true },
-    { label: "Email", href: "mailto:hello@vizora.ai", external: true },
-  ],
-};
+const studentsHrefs = ["#students", "#solution", "#solution", "#how-it-works"];
+const agenciesHrefs = ["#agencies", "#agencies", "#agencies", "#early-access"];
+const contactLinks: FooterLink[] = [
+  { label: "Telegram", href: "https://t.me/vizora_ai", external: true },
+  { label: "Instagram", href: "https://instagram.com/vizora_ai", external: true },
+  { label: "Email", href: "mailto:hello@vizora.ai", external: true },
+];
 
 export function Footer() {
+  const { t } = useTranslation("landing");
+
+  const studentsLabels = t("footer.students_links", { returnObjects: true }) as string[];
+  const agenciesLabels = t("footer.agencies_links", { returnObjects: true }) as string[];
+
+  const footerLinks: Record<string, FooterLink[]> = {
+    [t("footer.students_col")]: studentsLabels.map((label, i) => ({ label, href: studentsHrefs[i] })),
+    [t("footer.agencies_col")]: agenciesLabels.map((label, i) => ({ label, href: agenciesHrefs[i] })),
+    [t("footer.contacts_col")]: contactLinks,
+  };
+
   const handleNavClick = (href: string, external?: boolean) => {
     if (external) return;
     const el = document.querySelector(href);
@@ -45,7 +45,7 @@ export function Footer() {
               </span>
             </div>
             <p className="text-[#8B8BA7] text-sm leading-relaxed mb-6">
-              Vizora AI — твой путь к визе
+              {t("footer.tagline")}
             </p>
             {/* Social links */}
             <div className="flex items-center gap-3">
@@ -114,20 +114,19 @@ export function Footer() {
         {/* Divider */}
         <div className="border-t border-[#1E1E2E] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-[#8B8BA7]/60 text-sm">
-            © 2026 Vizora AI. Все права защищены.
+            {t("footer.copyright")}
           </p>
           <div className="flex items-center gap-4 text-[#8B8BA7]/60 text-xs">
-            <span>Политика конфиденциальности</span>
+            <span>{t("footer.privacy")}</span>
             <span>·</span>
-            <span>Условия использования</span>
+            <span>{t("footer.terms")}</span>
           </div>
         </div>
 
         {/* Disclaimer */}
         <div className="mt-6 bg-[#13131A] border border-[#1E1E2E] rounded-xl px-4 py-3">
           <p className="text-[#8B8BA7]/50 text-xs text-center leading-relaxed">
-            Vizora AI предоставляет рекомендации для подготовки к интервью, а не юридический совет.
-            Решение о выдаче визы принимает консульский офицер США.
+            {t("footer.disclaimer")}
           </p>
         </div>
       </div>

@@ -2,40 +2,31 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
-const features = [
-  {
-    icon: "🤖",
-    title: "AI FAQ Помощник",
-    description:
-      "Задавай любые вопросы по Work & Travel голосом или текстом. 24/7, на русском языке.",
-    bullets: ["DS-160, SEVIS, апойнтмент", "Подготовка к поездке и жизнь в США", "Возврат налогов после сезона"],
-    badge: "24/7",
-    badgeColor: "bg-[#6C63FF]/10 text-[#9C8BFF] border-[#6C63FF]/20",
-  },
-  {
-    icon: "🎤",
-    title: "Симулятор интервью",
-    description:
-      "Два режима: Тренер (учит) и Консул (строгий). Голосовой AI‑офицер готовит именно тебя.",
-    bullets: ["Персонализировано под твой профиль риска", "Голос офицера через OpenAI TTS", "Разбор слабых мест после каждой сессии"],
-    badge: "⭐ Главный модуль",
-    badgeColor: "bg-[#6C63FF]/10 text-[#9C8BFF] border-[#6C63FF]/20",
-  },
-  {
-    icon: "📄",
-    title: "Документы и чек-лист",
-    description:
-      "Персональный чек-лист, гайд по DS-160 на русском, проверка типичных ошибок.",
-    bullets: ["Пошаговый гайд DS-160 на русском", "Напоминания о дедлайнах", "Типичные ошибки которые стоят визы"],
-    badge: "Русский язык",
-    badgeColor: "bg-[#6C63FF]/10 text-[#9C8BFF] border-[#6C63FF]/20",
-  },
-];
+interface SolutionFeature {
+  icon: string;
+  title: string;
+  description: string;
+  bullets: string[];
+  badge: string;
+}
+
+const badgeColor = "bg-[#6C63FF]/10 text-[#9C8BFF] border-[#6C63FF]/20";
+
+interface RiskItem {
+  risk: string;
+  severity: string;
+  questions: string[];
+}
 
 export function Solution() {
+  const { t } = useTranslation("landing");
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const features = t("solution.features", { returnObjects: true }) as SolutionFeature[];
+  const riskItems = t("solution.risk_preview.items", { returnObjects: true }) as RiskItem[];
+  const riskColors = ["#FF6B6B", "#F59E0B", "#FF6B6B"];
 
   return (
     <section id="solution" ref={ref} className="py-24 px-4 relative">
@@ -53,7 +44,7 @@ export function Solution() {
           className="flex justify-center mb-4"
         >
           <span className="text-xs font-semibold text-[#6C63FF] uppercase tracking-widest">
-            Решение
+            {t("solution.label")}
           </span>
         </motion.div>
 
@@ -64,7 +55,7 @@ export function Solution() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
         >
-          Vizora AI знает твой профиль
+          {t("solution.title")}
         </motion.h2>
 
         <motion.p
@@ -73,7 +64,7 @@ export function Solution() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg mb-14"
         >
-          Не абстрактного студента — именно тебя
+          {t("solution.subtitle")}
         </motion.p>
 
         {/* Cards */}
@@ -96,7 +87,7 @@ export function Solution() {
               <div className="relative z-10">
                 <div className="flex items-start justify-between mb-4">
                   <div className="text-4xl">{f.icon}</div>
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${f.badgeColor}`}>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor}`}>
                     {f.badge}
                   </span>
                 </div>
@@ -134,22 +125,18 @@ export function Solution() {
               🎯
             </div>
             <div>
-              <div className="text-[#F0F0FF] font-semibold text-sm">Анализ профиля риска</div>
-              <div className="text-[#8B8BA7] text-xs mt-0.5">Генерируется автоматически при регистрации</div>
+              <div className="text-[#F0F0FF] font-semibold text-sm">{t("solution.risk_preview.title")}</div>
+              <div className="text-[#8B8BA7] text-xs mt-0.5">{t("solution.risk_preview.subtitle")}</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { risk: "Нет истории поездок", severity: "Высокий", color: "#FF6B6B", questions: ["Why do you want to visit USA?", "What are your ties to Kazakhstan?"] },
-              { risk: "Финансы от родителей", severity: "Средний", color: "#F59E0B", questions: ["How will you fund your trip?", "Do you have bank statements?"] },
-              { risk: "1-й курс университета", severity: "Высокий", color: "#FF6B6B", questions: ["Why should we believe you'll return?", "What are your academic plans?"] },
-            ].map((item, i) => (
+            {riskItems.map((item, i) => (
               <div key={i} className="bg-[#0A0A0F] border border-[#1E1E2E] rounded-xl p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                  <span className="text-xs font-semibold" style={{ color: item.color }}>
-                    {item.severity} риск
+                  <div className="w-2 h-2 rounded-full" style={{ background: riskColors[i] }} />
+                  <span className="text-xs font-semibold" style={{ color: riskColors[i] }}>
+                    {item.severity} {t("solution.risk_preview.risk_suffix")}
                   </span>
                 </div>
                 <div className="text-[#F0F0FF] text-xs font-medium mb-2">{item.risk}</div>

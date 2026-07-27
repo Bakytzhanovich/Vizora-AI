@@ -2,64 +2,33 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
-const benefits = [
-  {
-    icon: "⏰",
-    title: "Экономия времени",
-    description:
-      "Менеджер отвечает на одни и те же вопросы сотни раз. AI снимает эту нагрузку 24/7.",
-    metric: "80%",
-    metricLabel: "типовых вопросов закрывает AI",
-  },
-  {
-    icon: "📊",
-    title: "Dashboard и аналитика",
-    description:
-      "Видите прогресс каждого студента. Алерты кто не готовится к интервью.",
-    metric: "Реалтайм",
-    metricLabel: "мониторинг готовности",
-  },
-  {
-    icon: "🏆",
-    title: "Выше % получения виз",
-    description:
-      "Подготовленные студенты получают визы чаще. Это ваша репутация и новые клиенты.",
-    metric: "+34%",
-    metricLabel: "средний рост одобрений",
-  },
-];
+interface Benefit {
+  icon: string;
+  title: string;
+  description: string;
+  metric: string;
+  metric_label: string;
+}
 
-const plans = [
-  {
-    name: "Старт",
-    price: "$150",
-    period: "/мес",
-    students: "до 50 студентов",
-    features: ["Базовый dashboard", "White-label", "Email поддержка"],
-    highlight: false,
-  },
-  {
-    name: "Рост",
-    price: "$300",
-    period: "/мес",
-    students: "до 200 студентов",
-    features: ["Полный dashboard + аналитика", "Алерты и напоминания", "Telegram поддержка", "Ежемесячный отчёт"],
-    highlight: true,
-  },
-  {
-    name: "Партнёр",
-    price: "$700",
-    period: "/мес",
-    students: "до 500 студентов",
-    features: ["Всё из Рост", "Эксклюзивность города", "Кастомные сценарии", "Совместный маркетинг"],
-    highlight: false,
-  },
-];
+interface Plan {
+  name: string;
+  period: string;
+  students: string;
+  features: string[];
+}
+
+const planPrices = ["$150", "$300", "$700"];
+const planHighlight = [false, true, false];
 
 export function Agencies() {
+  const { t } = useTranslation("landing");
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const benefits = t("agencies.benefits", { returnObjects: true }) as Benefit[];
+  const plansData = t("agencies.plans", { returnObjects: true }) as Plan[];
+  const plans = plansData.map((p, i) => ({ ...p, price: planPrices[i], highlight: planHighlight[i] }));
 
   const handleScroll = () => {
     const el = document.querySelector("#early-access");
@@ -80,7 +49,7 @@ export function Agencies() {
           className="flex justify-center mb-4"
         >
           <span className="text-xs font-semibold text-[#00D4AA] uppercase tracking-widest">
-            Для агентств
+            {t("agencies.label")}
           </span>
         </motion.div>
 
@@ -91,7 +60,7 @@ export function Agencies() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
         >
-          Для агентств Work &amp; Travel
+          {t("agencies.title")}
         </motion.h2>
 
         <motion.p
@@ -100,7 +69,7 @@ export function Agencies() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg mb-14"
         >
-          White‑label AI помощник для ваших студентов
+          {t("agencies.subtitle")}
         </motion.p>
 
         {/* Benefit cards */}
@@ -125,7 +94,7 @@ export function Agencies() {
 
                 <div className="border-t border-[#1E1E2E] pt-4">
                   <div className="text-2xl font-bold text-[#00D4AA]">{b.metric}</div>
-                  <div className="text-xs text-[#8B8BA7] mt-0.5">{b.metricLabel}</div>
+                  <div className="text-xs text-[#8B8BA7] mt-0.5">{b.metric_label}</div>
                 </div>
               </div>
             </motion.div>
@@ -150,7 +119,7 @@ export function Agencies() {
             >
               {plan.highlight && (
                 <div className="text-xs font-semibold text-[#6C63FF] bg-[#6C63FF]/10 border border-[#6C63FF]/20 rounded-full px-3 py-1 inline-block mb-3">
-                  Популярный
+                  {t("agencies.popular_badge")}
                 </div>
               )}
               <div className="text-[#8B8BA7] text-xs font-semibold uppercase tracking-wide mb-1">
@@ -186,7 +155,7 @@ export function Agencies() {
             whileTap={{ scale: 0.97 }}
             className="bg-gradient-to-r from-[#00D4AA] to-[#00B894] text-[#0A0A0F] font-bold px-8 py-4 rounded-xl shadow-lg shadow-[#00D4AA]/20 text-sm transition-all duration-200"
           >
-            Подключить агентство →
+            {t("agencies.cta")}
           </motion.button>
         </motion.div>
       </div>

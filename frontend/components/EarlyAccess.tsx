@@ -3,11 +3,13 @@
 import { useRef, useState } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { CheckCircle, Loader2, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { track } from "@/lib/analytics";
 
 type UserType = "student" | "agency";
 
 export function EarlyAccess() {
+  const { t } = useTranslation("landing");
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
@@ -20,7 +22,7 @@ export function EarlyAccess() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !email.includes("@")) {
-      setErrorMsg("Введи корректный email");
+      setErrorMsg(t("early_access.email_invalid"));
       return;
     }
     setStatus("loading");
@@ -37,17 +39,17 @@ export function EarlyAccess() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 409) {
-          setErrorMsg("Этот email уже зарегистрирован 👍");
+          setErrorMsg(t("early_access.email_exists"));
           setStatus("idle");
           return;
         }
-        throw new Error(data?.detail ?? "Ошибка сервера");
+        throw new Error(data?.detail ?? t("early_access.server_error"));
       }
       setStatus("success");
       track("early_access_submit", { user_type: userType });
     } catch {
       setStatus("error");
-      setErrorMsg("Что-то пошло не так. Попробуй ещё раз.");
+      setErrorMsg(t("early_access.generic_error"));
     }
   };
 
@@ -68,7 +70,7 @@ export function EarlyAccess() {
           className="inline-flex items-center gap-2 bg-[#6C63FF]/10 border border-[#6C63FF]/30 text-[#9C8BFF] text-xs font-semibold px-4 py-2 rounded-full mb-8"
         >
           <span className="w-2 h-2 bg-[#6C63FF] rounded-full animate-pulse" />
-          Ранний доступ
+          {t("early_access.badge")}
         </motion.div>
 
         {/* Title */}
@@ -78,7 +80,7 @@ export function EarlyAccess() {
           transition={{ duration: 0.6, delay: 0.05 }}
           className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] mb-4 tracking-tight"
         >
-          Получи ранний доступ
+          {t("early_access.title")}
         </motion.h2>
 
         <motion.p
@@ -87,10 +89,10 @@ export function EarlyAccess() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-base sm:text-lg mb-3 leading-relaxed"
         >
-          Первые 100 студентов получат скидку{" "}
-          <span className="text-[#F0F0FF] font-semibold">50%</span> на запуске.
+          {t("early_access.subtitle_1")}{" "}
+          <span className="text-[#F0F0FF] font-semibold">50%</span> {t("early_access.subtitle_2")}
           <br />
-          Присоединяйся сейчас.
+          {t("early_access.subtitle_3")}
         </motion.p>
 
         {/* Counter */}
@@ -101,8 +103,8 @@ export function EarlyAccess() {
           className="inline-flex items-center gap-2 text-[#8B8BA7] text-sm mb-10"
         >
           <Users size={14} className="text-[#6C63FF]" />
-          Уже записались:{" "}
-          <span className="text-[#F0F0FF] font-semibold">{count} человек</span>
+          {t("early_access.signed_up")}{" "}
+          <span className="text-[#F0F0FF] font-semibold">{count} {t("early_access.signed_up_suffix")}</span>
         </motion.div>
 
         {/* Form */}
@@ -119,10 +121,10 @@ export function EarlyAccess() {
                 <CheckCircle size={32} className="text-[#00D4AA]" />
               </div>
               <h3 className="text-[#F0F0FF] font-bold text-xl">
-                Отлично! Мы напишем тебе первым 🎉
+                {t("early_access.success_title")}
               </h3>
               <p className="text-[#8B8BA7] text-sm">
-                Ты в списке. Следи за обновлениями в Telegram.
+                {t("early_access.success_desc")}
               </p>
               <a
                 href="https://t.me/vizora_ai"
@@ -130,7 +132,7 @@ export function EarlyAccess() {
                 rel="noopener noreferrer"
                 className="mt-2 inline-flex items-center gap-2 bg-[#6C63FF]/10 hover:bg-[#6C63FF]/20 border border-[#6C63FF]/20 text-[#9C8BFF] text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200"
               >
-                Подписаться на Telegram →
+                {t("early_access.success_telegram")}
               </a>
             </motion.div>
           ) : (
@@ -144,18 +146,18 @@ export function EarlyAccess() {
             >
               {/* User type toggle */}
               <div className="flex bg-[#0A0A0F] border border-[#1E1E2E] rounded-xl p-1 mb-5">
-                {(["student", "agency"] as UserType[]).map((t) => (
+                {(["student", "agency"] as UserType[]).map((type) => (
                   <button
-                    key={t}
+                    key={type}
                     type="button"
-                    onClick={() => setUserType(t)}
+                    onClick={() => setUserType(type)}
                     className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                      userType === t
+                      userType === type
                         ? "bg-[#6C63FF] text-white shadow-sm"
                         : "text-[#8B8BA7] hover:text-[#F0F0FF]"
                     }`}
                   >
-                    {t === "student" ? "👤 Я студент" : "🏢 Я агентство"}
+                    {type === "student" ? t("early_access.user_type_student") : t("early_access.user_type_agency")}
                   </button>
                 ))}
               </div>
@@ -169,7 +171,7 @@ export function EarlyAccess() {
                     setEmail(e.target.value);
                     if (errorMsg) setErrorMsg("");
                   }}
-                  placeholder="Твой email"
+                  placeholder={t("early_access.email_placeholder")}
                   required
                   className="w-full bg-[#0A0A0F] border border-[#1E1E2E] focus:border-[#6C63FF]/50 text-[#F0F0FF] placeholder-[#8B8BA7]/50 rounded-xl px-4 py-3.5 text-sm outline-none transition-colors duration-200"
                 />
@@ -195,10 +197,10 @@ export function EarlyAccess() {
                 {status === "loading" ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    Отправляем...
+                    {t("early_access.sending")}
                   </>
                 ) : (
-                  "Получить доступ →"
+                  t("early_access.submit")
                 )}
               </motion.button>
 
@@ -213,7 +215,7 @@ export function EarlyAccess() {
               )}
 
               <p className="text-[#8B8BA7]/60 text-xs mt-4">
-                Без спама. Только важные обновления.
+                {t("early_access.no_spam")}
               </p>
             </motion.form>
           )}

@@ -4,18 +4,21 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { VizoraMark } from "@/components/VizoraMark";
-
-const navLinks = [
-  { href: "#students", label: "Студентам" },
-  { href: "#agencies", label: "Агентствам" },
-  { href: "#how-it-works", label: "Как работает" },
-];
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function Navbar() {
   const router = useRouter();
+  const { t } = useTranslation("landing");
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navLinks = [
+    { href: "#students", label: t("nav.students") },
+    { href: "#agencies", label: t("nav.agencies") },
+    { href: "#how-it-works", label: t("nav.how_it_works") },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -75,13 +78,14 @@ export function Navbar() {
 
             {/* CTA */}
             <div className="hidden md:flex items-center gap-3">
+              <LanguageSwitcher />
               <motion.button
                 onClick={() => router.push("/login")}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="text-[#8B8BA7] hover:text-[#F0F0FF] text-sm font-medium px-4 py-2 rounded-xl transition-colors duration-200"
               >
-                Войти
+                {t("nav.login")}
               </motion.button>
               <motion.button
                 onClick={() => router.push("/register")}
@@ -89,7 +93,7 @@ export function Navbar() {
                 whileTap={{ scale: 0.98 }}
                 className="bg-[#6C63FF] hover:bg-[#7C75FF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-[#6C63FF]/20"
               >
-                Регистрация
+                {t("nav.register")}
               </motion.button>
             </div>
 
@@ -97,7 +101,7 @@ export function Navbar() {
             <button
               className="md:hidden text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
               onClick={() => setMobileOpen((v) => !v)}
-              aria-label="Меню"
+              aria-label={t("nav.menu")}
             >
               {mobileOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -125,17 +129,20 @@ export function Navbar() {
                   {link.label}
                 </button>
               ))}
+              <div className="mt-2 flex justify-center">
+                <LanguageSwitcher />
+              </div>
               <button
                 onClick={() => { setMobileOpen(false); router.push("/login"); }}
                 className="mt-2 w-full border border-[#1E1E2E] text-[#F0F0FF] text-sm font-semibold py-3 rounded-xl"
               >
-                Войти
+                {t("nav.login")}
               </button>
               <button
                 onClick={() => { setMobileOpen(false); router.push("/register"); }}
                 className="mt-2 w-full bg-[#6C63FF] text-white text-sm font-semibold py-3 rounded-xl"
               >
-                Регистрация
+                {t("nav.register")}
               </button>
             </div>
           </motion.div>

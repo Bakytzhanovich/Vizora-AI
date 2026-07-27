@@ -2,34 +2,20 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
-const problems = [
-  {
-    icon: "🎯",
-    title: "Нет персональной подготовки",
-    description:
-      "ChatGPT даёт общие ответы. Офицер задаёт вопросы именно под твой профиль риска.",
-    detail: "Нет истории поездок? Финансы через родителей? Первый или четвёртый курс? — это разные сценарии интервью.",
-  },
-  {
-    icon: "😰",
-    title: "Стресс и неуверенность",
-    description:
-      "Интервью длится 2–3 минуты. Один неуверенный ответ — и виза потеряна вместе с $2100–$2450 за программу (плюс $185 визовый сбор и $900 билеты).",
-    detail: "Большинство студентов ни разу не практиковали ответы вслух перед живым «офицером».",
-  },
-  {
-    icon: "🌙",
-    title: "Агентство недоступно в 2 ночи",
-    description:
-      "Вопросы возникают в любое время. Менеджер агентства — только в рабочие часы.",
-    detail: "DS-160, SEVIS, апойнтмент, что взять на интервью — всё это нужно знать здесь и сейчас.",
-  },
-];
+interface ProblemItem {
+  icon: string;
+  title: string;
+  description: string;
+  detail: string;
+}
 
 export function Problem() {
+  const { t } = useTranslation("landing");
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const problems = t("problem.items", { returnObjects: true }) as ProblemItem[];
 
   return (
     <section ref={ref} className="py-24 px-4 relative">
@@ -42,7 +28,7 @@ export function Problem() {
           className="flex justify-center mb-4"
         >
           <span className="text-xs font-semibold text-[#FF6B6B] uppercase tracking-widest">
-            Проблема
+            {t("problem.label")}
           </span>
         </motion.div>
 
@@ -53,7 +39,7 @@ export function Problem() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-4 tracking-tight"
         >
-          Почему студенты получают отказ?
+          {t("problem.title")}
         </motion.h2>
 
         <motion.p
@@ -62,7 +48,7 @@ export function Problem() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg max-w-2xl mx-auto mb-14"
         >
-          46% заявителей на J-1 визу получают отказ. Почти всегда — из-за неподготовленности, а не из-за реальных проблем.
+          {t("problem.subtitle")}
         </motion.p>
 
         {/* Cards */}

@@ -2,45 +2,21 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
-const steps = [
-  {
-    number: "01",
-    icon: "👤",
-    title: "Заполни профиль",
-    description:
-      "Расскажи о себе: университет, дата интервью, уровень английского, история поездок.",
-    detail: "Занимает 3 минуты. Это основа персонализации.",
-  },
-  {
-    number: "02",
-    icon: "🎯",
-    title: "Получи анализ рисков",
-    description:
-      "AI анализирует твой профиль и показывает слабые места именно для тебя.",
-    detail: "Каждый профиль — уникальный сценарий интервью.",
-  },
-  {
-    number: "03",
-    icon: "🎤",
-    title: "Тренируйся каждый день",
-    description:
-      "Симулируй интервью с AI‑офицером. Режим Тренер → Режим Консул.",
-    detail: "5–10 минут в день — достаточно для уверенности.",
-  },
-  {
-    number: "04",
-    icon: "✈️",
-    title: "Иди на интервью уверенно",
-    description:
-      "После 5–10 сессий студенты чувствуют себя готовыми. Реальное интервью легче мока.",
-    detail: "Ты уже слышал все вопросы. Ты готов.",
-  },
-];
+interface Step {
+  number: string;
+  icon: string;
+  title: string;
+  description: string;
+  detail: string;
+}
 
 export function HowItWorks() {
+  const { t } = useTranslation("landing");
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const steps = t("how_it_works.steps", { returnObjects: true }) as Step[];
 
   return (
     <section id="how-it-works" ref={ref} className="py-24 px-4 relative">
@@ -53,7 +29,7 @@ export function HowItWorks() {
           className="flex justify-center mb-4"
         >
           <span className="text-xs font-semibold text-[#00D4AA] uppercase tracking-widest">
-            Процесс
+            {t("how_it_works.label")}
           </span>
         </motion.div>
 
@@ -64,7 +40,7 @@ export function HowItWorks() {
           transition={{ duration: 0.5, delay: 0.05 }}
           className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-4 tracking-tight"
         >
-          Как это работает
+          {t("how_it_works.title")}
         </motion.h2>
 
         <motion.p
@@ -73,7 +49,7 @@ export function HowItWorks() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg max-w-xl mx-auto mb-16"
         >
-          От регистрации до уверенного интервью — 4 простых шага
+          {t("how_it_works.subtitle")}
         </motion.p>
 
         {/* Steps — Desktop: horizontal, Mobile: vertical */}
@@ -145,8 +121,8 @@ export function HowItWorks() {
           <div className="inline-flex items-center gap-3 bg-[#13131A] border border-[#1E1E2E] rounded-2xl px-6 py-4">
             <span className="text-[#00D4AA] text-xl">🎉</span>
             <p className="text-[#8B8BA7] text-sm">
-              <span className="text-[#F0F0FF] font-semibold">Северная звезда Vizora:</span>{" "}
-              студент приходит на интервью уверенным и получает визу с первого раза
+              <span className="text-[#F0F0FF] font-semibold">{t("how_it_works.quote_bold")}</span>{" "}
+              {t("how_it_works.quote_text")}
             </p>
           </div>
         </motion.div>

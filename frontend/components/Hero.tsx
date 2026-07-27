@@ -4,13 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-const stats = [
-  { value: 4100, suffix: "+", label: "заявок на J-1 из Казахстана в год" },
-  { value: 46, suffix: "%", label: "получают отказ без подготовки" },
-  { value: 3, prefix: "2–", suffix: " мин", label: "длится интервью в консульстве" },
-  { value: 250000, suffix: "+", label: "студентов W&T по всему миру" },
-];
+const statValues = [4100, 46, 3, 250000];
 
 function useCountUp(target: number, duration = 1800, inView = false) {
   const [count, setCount] = useState(0);
@@ -32,12 +28,19 @@ function useCountUp(target: number, duration = 1800, inView = false) {
   return count;
 }
 
+interface Stat {
+  value: number;
+  prefix?: string;
+  suffix?: string;
+  label: string;
+}
+
 function StatCard({
   stat,
   inView,
   index,
 }: {
-  stat: (typeof stats)[0];
+  stat: Stat;
   inView: boolean;
   index: number;
 }) {
@@ -63,8 +66,16 @@ function StatCard({
 
 export function Hero() {
   const router = useRouter();
+  const { t } = useTranslation("landing");
   const [inView, setInView] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const statTranslations = t("hero.stats", { returnObjects: true }) as {
+    prefix?: string;
+    suffix?: string;
+    label: string;
+  }[];
+  const stats: Stat[] = statValues.map((value, i) => ({ value, ...statTranslations[i] }));
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -101,7 +112,7 @@ export function Hero() {
           className="inline-flex items-center gap-2 bg-[#6C63FF]/10 border border-[#6C63FF]/30 text-[#9C8BFF] text-xs font-semibold px-4 py-2 rounded-full mb-8"
         >
           <span className="w-2 h-2 bg-[#6C63FF] rounded-full animate-pulse" />
-          Ранний доступ открыт — первые 100 мест
+          {t("hero.badge")}
         </motion.div>
 
         {/* Headline */}
@@ -111,14 +122,14 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-[#F0F0FF] leading-tight tracking-tight mb-6"
         >
-          Твой персональный{" "}
+          {t("hero.title_line1")}{" "}
           <span className="relative">
             <span className="bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] bg-clip-text text-transparent">
-              AI‑тренер
+              {t("hero.title_highlight")}
             </span>
           </span>
           <br />
-          для визы в США
+          {t("hero.title_line2")}
         </motion.h1>
 
         {/* Subheadline */}
@@ -128,9 +139,9 @@ export function Hero() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-lg sm:text-xl text-[#8B8BA7] max-w-2xl mx-auto mb-10 leading-relaxed"
         >
-          Готовься к интервью в консульстве с AI который знает твой профиль.
+          {t("hero.subtitle_line1")}
           <br className="hidden sm:block" />
-          Для студентов Work &amp; Travel из Казахстана и СНГ.
+          {t("hero.subtitle_line2")}
         </motion.p>
 
         {/* CTA Buttons */}
@@ -146,7 +157,7 @@ export function Hero() {
             whileTap={{ scale: 0.97 }}
             className="flex items-center gap-2 bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-semibold px-8 py-4 rounded-xl shadow-lg shadow-[#6C63FF]/30 transition-all duration-200 text-base"
           >
-            Начать подготовку
+            {t("hero.cta_start")}
             <ArrowRight size={18} />
           </motion.button>
           <motion.button
@@ -156,7 +167,7 @@ export function Hero() {
             className="flex items-center gap-2 border border-[#1E1E2E] hover:border-[#6C63FF]/40 text-[#F0F0FF] font-semibold px-8 py-4 rounded-xl transition-all duration-200 text-base bg-[#13131A]/50 backdrop-blur-sm"
           >
             <Play size={16} className="text-[#6C63FF]" />
-            Смотреть демо
+            {t("hero.cta_demo")}
           </motion.button>
         </motion.div>
 

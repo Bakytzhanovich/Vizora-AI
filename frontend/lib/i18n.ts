@@ -8,6 +8,7 @@ import ruSimulator from "@/public/locales/ru/simulator.json";
 import ruChat from "@/public/locales/ru/chat.json";
 import ruDocuments from "@/public/locales/ru/documents.json";
 import ruEmergency from "@/public/locales/ru/emergency.json";
+import ruLanding from "@/public/locales/ru/landing.json";
 
 import kzCommon from "@/public/locales/kz/common.json";
 import kzDashboard from "@/public/locales/kz/dashboard.json";
@@ -16,6 +17,7 @@ import kzSimulator from "@/public/locales/kz/simulator.json";
 import kzChat from "@/public/locales/kz/chat.json";
 import kzDocuments from "@/public/locales/kz/documents.json";
 import kzEmergency from "@/public/locales/kz/emergency.json";
+import kzLanding from "@/public/locales/kz/landing.json";
 
 export const STORAGE_KEY = "vizora_language";
 export const SUPPORTED_LANGUAGES = ["ru", "kz"] as const;
@@ -42,6 +44,7 @@ if (!i18n.isInitialized) {
         chat: ruChat,
         documents: ruDocuments,
         emergency: ruEmergency,
+        landing: ruLanding,
       },
       kz: {
         common: kzCommon,
@@ -51,12 +54,13 @@ if (!i18n.isInitialized) {
         chat: kzChat,
         documents: kzDocuments,
         emergency: kzEmergency,
+        landing: kzLanding,
       },
     },
     lng: getStoredLanguage(),
     fallbackLng: "ru",
     defaultNS: "common",
-    ns: ["common", "dashboard", "onboarding", "simulator", "chat", "documents", "emergency"],
+    ns: ["common", "dashboard", "onboarding", "simulator", "chat", "documents", "emergency", "landing"],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   });
