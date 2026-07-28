@@ -12,10 +12,21 @@ pay/QR link → merchant is notified on completion) — it is NOT verified
 against Kaspi's real API and WILL need adjusting once you have the actual
 docs from your Kaspi merchant onboarding.
 
-Until then, KASPI_MOCK_MODE (auto-enabled when no API key is configured)
-simulates the flow entirely in-process so the rest of the monetization system
-(trial, access control, webhooks, DB updates) can be built and tested end to
-end without real credentials.
+Until then, mock mode (active whenever KASPI_API_KEY is unset) simulates the
+flow entirely in-process so the rest of the monetization system (trial,
+access control, webhooks, DB updates) can be built and tested end to end
+without real credentials.
+
+Mode is derived solely from whether KASPI_API_KEY is configured — there is
+deliberately no separate on/off flag for this. A previous version had a
+KASPI_MOCK_MODE setting that defaulted to true and was OR'd with the missing-
+key check, so setting a real API key in production without also remembering
+to flip that flag left webhook signature verification silently disabled
+(verify_webhook_signature() short-circuits to True in mock mode) — any
+logged-in user could create a payment for themselves and then hit the
+unauthenticated webhook directly to mark it paid for free. Deriving mode from
+the API key alone removes that misconfiguration entirely: real credentials
+always mean real (signature-verified) mode, with no second switch to forget.
 """
 
 import logging
@@ -35,7 +46,7 @@ class KaspiPaymentResult:
 
 
 def is_mock_mode() -> bool:
-    return settings.KASPI_MOCK_MODE or not settings.KASPI_API_KEY
+    return not settings.KASPI_API_KEY
 
 
 async def create_payment(order_id: str, amount_kzt: int, description: str) -> KaspiPaymentResult:
@@ -47,7 +58,7 @@ async def create_payment(order_id: str, amount_kzt: int, description: str) -> Ka
     if is_mock_mode():
         payment_id = f"mock_{uuid.uuid4().hex[:16]}"
         logger.info(
-            "KASPI_MOCK_MODE: simulated payment created order=%s amount=%s KZT id=%s",
+            "Kaspi mock mode: simulated payment created order=%s amount=%s KZT id=%s",
             order_id, amount_kzt, payment_id,
         )
         # In mock mode there's no real Kaspi app to redirect to — the frontend's

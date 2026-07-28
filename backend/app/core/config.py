@@ -50,9 +50,9 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"  # Set to the real domain in production .env
 
     # Kaspi Pay (subscriptions). No real self-serve API exists — see
-    # app/services/kaspi_pay_client.py docstring. Mock mode auto-enables
-    # whenever KASPI_API_KEY is empty, so the flow is testable without credentials.
-    KASPI_MOCK_MODE: bool = True
+    # app/services/kaspi_pay_client.py docstring. Mock mode is derived solely
+    # from whether KASPI_API_KEY is set (no separate on/off flag — see that
+    # module's docstring for why) so the flow is testable without credentials.
     KASPI_API_KEY: str = ""
     KASPI_MERCHANT_ID: str = ""
     KASPI_API_BASE_URL: str = "https://api.kaspi.kz/pay/v1"
