@@ -61,7 +61,7 @@ export default function RegisterPage() {
         router.push("/admin/dashboard");
         return;
       }
-      router.push(profile ? "/dashboard" : "/onboarding");
+      router.push(profile ? "/dashboard" : "/welcome");
     } catch {
       setErrors({ general: "Не удалось войти через Google. Попробуй снова." });
     }
@@ -89,7 +89,7 @@ export default function RegisterPage() {
       track("register_start", { has_referral: !!refCode });
       await register(email, password, refCode ?? undefined);
       track("register_complete", { has_referral: !!refCode });
-      router.push("/onboarding");
+      router.push("/welcome");
     } catch (err) {
       const axErr = err as AxiosError<{ detail: string }>;
       if (axErr.response?.status === 409) {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 const COLOR_STYLES: Record<string, string> = {
@@ -28,7 +29,22 @@ const ICONS: Record<string, string> = {
  */
 export function TrialBanner() {
   const router = useRouter();
-  const { isAuthenticated, subscription } = useAuth();
+  const pathname = usePathname();
+  const { isAuthenticated, subscription, refreshProfile } = useAuth();
+
+  // TrialBanner lives in the root layout, which doesn't remount on
+  // client-side navigation — so useAuth()'s own mount-time fetch goes stale
+  // the moment subscription state changes elsewhere (e.g. completing a
+  // payment on /pricing, then router.push()-ing to /dashboard). Re-fetch on
+  // every route change so the banner reflects the page the user just landed on.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (isAuthenticated) refreshProfile();
+  }, [pathname, isAuthenticated, refreshProfile]);
 
   if (!isAuthenticated || !subscription?.banner) return null;
 
