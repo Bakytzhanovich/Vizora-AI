@@ -125,12 +125,6 @@ async def get_user_access(user: User, db: AsyncSession) -> dict:
     return {"status": user.subscription_status, "full_access": False, "limits": EXPIRED_LIMITS}
 
 
-async def _reset_faq_count(user: User, today: date, db: AsyncSession) -> None:
-    user.faq_used_today = 0
-    user.faq_reset_date = today
-    await db.commit()
-
-
 async def check_feature_access(user_id: str, feature: str, db: AsyncSession) -> tuple[bool, str]:
     """Returns (has_access, reason).
 
@@ -170,10 +164,21 @@ async def check_feature_access(user_id: str, feature: str, db: AsyncSession) -> 
     if feature == "faq":
         today = date.today()
         if user.faq_reset_date != today:
-            await _reset_faq_count(user, today, db)
-            return True, "ok"
+            user.faq_used_today = 0
+            user.faq_reset_date = today
         if user.faq_used_today < limits["faq_per_day"]:
+            # Increment right here, atomically with the check that grants
+            # access — this counter only exists to cap non-full-access users,
+            # so it must never move for trial/paid users (see chat.py, which
+            # used to call a separate increment unconditionally after every
+            # message: a full-access user's count would climb all day, and if
+            # their trial/subscription then lapsed mid-day, check_feature_access
+            # would see faq_reset_date already == today and immediately block
+            # them instead of granting the 3 free questions they were owed).
+            user.faq_used_today += 1
+            await db.commit()
             return True, "ok"
+        await db.commit()
         return False, "faq_limit"
 
     return False, "subscription_required"
@@ -184,15 +189,3 @@ async def increment_simulator_usage(user_id: str, db: AsyncSession) -> None:
     if user:
         user.sessions_used_this_month += 1
         await db.commit()
-
-
-async def increment_faq_usage(user_id: str, db: AsyncSession) -> None:
-    user = await db.get(User, user_id)
-    if not user:
-        return
-    today = date.today()
-    if user.faq_reset_date != today:
-        user.faq_used_today = 0
-        user.faq_reset_date = today
-    user.faq_used_today += 1
-    await db.commit()

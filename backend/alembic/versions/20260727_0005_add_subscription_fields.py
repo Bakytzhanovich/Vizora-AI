@@ -83,6 +83,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.String(length=36), nullable=False),
         sa.Column("event_type", sa.String(length=40), nullable=False),
         sa.Column("plan", sa.String(length=30), nullable=True),
+        sa.Column("billing_period", sa.String(length=10), nullable=True),
         sa.Column("amount", sa.Numeric(10, 2), nullable=True),
         sa.Column("currency", sa.String(length=6), nullable=False, server_default="kzt"),
         sa.Column("kaspi_payment_id", sa.String(length=64), nullable=True),

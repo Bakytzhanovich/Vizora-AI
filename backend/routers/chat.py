@@ -15,7 +15,7 @@ from app.models.profile import StudentProfile
 from app.models.user import User
 from app.services.ai_service import generate_chat_response
 from app.services.rag_service import search_knowledge
-from app.services.subscription_service import check_feature_access, increment_faq_usage
+from app.services.subscription_service import check_feature_access
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -89,7 +89,6 @@ async def send_message(
     )
     db.add(user_msg)
     await db.commit()
-    await increment_faq_usage(user_id, db)
 
     # Stream AI response and collect full text
     async def event_stream():

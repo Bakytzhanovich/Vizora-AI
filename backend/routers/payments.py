@@ -109,17 +109,12 @@ async def create_payment(
             user_id=user_id,
             event_type="checkout_created",
             plan=body.plan,
+            billing_period=body.billing_period,
             amount=amount,
             currency="kzt",
             kaspi_payment_id=result.payment_id,
         )
     )
-    # Stash billing_period on the same event via a follow-up read at webhook
-    # time would need a schema change; instead we keep it in the checkout
-    # event's payload by reusing `plan` field format "plan:period" would be
-    # ugly, so we store billing_period directly on the user now and only
-    # flip subscription_status once payment actually succeeds.
-    user.subscription_billing_period = body.billing_period
     await db.commit()
 
     return {
@@ -136,9 +131,16 @@ def _period_length(billing_period: str) -> timedelta:
     return timedelta(days=365) if billing_period == "yearly" else timedelta(days=31)
 
 
-async def _apply_successful_payment(payment_id: str, db: AsyncSession) -> dict:
+async def _apply_successful_payment(
+    payment_id: str, db: AsyncSession, expected_user_id: str | None = None
+) -> dict:
     """Shared by the real webhook and the mock-mode completion endpoint.
-    Idempotent — replaying the same payment_id is a no-op on the second call."""
+    Idempotent — replaying the same payment_id is a no-op on the second call.
+
+    expected_user_id is set only by the mock-complete endpoint (an
+    authenticated caller simulating their own Kaspi redirect) — the real
+    webhook has no caller identity to check, it's authenticated by signature.
+    """
     # Succeeded/failed events are stored under a suffixed id (see below) since
     # kaspi_payment_id is unique and the same payment_id already owns the
     # "checkout_created" row.
@@ -160,11 +162,14 @@ async def _apply_successful_payment(payment_id: str, db: AsyncSession) -> dict:
     if not checkout_event:
         raise HTTPException(status_code=404, detail="Unknown payment_id")
 
+    if expected_user_id is not None and checkout_event.user_id != expected_user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
+
     user = await db.get(User, checkout_event.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    billing_period = user.subscription_billing_period or "monthly"
+    billing_period = checkout_event.billing_period or "monthly"
     base = user.subscription_period_end if (
         user.subscription_status == "active"
         and user.subscription_period_end
@@ -173,6 +178,7 @@ async def _apply_successful_payment(payment_id: str, db: AsyncSession) -> dict:
 
     user.subscription_status = "active"
     user.subscription_plan = checkout_event.plan
+    user.subscription_billing_period = billing_period
     user.subscription_period_end = base + _period_length(billing_period)
     user.kaspi_last_payment_id = payment_id
     user.sessions_used_this_month = 0
@@ -213,6 +219,15 @@ async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         return {"received": True, **result}
 
     if payment_status == "failed":
+        already_recorded = await db.scalar(
+            select(SubscriptionEvent).where(
+                SubscriptionEvent.kaspi_payment_id == f"{payment_id}:failed",
+                SubscriptionEvent.event_type == "payment_failed",
+            )
+        )
+        if already_recorded:
+            return {"received": True, "status": "already_applied"}
+
         checkout_event = await db.scalar(
             select(SubscriptionEvent).where(
                 SubscriptionEvent.kaspi_payment_id == payment_id,
@@ -243,12 +258,22 @@ async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/mock-complete/{payment_id}")
-async def mock_complete_payment(payment_id: str, db: AsyncSession = Depends(get_db)):
+async def mock_complete_payment(
+    payment_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
     """Dev-only: simulates a successful Kaspi webhook without a real Kaspi
-    sandbox. 404s outside mock mode so this can never fire in production."""
+    sandbox. 404s outside mock mode so this can never fire in production.
+
+    Requires auth and checks the caller owns the checkout — mock mode is the
+    default until real Kaspi credentials exist, so without this any client
+    that learned a payment_id (e.g. from watching network traffic) could
+    activate someone else's pending checkout for free.
+    """
     if not kaspi_pay_client.is_mock_mode():
         raise HTTPException(status_code=404, detail="Not found")
-    result = await _apply_successful_payment(payment_id, db)
+    result = await _apply_successful_payment(payment_id, db, expected_user_id=user_id)
     return {"received": True, **result}
 
 

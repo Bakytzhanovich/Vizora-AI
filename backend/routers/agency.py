@@ -20,6 +20,7 @@ from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
 from app.services.roadmap_service import _PROGRESS_WEIGHTS
+from app.services.subscription_service import start_trial
 
 router = APIRouter(prefix="/agency", tags=["agency"])
 
@@ -311,6 +312,7 @@ async def add_student(
         temp_password = secrets.token_urlsafe(12)
         hashed = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
         user = User(email=body.email, password_hash=hashed)
+        start_trial(user)
         db.add(user)
         await db.flush()
 
@@ -366,6 +368,7 @@ async def bulk_add_students(
                 temp_password = secrets.token_urlsafe(12)
                 hashed = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
                 user = User(email=s.email, password_hash=hashed)
+                start_trial(user)
                 db.add(user)
                 await db.flush()
 

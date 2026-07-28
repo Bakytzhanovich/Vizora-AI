@@ -115,6 +115,12 @@ async def start_session(
             f"First question: {first_question}"
         )
 
+    # Consumed the moment a session starts, not when it ends — otherwise the
+    # check above (sessions_used < limit) can never see a session that was
+    # started but never finished, letting a user start unlimited concurrent
+    # sessions (e.g. in separate tabs) that all pass the same stale count.
+    await increment_simulator_usage(user_id, db)
+
     transcript = [{"role": "officer", "content": opening, "timestamp": datetime.utcnow().isoformat()}]
 
     session = SimulatorSession(
@@ -208,8 +214,6 @@ async def end_session(
     session.duration_seconds = body.duration_seconds
     db.add(session)
     await db.commit()
-
-    await increment_simulator_usage(user_id, db)
 
     return {"feedback": feedback, "session_id": session.id}
 
