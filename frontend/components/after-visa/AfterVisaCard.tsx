@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 interface AfterVisaCardProps {
   unlocked: boolean;
@@ -17,6 +18,7 @@ export function AfterVisaCard({
   overallTotal = 0,
 }: AfterVisaCardProps) {
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
 
   if (!unlocked) {
     return (
@@ -24,9 +26,9 @@ export function AfterVisaCard({
         <div className="flex items-center gap-3">
           <span className="text-2xl">🔒</span>
           <div>
-            <p className="text-[#F0F0FF] font-semibold text-sm">После визы</p>
+            <p className="text-[#F0F0FF] font-semibold text-sm">{t("after_visa_card.locked_title")}</p>
             <p className="text-[#8B8BA7] text-xs mt-0.5">
-              Откроется после получения визы в Roadmap
+              {t("after_visa_card.locked_desc")}
             </p>
           </div>
         </div>
@@ -45,13 +47,13 @@ export function AfterVisaCard({
         <span className="text-2xl shrink-0">🎉</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[#00D4AA] font-bold text-base">После визы</span>
+            <span className="text-[#00D4AA] font-bold text-base">{t("after_visa_card.title")}</span>
             <span className="text-[10px] font-bold bg-[#00D4AA]/15 text-[#00D4AA] px-2 py-0.5 rounded-full">
-              Разблокировано
+              {t("after_visa_card.unlocked_badge")}
             </span>
           </div>
           <p className="text-[#8B8BA7] text-sm mb-3">
-            Подготовка к поездке и жизнь в США
+            {t("after_visa_card.desc")}
           </p>
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 bg-[#1E1E2E] rounded-full overflow-hidden">

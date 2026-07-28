@@ -9,11 +9,21 @@ interface Props {
   onNext: () => void;
 }
 
-export function Step7({ value, onChange, onNext }: Props) {
+export function Step11({ value, onChange, onNext }: Props) {
   const { t } = useTranslation("onboarding");
   const options = [
-    { value: true, icon: "✈️", label: t("steps.travel.yes") },
-    { value: false, icon: "🏠", label: t("steps.travel.no") },
+    {
+      value: true,
+      icon: "🏢",
+      label: t("steps.agency.via_agency"),
+      desc: t("steps.agency.via_agency_desc"),
+    },
+    {
+      value: false,
+      icon: "🚀",
+      label: t("steps.agency.self"),
+      desc: t("steps.agency.self_desc"),
+    },
   ];
   return (
     <div className="space-y-3">
@@ -22,10 +32,12 @@ export function Step7({ value, onChange, onNext }: Props) {
           key={String(opt.value)}
           selected={value === opt.value}
           onClick={() => { onChange(opt.value); setTimeout(onNext, 220); }}
-          className="min-h-[64px] text-lg"
         >
           <span className="text-2xl shrink-0">{opt.icon}</span>
-          <span className="font-bold text-[#F0F0FF]">{opt.label}</span>
+          <div>
+            <div className="font-bold text-[#F0F0FF]">{opt.label}</div>
+            <div className="text-[#8B8BA7] text-sm font-normal">{opt.desc}</div>
+          </div>
         </OptionButton>
       ))}
     </div>

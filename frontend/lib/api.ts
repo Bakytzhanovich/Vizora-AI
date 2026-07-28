@@ -131,6 +131,7 @@ export interface OnboardingPayload {
   name: string;
   university: string;
   course_year: number;
+  profession: string;
   interview_date: string | null;
   english_level: string;
   travel_history: boolean;
@@ -159,6 +160,7 @@ export interface UserProfile {
   name: string;
   university: string;
   course_year: number;
+  profession: string;
   interview_date: string | null;
   english_level: string;
   travel_history: boolean;

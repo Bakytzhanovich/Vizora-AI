@@ -46,8 +46,10 @@ async def send_message(
     student_profile: dict = {}
     if profile:
         student_profile = {
+            "name": profile.name,
             "country": profile.country,
             "course_year": profile.course_year,
+            "profession": profile.profession,
             "english_level": profile.english_level,
             "travel_history": profile.travel_history,
             "financial_source": profile.financial_source,

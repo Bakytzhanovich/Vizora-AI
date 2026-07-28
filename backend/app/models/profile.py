@@ -15,6 +15,7 @@ class StudentProfile(Base):
     name = Column(String(100), nullable=False)
     university = Column(String(200), nullable=False)
     course_year = Column(Integer, nullable=False)
+    profession = Column(String(150), nullable=False)
     interview_date = Column(Date, nullable=True)
     english_level = Column(String(20), nullable=False)
     travel_history = Column(Boolean, nullable=False, default=False)

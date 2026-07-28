@@ -34,6 +34,7 @@ async def _load_profile(db: AsyncSession, user_id: str) -> tuple[dict, list]:
     student_dict = {
         "country": profile.country,
         "course_year": profile.course_year,
+        "profession": profile.profession,
         "english_level": profile.english_level,
         "travel_history": profile.travel_history,
         "financial_source": profile.financial_source,
@@ -185,8 +186,9 @@ async def end_session(
 ):
     session = await _load_session(db, body.session_id, user_id)
     transcript: list[dict] = json.loads(session.transcript)
+    profile, risks = await _load_profile(db, user_id)
 
-    feedback = await generate_feedback(transcript, session.mode, session.id)
+    feedback = await generate_feedback(transcript, session.mode, session.id, profile, risks)
 
     session.feedback = json.dumps(feedback, ensure_ascii=False)
     session.scores = json.dumps(feedback.get("scores", {}), ensure_ascii=False)

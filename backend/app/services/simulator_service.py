@@ -287,6 +287,7 @@ def _profile_text(profile: dict[str, Any]) -> str:
     return (
         f"Страна: {profile.get('country', 'KZ')}, "
         f"Курс: {profile.get('course_year', '?')}, "
+        f"Специальность: {profile.get('profession', '?')}, "
         f"Английский: {level_map.get(profile.get('english_level', ''), '?')}, "
         f"Поездки за рубеж: {'есть' if profile.get('travel_history') else 'нет'}, "
         f"Финансирование: {finance_map.get(profile.get('financial_source', ''), '?')}"
@@ -300,6 +301,7 @@ def _profile_text_en(profile: dict[str, Any]) -> str:
     return (
         f"Country: {profile.get('country', 'KZ')}, "
         f"university year: {profile.get('course_year', '?')}, "
+        f"major/profession: {profile.get('profession', 'unknown')}, "
         f"English level: {level_map.get(profile.get('english_level', ''), 'unknown')}, "
         f"{travel}, "
         f"funding: {finance_map.get(profile.get('financial_source', ''), 'unknown')}"
@@ -611,6 +613,8 @@ async def generate_feedback(
     transcript: list[dict[str, Any]],
     mode: str,
     session_id: str | None = None,
+    profile: dict[str, Any] | None = None,
+    risks: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     # Build a numbered transcript so the model can cite specific exchanges
     pairs: list[str] = []
@@ -630,9 +634,14 @@ async def generate_feedback(
 
     transcript_text = "\n\n".join(pairs)
     mode_label = "тренировка с фидбеком" if mode == "trainer" else "строгий режим консула"
+    profile_text = _profile_text(profile) if profile else "Профиль не указан"
+    risks_text = _risks_text(risks or [])
 
     prompt = f"""Ты эксперт по визовым интервью J-1 Work and Travel USA.
 Проанализируй это конкретное интервью (режим: {mode_label}) и дай детальный разбор.
+
+ПРОФИЛЬ ЭТОГО СТУДЕНТА: {profile_text}
+ЕГО РИСК-ФАКТОРЫ (из его профиля, не общие): {risks_text}
 
 ТРАНСКРИПТ (пронумерованные пары вопрос-ответ):
 {transcript_text}
@@ -693,7 +702,13 @@ async def generate_feedback(
 - strong_points — только то что студент реально сделал правильно в этой сессии
 - phrases_to_memorize — только фразы из реальных ошибок этой сессии
 - Всё на русском, кроме английских фраз и цитат из транскрипта
-- Будь конкретным — цитируй реальные слова студента, не давай общих советов"""
+- Будь конкретным — цитируй реальные слова студента, не давай общих советов
+- ОБЯЗАТЕЛЬНО учитывай ПРОФИЛЬ И РИСК-ФАКТОРЫ ЭТОГО СТУДЕНТА выше: если у него есть риск
+  "нет истории поездок" — оцени, дал ли он убедительный ответ про связи с родиной; если
+  "финансы через родителей" — оцени уверенность и конкретику в финансовых ответах; если
+  "рискованный курс" (1 или 4 курс) — оцени, объяснил ли он свои планы на учёбу; и т.д.
+  Не пиши общий разбор "для всех" — recommendation и next_session_focus должны звучать так,
+  будто написаны именно под его специальность и его конкретные риски, а не шаблонно"""
 
     client = get_ai_client()
     response = await client.chat.completions.create(

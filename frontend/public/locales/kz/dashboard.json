@@ -26,6 +26,7 @@
   "my_profile": "Менің профилім",
   "university": "Университет",
   "course": "Курс",
+  "profession": "Мамандық",
   "course_suffix": "курс",
   "english": "Ағылшын тілі",
   "country": "Ел",
@@ -45,5 +46,25 @@
     "weak": "Әлсіз",
     "medium": "Орташа",
     "good": "Жақсы"
+  },
+  "show_more_risks": "Тағы {{count}} көрсету",
+  "hide_extra_risks": "Жасыру",
+  "recommended_badge": "Ұсынамыз",
+  "continue_hint": "Тоқтаған жеріңнен жалғастыр",
+  "show_profile": "Профильді көрсету",
+  "hide_profile": "Профильді жасыру",
+  "referral_card": {
+    "title": "Досыңды шақыр",
+    "friend_singular": "дос",
+    "friend_plural": "дос",
+    "next_tier": "Келесі сыйлыққа дейін тағы {{count}}",
+    "default_hint": "Әр досың үшін бонус ал"
+  },
+  "after_visa_card": {
+    "locked_title": "Визадан кейін",
+    "locked_desc": "Roadmap-та виза алғаннан кейін ашылады",
+    "title": "Визадан кейін",
+    "unlocked_badge": "Ашылды",
+    "desc": "АҚШ-қа сапарға және өмірге дайындық"
   }
 }

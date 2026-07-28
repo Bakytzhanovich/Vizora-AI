@@ -30,6 +30,7 @@ class OnboardingRequest(BaseModel):
     name: str
     university: str
     course_year: int
+    profession: str
     interview_date: date | None = None
     english_level: str
     travel_history: bool
@@ -65,6 +66,7 @@ async def onboarding(
         name=body.name,
         university=body.university,
         course_year=body.course_year,
+        profession=body.profession,
         interview_date=body.interview_date,
         english_level=body.english_level,
         travel_history=body.travel_history,
@@ -98,6 +100,7 @@ async def onboarding(
             "name": profile.name,
             "university": profile.university,
             "course_year": profile.course_year,
+            "profession": profile.profession,
             "interview_date": profile.interview_date.isoformat() if profile.interview_date else None,
             "english_level": profile.english_level,
             "travel_history": profile.travel_history,
@@ -168,6 +171,7 @@ async def get_me(
             "name": profile.name,
             "university": profile.university,
             "course_year": profile.course_year,
+            "profession": profile.profession,
             "interview_date": profile.interview_date.isoformat() if profile.interview_date else None,
             "english_level": profile.english_level,
             "travel_history": profile.travel_history,
