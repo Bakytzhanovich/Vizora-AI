@@ -131,6 +131,7 @@ export interface OnboardingPayload {
   name: string;
   university: string;
   course_year: number;
+  profession: string;
   interview_date: string | null;
   english_level: string;
   travel_history: boolean;
@@ -159,6 +160,7 @@ export interface UserProfile {
   name: string;
   university: string;
   course_year: number;
+  profession: string;
   interview_date: string | null;
   english_level: string;
   travel_history: boolean;
@@ -193,21 +195,21 @@ export interface SubscriptionBanner {
   show_discount?: boolean;
 }
 
-export type SubscriptionStatus = "trial" | "expired" | "active" | "canceled" | "past_due";
+// "past_due" is the only reachable non-"active" status now — a failed Kaspi
+// renewal charge on an existing paid plan. FREE is permanent, not a trial, so
+// there's no "trial"/"expired" state to represent anymore.
+export type SubscriptionStatus = "active" | "past_due";
 export type SubscriptionPlan =
-  | "basic"
+  | "free"
   | "standard"
   | "premium"
   | "agency_starter"
   | "agency_business"
-  | "agency_partner"
-  | null;
+  | "agency_partner";
 
 export interface SubscriptionInfo {
-  status: SubscriptionStatus;
   plan: SubscriptionPlan;
-  days_remaining: number | null;
-  trial_ends_at: string | null;
+  limits: PlanLimits;
   period_end: string | null;
   sessions_used: number | null;
   sessions_limit: number | null;
@@ -539,12 +541,18 @@ export async function apiResolveEmergency(session_id: string) {
 // ─── Payments (Kaspi Pay) ───────────────────────────────────────────────────
 
 export interface PlanLimits {
-  simulator_sessions_per_month: number | null;
   faq_per_day: number | null;
+  simulator_sessions_total: number | null;
+  simulator_sessions_per_month: number | null;
+  simulator_session_max_minutes: number | null;
   consul_mode: boolean;
-  risk_analysis: boolean;
+  detailed_feedback: boolean;
+  risk_solutions: boolean;
   after_visa: boolean;
   emergency: boolean;
+  ds160_guide: boolean;
+  pdf_report: boolean;
+  priority_support: boolean;
 }
 
 export interface Plan {
@@ -557,10 +565,16 @@ export interface Plan {
 export async function apiGetPlans() {
   const { data } = await api.get<{
     plans: Plan[];
-    trial_days: number;
-    trial_discount_code: string;
-    trial_discount_rate: number;
+    upgrade_discount_code: string;
+    upgrade_discount_rate: number;
   }>("/payments/plans");
+  return data;
+}
+
+export async function apiGetSocialProof() {
+  const { data } = await api.get<{ student_count: number; average_score: number | null }>(
+    "/payments/social-proof"
+  );
   return data;
 }
 
@@ -594,32 +608,16 @@ export async function apiMockCompletePayment(payment_id: string) {
 }
 
 export interface PaymentStatus {
-  status: SubscriptionStatus;
-  full_access: boolean;
-  plan?: SubscriptionPlan;
-  days_remaining?: number;
-  trial_ends_at?: string;
-  period_end?: string | null;
+  plan: SubscriptionPlan;
+  period_end: string | null;
   sessions_used?: number;
   sessions_limit?: number | null;
   sessions_ok?: boolean;
-  limits: Record<string, unknown>;
+  limits: PlanLimits;
   billing_period: "monthly" | "yearly" | null;
 }
 
 export async function apiGetPaymentStatus() {
   const { data } = await api.get<PaymentStatus>("/payments/status");
-  return data;
-}
-
-export interface TrialSummary {
-  sessions_count: number;
-  first_score: number | null;
-  last_score: number | null;
-  days_to_interview: number | null;
-}
-
-export async function apiGetTrialSummary() {
-  const { data } = await api.get<TrialSummary>("/payments/trial-summary");
   return data;
 }

@@ -13,7 +13,7 @@ import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 
 const PLAN_LABELS: Record<string, string> = {
-  basic: "Базовый",
+  free: "Бесплатный",
   standard: "Стандарт",
   premium: "Премиум",
 };
@@ -85,7 +85,7 @@ export default function SimulatorPage() {
           return;
         }
         if (reason === "subscription_required") {
-          router.push("/paywall");
+          router.push("/pricing");
           return;
         }
         throw new Error("Failed to start");
@@ -139,6 +139,7 @@ export default function SimulatorPage() {
             planLabel={PLAN_LABELS[subscription.plan] ?? subscription.plan}
             sessionsUsed={subscription.sessions_used ?? subscription.sessions_limit}
             sessionsLimit={subscription.sessions_limit}
+            neverResets={subscription.limits.simulator_sessions_total != null}
             onWait={() => setSessionsLimitHit(false)}
           />
         )}

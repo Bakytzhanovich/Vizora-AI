@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   icon: string;
@@ -9,14 +10,40 @@ interface Props {
   locked?: boolean;
   href?: string | null;
   index: number;
+  featured?: boolean;
+  subtitle?: string;
 }
 
-export function ModuleCard({ icon, title, locked = true, href, index }: Props) {
+export function ModuleCard({ icon, title, locked = true, href, index, featured = false, subtitle }: Props) {
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
 
   const handleClick = () => {
     if (!locked && href) router.push(href);
   };
+
+  if (featured) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        onClick={handleClick}
+        className="relative bg-gradient-to-r from-[#6C63FF]/15 to-[#6C63FF]/5 border border-[#6C63FF]/40 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:border-[#6C63FF] transition-all duration-200 active:scale-[0.99] shadow-lg shadow-[#6C63FF]/5"
+      >
+        <div className="text-4xl shrink-0">{icon}</div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+            <span className="text-[#F0F0FF] font-semibold text-base">{title}</span>
+            <span className="text-[10px] font-bold bg-[#6C63FF]/20 text-[#9C8BFF] px-2 py-0.5 rounded-full">
+              {t("recommended_badge")}
+            </span>
+          </div>
+          {subtitle && <p className="text-[#8B8BA7] text-xs">{subtitle}</p>}
+        </div>
+        <span className="text-[#6C63FF] shrink-0">›</span>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -35,11 +62,11 @@ export function ModuleCard({ icon, title, locked = true, href, index }: Props) {
         <div className="text-[#F0F0FF] font-semibold text-sm">{title}</div>
         {locked ? (
           <div className="text-[#8B8BA7] text-xs mt-1 flex items-center gap-1">
-            <span>🔒</span> Скоро
+            <span>🔒</span> {t("coming_soon")}
           </div>
         ) : (
           <div className="text-[#6C63FF] text-xs mt-1 flex items-center gap-1">
-            <span>→</span> Открыть
+            <span>→</span> {t("open")}
           </div>
         )}
       </div>

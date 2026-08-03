@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -17,18 +17,20 @@ import { Step7 } from "@/components/onboarding/steps/Step7";
 import { Step8 } from "@/components/onboarding/steps/Step8";
 import { Step9 } from "@/components/onboarding/steps/Step9";
 import { Step10 } from "@/components/onboarding/steps/Step10";
+import { Step11 } from "@/components/onboarding/steps/Step11";
 import { apiOnboarding } from "@/lib/api";
 import { track } from "@/lib/analytics";
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 
 const STORAGE_KEY = "vizora_onboarding";
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 11;
 
 interface OnboardingData {
   name: string;
   university: string;
   course_year: number | null;
+  profession: string;
   interview_date: string | null;
   english_level: string;
   travel_history: boolean | null;
@@ -42,6 +44,7 @@ const defaultData: OnboardingData = {
   name: "",
   university: "",
   course_year: null,
+  profession: "",
   interview_date: null,
   english_level: "",
   travel_history: null,
@@ -59,6 +62,14 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>(defaultData);
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
+  // Steps advance via `setTimeout(onNext, 220)` right after `onChange(...)` so the
+  // click feels instant. That timeout captures whatever `onNext`/`data` closure existed
+  // at click time — one render behind the state update from the same click. A plain
+  // `data` read in handleFinish would see the field just picked on THIS step as still
+  // null/empty (e.g. via_agency on the final step), silently no-op the whole submit,
+  // and require a second click to actually work. The ref is written synchronously
+  // inside `update()`, so handleFinish always sees the field this exact click just set.
+  const dataRef = useRef(data);
 
   // Restore from localStorage
   useEffect(() => {
@@ -85,7 +96,11 @@ export default function OnboardingPage() {
   }, [step, data]);
 
   const update = <K extends keyof OnboardingData>(key: K, value: OnboardingData[K]) =>
-    setData((d) => ({ ...d, [key]: value }));
+    setData((d) => {
+      const next = { ...d, [key]: value };
+      dataRef.current = next;
+      return next;
+    });
 
   const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   const goBack = () => setStep((s) => Math.max(s - 1, 1));
@@ -94,10 +109,12 @@ export default function OnboardingPage() {
     // Prevent double-submit
     if (submitStatus !== "idle" && submitStatus !== "error") return;
 
-    // Guard required nullable fields — send user back to the step to fill them
-    const { course_year, travel_history, via_agency } = data;
+    // Guard required nullable fields — send user back to the step to fill them.
+    // Read from dataRef, not the `data` closure — see the comment on dataRef above.
+    const current = dataRef.current;
+    const { course_year, travel_history, via_agency } = current;
     if (course_year === null) { setStep(3); return; }
-    if (travel_history === null) { setStep(6); return; }
+    if (travel_history === null) { setStep(7); return; }
     if (via_agency === null) return;
 
     setSubmitStatus("loading");
@@ -105,19 +122,20 @@ export default function OnboardingPage() {
     try {
       setSubmitStatus("analyzing");
       await apiOnboarding({
-        name: data.name || "Студент",
-        university: data.university || "",
+        name: current.name || "Студент",
+        university: current.university || "",
         course_year,
-        interview_date: data.interview_date,
-        english_level: data.english_level || "medium",
+        profession: current.profession || "",
+        interview_date: current.interview_date,
+        english_level: current.english_level || "medium",
         travel_history,
-        financial_source: data.financial_source || "self",
-        job_offer: data.job_offer || "no",
-        country: data.country || "KZ",
+        financial_source: current.financial_source || "self",
+        job_offer: current.job_offer || "no",
+        country: current.country || "KZ",
         via_agency,
       });
       localStorage.setItem("has_profile", "true");
-      localStorage.setItem("user_name", data.name || "");
+      localStorage.setItem("user_name", current.name || "");
       localStorage.removeItem(STORAGE_KEY);
       track("onboarding_complete");
       setSubmitStatus("done");
@@ -171,13 +189,14 @@ export default function OnboardingPage() {
     1: { title: t("steps.name.question"), subtitle: t("steps.name.subtitle") },
     2: { title: t("steps.university.question") },
     3: { title: t("steps.course.question") },
-    4: { title: t("steps.interview_date.question"), subtitle: t("steps.interview_date.subtitle") },
-    5: { title: t("steps.english.question") },
-    6: { title: t("steps.travel.question") },
-    7: { title: t("steps.financial.question") },
-    8: { title: t("steps.job_offer.question") },
-    9: { title: t("steps.country.question") },
-    10: { title: t("steps.agency.question") },
+    4: { title: t("steps.profession.question") },
+    5: { title: t("steps.interview_date.question"), subtitle: t("steps.interview_date.subtitle") },
+    6: { title: t("steps.english.question") },
+    7: { title: t("steps.travel.question") },
+    8: { title: t("steps.financial.question") },
+    9: { title: t("steps.job_offer.question") },
+    10: { title: t("steps.country.question") },
+    11: { title: t("steps.agency.question") },
   };
 
   return (
@@ -227,48 +246,55 @@ export default function OnboardingPage() {
               )}
               {step === 4 && (
                 <Step4
-                  value={data.interview_date}
-                  onChange={(v) => update("interview_date", v)}
+                  value={data.profession}
+                  onChange={(v) => update("profession", v)}
                   onNext={goNext}
                 />
               )}
               {step === 5 && (
                 <Step5
-                  value={data.english_level}
-                  onChange={(v) => update("english_level", v)}
+                  value={data.interview_date}
+                  onChange={(v) => update("interview_date", v)}
                   onNext={goNext}
                 />
               )}
               {step === 6 && (
                 <Step6
-                  value={data.travel_history}
-                  onChange={(v) => update("travel_history", v)}
+                  value={data.english_level}
+                  onChange={(v) => update("english_level", v)}
                   onNext={goNext}
                 />
               )}
               {step === 7 && (
                 <Step7
-                  value={data.financial_source}
-                  onChange={(v) => update("financial_source", v)}
+                  value={data.travel_history}
+                  onChange={(v) => update("travel_history", v)}
                   onNext={goNext}
                 />
               )}
               {step === 8 && (
                 <Step8
-                  value={data.job_offer}
-                  onChange={(v) => update("job_offer", v)}
+                  value={data.financial_source}
+                  onChange={(v) => update("financial_source", v)}
                   onNext={goNext}
                 />
               )}
               {step === 9 && (
                 <Step9
-                  value={data.country}
-                  onChange={(v) => update("country", v)}
+                  value={data.job_offer}
+                  onChange={(v) => update("job_offer", v)}
                   onNext={goNext}
                 />
               )}
               {step === 10 && (
                 <Step10
+                  value={data.country}
+                  onChange={(v) => update("country", v)}
+                  onNext={goNext}
+                />
+              )}
+              {step === 11 && (
+                <Step11
                   value={data.via_agency}
                   onChange={(v) => update("via_agency", v)}
                   onNext={handleFinish}

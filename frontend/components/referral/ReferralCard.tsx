@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 interface ReferralCardProps {
   totalActive?: number;
@@ -10,6 +11,7 @@ interface ReferralCardProps {
 
 export function ReferralCard({ totalActive = 0, nextTierNeeded }: ReferralCardProps) {
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
 
   return (
     <motion.button
@@ -22,17 +24,17 @@ export function ReferralCard({ totalActive = 0, nextTierNeeded }: ReferralCardPr
         <span className="text-2xl shrink-0">🎁</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-[#F0F0FF] font-semibold text-sm">Пригласи друзей</span>
+            <span className="text-[#F0F0FF] font-semibold text-sm">{t("referral_card.title")}</span>
             {totalActive > 0 && (
               <span className="text-[10px] font-bold bg-[#F59E0B]/15 text-[#F59E0B] px-2 py-0.5 rounded-full">
-                {totalActive} друг{totalActive > 1 ? "а" : ""}
+                {totalActive} {totalActive > 1 ? t("referral_card.friend_plural") : t("referral_card.friend_singular")}
               </span>
             )}
           </div>
           <p className="text-[#8B8BA7] text-xs">
             {nextTierNeeded != null && nextTierNeeded > 0
-              ? `Ещё ${nextTierNeeded} до следующей награды`
-              : "Получи бонусы за каждого друга"}
+              ? t("referral_card.next_tier", { count: nextTierNeeded })
+              : t("referral_card.default_hint")}
           </p>
         </div>
         <span className="text-[#6C63FF] shrink-0">›</span>

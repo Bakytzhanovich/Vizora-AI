@@ -13,14 +13,21 @@ from app.core.database import AsyncSessionLocal, get_db
 from app.core.security import get_current_user_id
 from app.models.profile import StudentProfile
 from app.models.simulator import SimulatorSession
+from app.models.user import User
 from app.services.simulator_service import (
     INTERVIEW_QUESTION_BANK,
     generate_feedback,
     generate_simulator_response,
 )
+from app.services.pdf_report_service import generate_session_pdf
 from app.services.stt_service import speech_to_text
-from app.services.subscription_service import check_feature_access, increment_simulator_usage
+from app.services.subscription_service import check_feature_access, get_user_access, increment_simulator_usage
 from app.services.tts_service import text_to_speech
+
+# Fixed count used only for the free-plan "here's what you missed" upsell
+# copy (see /respond's trial_session_ended response) — it doesn't drive the
+# actual question bank, which samples a variable mix per session.
+FREE_SESSION_TOTAL_QUESTIONS = 15
 
 router = APIRouter(prefix="/simulator", tags=["simulator"])
 
@@ -35,6 +42,7 @@ async def _load_profile(db: AsyncSession, user_id: str) -> tuple[dict, list]:
     student_dict = {
         "country": profile.country,
         "course_year": profile.course_year,
+        "profession": profile.profession,
         "english_level": profile.english_level,
         "travel_history": profile.travel_history,
         "financial_source": profile.financial_source,
@@ -156,6 +164,23 @@ async def respond(
         "timestamp": datetime.utcnow().isoformat(),
     })
 
+    user = await db.get(User, user_id)
+    access = await get_user_access(user, db)
+    max_minutes = access["limits"].get("simulator_session_max_minutes")
+    if max_minutes is not None:
+        elapsed_minutes = (datetime.utcnow() - session.created_at).total_seconds() / 60
+        if elapsed_minutes >= max_minutes:
+            answered = len([t for t in transcript if t["role"] == "student"])
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "trial_session_ended",
+                    "answered": answered,
+                    "total": FREE_SESSION_TOTAL_QUESTIONS,
+                    "upgrade_url": "/pricing",
+                },
+            )
+
     async def event_stream():
         accumulated = ""
         try:
@@ -205,8 +230,9 @@ async def end_session(
 ):
     session = await _load_session(db, body.session_id, user_id)
     transcript: list[dict] = json.loads(session.transcript)
+    profile, risks = await _load_profile(db, user_id)
 
-    feedback = await generate_feedback(transcript, session.mode, session.id)
+    feedback = await generate_feedback(transcript, session.mode, session.id, profile, risks)
 
     session.feedback = json.dumps(feedback, ensure_ascii=False)
     session.scores = json.dumps(feedback.get("scores", {}), ensure_ascii=False)
@@ -291,3 +317,35 @@ async def get_session(
         "transcript": json.loads(session.transcript),
         "feedback": json.loads(session.feedback) if session.feedback else None,
     }
+
+
+@router.get("/session/{session_id}/pdf-report")
+async def get_session_pdf_report(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    has_access, reason = await check_feature_access(user_id, "pdf_report", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+        )
+
+    session = await _load_session(db, session_id, user_id)
+    if not session.completed or not session.feedback:
+        raise HTTPException(status_code=400, detail="Session isn't finished yet")
+
+    pdf_bytes = generate_session_pdf(
+        session_mode=session.mode,
+        difficulty=session.difficulty,
+        created_at=session.created_at,
+        duration_seconds=session.duration_seconds or 0,
+        feedback=json.loads(session.feedback),
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="vizora-report-{session_id[:8]}.pdf"'},
+    )

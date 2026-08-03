@@ -6,6 +6,9 @@ interface Props {
   planLabel: string;
   sessionsUsed: number;
   sessionsLimit: number;
+  /** true for FREE's 1-session lifetime cap (never resets); false for a
+   * paid plan's monthly quota (Standard: 5/month). */
+  neverResets?: boolean;
   onWait: () => void;
 }
 
@@ -15,9 +18,10 @@ function nextMonthResetLabel(): string {
   return next.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 }
 
-/** Shown over the simulator's mode-select screen once a plan's monthly
- * session quota is used up (e.g. Basic: 2/month). */
-export function SessionsLimitOverlay({ planLabel, sessionsUsed, sessionsLimit, onWait }: Props) {
+/** Shown over the simulator's mode-select screen once a plan's session quota
+ * is used up — either FREE's one-time lifetime session, or a paid plan's
+ * monthly quota (e.g. Standard: 5/month). */
+export function SessionsLimitOverlay({ planLabel, sessionsUsed, sessionsLimit, neverResets = false, onWait }: Props) {
   const router = useRouter();
 
   return (
@@ -29,14 +33,17 @@ export function SessionsLimitOverlay({ planLabel, sessionsUsed, sessionsLimit, o
         <div className="bg-[#0A0A0F] rounded-xl p-3 mb-4 text-sm">
           <p className="text-[#8B8BA7]">
             В плане <span className="text-[#F0F0FF] font-semibold">{planLabel}</span>: {sessionsLimit}{" "}
-            {sessionsLimit === 1 ? "сессия" : "сессии"}/мес
+            {sessionsLimit === 1 ? "сессия" : "сессии"}
+            {neverResets ? "" : "/мес"}
           </p>
           <p className="text-[#F0F0FF] font-semibold mt-1">
             Ты использовал: {sessionsUsed}/{sessionsLimit}
           </p>
         </div>
 
-        <p className="text-xs text-[#8B8BA7] mb-5">Следующее обновление: {nextMonthResetLabel()}</p>
+        {!neverResets && (
+          <p className="text-xs text-[#8B8BA7] mb-5">Следующее обновление: {nextMonthResetLabel()}</p>
+        )}
 
         <p className="text-xs text-[#8B8BA7] mb-4">
           Или апгрейд на <span className="text-[#F0F0FF] font-semibold">Стандарт</span>: больше сессий в месяц

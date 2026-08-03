@@ -10,8 +10,6 @@ import ruDocuments from "@/public/locales/ru/documents.json";
 import ruEmergency from "@/public/locales/ru/emergency.json";
 import ruLanding from "@/public/locales/ru/landing.json";
 import ruPricing from "@/public/locales/ru/pricing.json";
-import ruPaywall from "@/public/locales/ru/paywall.json";
-import ruWelcome from "@/public/locales/ru/welcome.json";
 
 import kzCommon from "@/public/locales/kz/common.json";
 import kzDashboard from "@/public/locales/kz/dashboard.json";
@@ -22,8 +20,6 @@ import kzDocuments from "@/public/locales/kz/documents.json";
 import kzEmergency from "@/public/locales/kz/emergency.json";
 import kzLanding from "@/public/locales/kz/landing.json";
 import kzPricing from "@/public/locales/kz/pricing.json";
-import kzPaywall from "@/public/locales/kz/paywall.json";
-import kzWelcome from "@/public/locales/kz/welcome.json";
 
 export const STORAGE_KEY = "vizora_language";
 export const SUPPORTED_LANGUAGES = ["ru", "kz"] as const;
@@ -52,8 +48,6 @@ if (!i18n.isInitialized) {
         emergency: ruEmergency,
         landing: ruLanding,
         pricing: ruPricing,
-        paywall: ruPaywall,
-        welcome: ruWelcome,
       },
       kz: {
         common: kzCommon,
@@ -65,8 +59,6 @@ if (!i18n.isInitialized) {
         emergency: kzEmergency,
         landing: kzLanding,
         pricing: kzPricing,
-        paywall: kzPaywall,
-        welcome: kzWelcome,
       },
     },
     lng: getStoredLanguage(),
@@ -82,8 +74,6 @@ if (!i18n.isInitialized) {
       "emergency",
       "landing",
       "pricing",
-      "paywall",
-      "welcome",
     ],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },

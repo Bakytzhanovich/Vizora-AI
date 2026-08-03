@@ -8,6 +8,7 @@ import { TranscriptItem, TranscriptEntry } from "./TranscriptItem";
 import { VoiceButton, VoiceState } from "./VoiceButton";
 import { VoiceRecorder } from "@/lib/voice";
 import type { FeedbackData } from "./ResultsScreen";
+import { TrialSessionEndedModal } from "./TrialSessionEndedModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -39,6 +40,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
   const [timer, setTimer] = useState(0);
   const [questionNumber, setQuestionNumber] = useState(1);
   const [isEnding, setIsEnding] = useState(false);
+  const [trialEnded, setTrialEnded] = useState<{ answered: number; total: number } | null>(null);
 
   const recorderRef = useRef(new VoiceRecorder());
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -126,7 +128,18 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
         body: JSON.stringify({ session_id: sessionId, student_answer: text, question_number: questionNumber }),
       });
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 403) {
+          const body = await res.json().catch(() => null);
+          if (body?.detail?.error === "trial_session_ended") {
+            setTranscript((prev) => prev.filter((m) => m.id !== officerId));
+            setTrialEnded({ answered: body.detail.answered, total: body.detail.total });
+            setIsStreaming(false);
+            return;
+          }
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       reader = res.body?.getReader();
       const decoder = new TextDecoder();
@@ -228,6 +241,10 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
   };
 
   const isBusy = isStreaming || voiceState === "processing" || isPlaying;
+
+  if (trialEnded) {
+    return <TrialSessionEndedModal answered={trialEnded.answered} total={trialEnded.total} />;
+  }
 
   return (
     <div className="flex flex-col h-screen bg-[#0A0A0F]">

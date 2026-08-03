@@ -126,7 +126,7 @@ export function useAuth() {
     router.push("/login");
   };
 
-  const refreshProfile = () => loadUser();
+  const refreshProfile = loadUser;
 
   return { ...state, login, loginWithGoogle, logout, register, refreshProfile };
 }

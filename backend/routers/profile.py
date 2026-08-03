@@ -32,6 +32,7 @@ class OnboardingRequest(BaseModel):
     name: str
     university: str
     course_year: int
+    profession: str
     interview_date: date | None = None
     english_level: str
     travel_history: bool
@@ -67,6 +68,7 @@ async def onboarding(
         name=body.name,
         university=body.university,
         course_year=body.course_year,
+        profession=body.profession,
         interview_date=body.interview_date,
         english_level=body.english_level,
         travel_history=body.travel_history,
@@ -100,6 +102,7 @@ async def onboarding(
             "name": profile.name,
             "university": profile.university,
             "course_year": profile.course_year,
+            "profession": profile.profession,
             "interview_date": profile.interview_date.isoformat() if profile.interview_date else None,
             "english_level": profile.english_level,
             "travel_history": profile.travel_history,
@@ -145,17 +148,16 @@ async def get_me(
     )
     profile = profile_result.scalar_one_or_none()
 
+    # Risks themselves are always visible (even on FREE) — only the "how to
+    # fix" advice is plan-gated, and that's a frontend-side lock driven by
+    # subscription.limits.risk_solutions, not something hidden at the API level.
     risk = json.loads(profile.risk_profile) if profile and profile.risk_profile else None
 
     access = await get_user_access(user, db)
-    if not (access["full_access"] and access["limits"].get("risk_analysis")):
-        risk = None
-    banner = get_subscription_banner(access)
+    banner = get_subscription_banner(user.subscription_status)
     subscription = {
-        "status": access["status"],
-        "plan": access.get("plan"),
-        "days_remaining": access.get("days_remaining"),
-        "trial_ends_at": user.trial_ends_at.isoformat() if user.trial_ends_at else None,
+        "plan": access["plan"],
+        "limits": access["limits"],
         "period_end": user.subscription_period_end.isoformat() if user.subscription_period_end else None,
         "sessions_used": access.get("sessions_used"),
         "sessions_limit": access.get("sessions_limit"),
@@ -185,6 +187,7 @@ async def get_me(
             "name": profile.name,
             "university": profile.university,
             "course_year": profile.course_year,
+            "profession": profile.profession,
             "interview_date": profile.interview_date.isoformat() if profile.interview_date else None,
             "english_level": profile.english_level,
             "travel_history": profile.travel_history,

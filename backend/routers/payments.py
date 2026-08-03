@@ -5,11 +5,11 @@ but the actual HTTP calls to Kaspi are placeholders pending merchant docs."""
 import json
 import logging
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 # Placeholder pricing — a real business decision, not something to take from
 # a spec literally. Yearly = 12 months at a 30% discount, rounded to a clean number.
 PLAN_PRICES_KZT: dict[str, dict[str, int]] = {
-    "basic": {"monthly": 2_500, "yearly": 21_000},
+    "free": {"monthly": 0, "yearly": 0},
     "standard": {"monthly": 4_900, "yearly": 41_200},
     "premium": {"monthly": 7_900, "yearly": 66_400},
     "agency_starter": {"monthly": 149_000, "yearly": 1_251_600},
@@ -36,7 +36,7 @@ PLAN_PRICES_KZT: dict[str, dict[str, int]] = {
 }
 
 PLAN_NAMES_RU = {
-    "basic": "Базовый",
+    "free": "Бесплатный",
     "standard": "Стандарт",
     "premium": "Премиум",
     "agency_starter": "Agency Starter",
@@ -44,8 +44,10 @@ PLAN_NAMES_RU = {
     "agency_partner": "Agency Partner",
 }
 
-TRIAL_DISCOUNT_CODE = "trial30"
-TRIAL_DISCOUNT_RATE = 0.3
+# Promo discount for FREE-plan users upgrading — separate from any trial
+# concept (there is no trial anymore, FREE is permanent).
+UPGRADE_DISCOUNT_CODE = "trial30"
+UPGRADE_DISCOUNT_RATE = 0.3
 
 
 @router.get("/plans")
@@ -62,9 +64,46 @@ async def list_plans():
             }
             for plan_id, prices in PLAN_PRICES_KZT.items()
         ],
-        "trial_days": 7,
-        "trial_discount_code": TRIAL_DISCOUNT_CODE,
-        "trial_discount_rate": TRIAL_DISCOUNT_RATE,
+        "upgrade_discount_code": UPGRADE_DISCOUNT_CODE,
+        "upgrade_discount_rate": UPGRADE_DISCOUNT_RATE,
+    }
+
+
+@router.get("/social-proof")
+async def social_proof(db: AsyncSession = Depends(get_db)):
+    """Public — powers the trust row under /pricing plans. Computed from real
+    data (not hardcoded) so it never drifts out of sync with actual usage.
+
+    Scores are stored as a JSON blob per session (see SimulatorSession.scores),
+    so averaging happens in Python rather than a dialect-specific JSON query —
+    this app runs on both SQLite (local dev) and Postgres (prod), and this
+    mirrors the same pattern already used in /trial-summary above.
+    """
+    student_count = await db.scalar(select(func.count(StudentProfile.id)))
+
+    sessions = list(
+        (
+            await db.execute(
+                select(SimulatorSession.scores).where(SimulatorSession.completed.is_(True))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    scores: list[float] = []
+    for raw in sessions:
+        if not raw:
+            continue
+        try:
+            overall = json.loads(raw).get("overall")
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        if isinstance(overall, (int, float)):
+            scores.append(float(overall))
+
+    return {
+        "student_count": student_count or 0,
+        "average_score": round(sum(scores) / len(scores), 1) if scores else None,
     }
 
 
@@ -82,6 +121,8 @@ async def create_payment(
 ):
     if body.plan not in PLAN_PRICES_KZT:
         raise HTTPException(status_code=400, detail=f"Unknown plan: {body.plan}")
+    if body.plan == "free":
+        raise HTTPException(status_code=400, detail="Free plan doesn't require payment")
     if body.billing_period not in ("monthly", "yearly"):
         raise HTTPException(status_code=400, detail="billing_period must be 'monthly' or 'yearly'")
 
@@ -93,8 +134,8 @@ async def create_payment(
 
     amount = PLAN_PRICES_KZT[body.plan][body.billing_period]
     discount_applied = False
-    if body.discount_code == TRIAL_DISCOUNT_CODE and access["status"] in ("trial", "expired"):
-        amount = round(amount * (1 - TRIAL_DISCOUNT_RATE))
+    if body.discount_code == UPGRADE_DISCOUNT_CODE and access["plan"] == "free":
+        amount = round(amount * (1 - UPGRADE_DISCOUNT_RATE))
         discount_applied = True
 
     order_id = str(uuid.uuid4())
@@ -292,45 +333,3 @@ async def payment_status(
     }
 
 
-@router.get("/trial-summary")
-async def trial_summary(
-    user_id: str = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    sessions = list(
-        (
-            await db.execute(
-                select(SimulatorSession)
-                .where(SimulatorSession.user_id == user_id)
-                .order_by(SimulatorSession.created_at.asc())
-            )
-        )
-        .scalars()
-        .all()
-    )
-    sessions_count = len(sessions)
-
-    scored: list[float] = []
-    for s in sessions:  # chronological order — first/last reflects real progress
-        if not s.scores:
-            continue
-        try:
-            overall = json.loads(s.scores).get("overall")
-        except (json.JSONDecodeError, AttributeError):
-            continue
-        if isinstance(overall, (int, float)):
-            scored.append(float(overall))
-    first_score = scored[0] if scored else None
-    last_score = scored[-1] if scored else None
-
-    profile = await db.scalar(select(StudentProfile).where(StudentProfile.user_id == user_id))
-    days_to_interview = None
-    if profile and profile.interview_date:
-        days_to_interview = (profile.interview_date - date.today()).days
-
-    return {
-        "sessions_count": sessions_count,
-        "first_score": first_score,
-        "last_score": last_score,
-        "days_to_interview": days_to_interview,
-    }

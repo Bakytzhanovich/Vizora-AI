@@ -12,7 +12,7 @@
   "modules": "Модули подготовки",
   "module_titles": {
     "chat": "AI Помощник",
-    "simulator": "Симулятор интервью",
+    "simulator": "AI консул США",
     "documents": "Документы",
     "roadmap": "Roadmap"
   },
@@ -26,6 +26,7 @@
   "my_profile": "Твой профиль",
   "university": "Университет",
   "course": "Курс",
+  "profession": "Профессия",
   "course_suffix": "курс",
   "english": "Английский",
   "country": "Страна",
@@ -45,5 +46,39 @@
     "weak": "Слабый",
     "medium": "Средний",
     "good": "Хороший"
+  },
+  "show_more_risks": "Показать ещё {{count}}",
+  "hide_extra_risks": "Скрыть",
+  "recommended_badge": "Рекомендуем",
+  "continue_hint": "Продолжи с того, где остановился",
+  "show_profile": "Показать профиль",
+  "hide_profile": "Скрыть профиль",
+  "referral_card": {
+    "title": "Пригласи друзей",
+    "friend_singular": "друг",
+    "friend_plural": "друга",
+    "next_tier": "Ещё {{count}} до следующей награды",
+    "default_hint": "Получи бонусы за каждого друга"
+  },
+  "after_visa_card": {
+    "locked_title": "После визы",
+    "locked_desc": "Откроется после получения визы в Roadmap",
+    "title": "После визы",
+    "unlocked_badge": "Разблокировано",
+    "desc": "Подготовка к поездке и жизнь в США"
+  },
+  "free_plan_usage": "Ты на FREE плане. Симулятор: {{used}}/{{total}} сессия использована",
+  "upgrade_banner": {
+    "title": "Перейди на СТАНДАРТ",
+    "line1": "5 сессий симулятора каждый месяц",
+    "line2": "+ Режим Консул + Анализ рисков",
+    "cta": "Подписаться {{price}} →"
+  },
+  "locked_features": {
+    "title": "Доступно в Стандарт",
+    "consul_mode": "Режим Консул",
+    "detailed_feedback": "Детальный фидбек",
+    "after_visa": "После визы",
+    "cta": "Доступно в СТАНДАРТ"
   }
 }

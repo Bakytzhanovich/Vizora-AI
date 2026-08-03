@@ -17,7 +17,7 @@ class User(Base):
         ),
         CheckConstraint(
             "subscription_plan IS NULL OR subscription_plan IN "
-            "('basic', 'standard', 'premium', 'agency_starter', 'agency_business', 'agency_partner')",
+            "('free', 'standard', 'premium', 'agency_starter', 'agency_business', 'agency_partner')",
             name="ck_users_subscription_plan",
         ),
         CheckConstraint(
@@ -39,10 +39,13 @@ class User(Base):
     language = Column(String(5), nullable=False, default="ru")  # "ru" | "kz"
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # ─── Monetization (trial + Kaspi Pay subscription) ────────────────────────
+    # ─── Monetization (Free / Standard / Premium + Kaspi Pay) ─────────────────
+    # trial_started_at/trial_ends_at are vestigial — kept for historical data
+    # from the old 7-day-trial model, no longer read anywhere. FREE is now a
+    # permanent plan (see subscription_service.set_free_plan), not a trial.
     trial_started_at = Column(DateTime, nullable=True)
     trial_ends_at = Column(DateTime, nullable=True)
-    subscription_status = Column(String(20), nullable=False, default="trial")
+    subscription_status = Column(String(20), nullable=False, default="active")
     subscription_plan = Column(String(30), nullable=True)
     # Kaspi has no native recurring-subscription object (unlike Stripe) — we track
     # which billing period was purchased so renewal can compute the next amount/date.

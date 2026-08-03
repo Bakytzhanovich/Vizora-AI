@@ -41,7 +41,7 @@ export function TelegramAuthHandler() {
       localStorage.setItem("user_id", result.user_id);
 
       if (result.is_new_user) {
-        router.replace("/welcome");
+        router.replace("/onboarding");
       } else {
         router.replace(redirectPath ?? "/dashboard");
       }

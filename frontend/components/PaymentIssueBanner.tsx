@@ -23,20 +23,22 @@ const ICONS: Record<string, string> = {
 };
 
 /**
- * Sticky top banner nudging trial/expired/past_due users toward a plan.
- * Mounted once in the root layout so it shows on every authenticated page
- * without each page needing to wire it up individually.
+ * Sticky top banner nudging a user to fix payment after a failed Kaspi
+ * renewal charge — the only case that still produces a banner now that FREE
+ * is a permanent plan (no more trial/expiry banners). Mounted once in the
+ * root layout so it shows on every authenticated page without each page
+ * needing to wire it up individually.
  */
-export function TrialBanner() {
+export function PaymentIssueBanner() {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, subscription, refreshProfile } = useAuth();
 
-  // TrialBanner lives in the root layout, which doesn't remount on
-  // client-side navigation — so useAuth()'s own mount-time fetch goes stale
-  // the moment subscription state changes elsewhere (e.g. completing a
-  // payment on /pricing, then router.push()-ing to /dashboard). Re-fetch on
-  // every route change so the banner reflects the page the user just landed on.
+  // Lives in the root layout, which doesn't remount on client-side
+  // navigation — so useAuth()'s own mount-time fetch goes stale the moment
+  // subscription state changes elsewhere (e.g. completing a payment on
+  // /pricing, then router.push()-ing to /dashboard). Re-fetch on every route
+  // change so the banner reflects the page the user just landed on.
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {

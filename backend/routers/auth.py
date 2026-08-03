@@ -26,7 +26,7 @@ from app.core.security import (
 from app.models.profile import StudentProfile
 from app.models.referral import Referral, ReferralCode
 from app.models.user import User
-from app.services.subscription_service import start_trial
+from app.services.subscription_service import set_free_plan
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
@@ -138,7 +138,7 @@ async def register(
     db: AsyncSession = Depends(get_db),
 ):
     user = User(email=body.email.lower(), password_hash=hash_password(body.password))
-    start_trial(user)
+    set_free_plan(user)
     db.add(user)
     try:
         await db.commit()
@@ -251,7 +251,7 @@ async def google_auth(
             oauth_id=google_id,
             avatar_url=avatar_url,
         )
-        start_trial(user)
+        set_free_plan(user)
         db.add(user)
         try:
             await db.commit()
@@ -364,7 +364,7 @@ async def telegram_auth(
             telegram_id=tg_id,
             telegram_username=body.telegram_username,
         )
-        start_trial(user)
+        set_free_plan(user)
         db.add(user)
         try:
             await db.commit()

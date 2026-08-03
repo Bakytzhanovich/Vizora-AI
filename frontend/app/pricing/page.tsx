@@ -3,18 +3,19 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Check, X } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import {
   apiGetPlans,
+  apiGetSocialProof,
   apiCreatePayment,
   apiMockCompletePayment,
   type Plan,
   type CreatePaymentResponse,
 } from "@/lib/api";
 
-const CONSUMER_PLAN_IDS = ["basic", "standard", "premium"];
+const CONSUMER_PLAN_IDS = ["free", "standard", "premium"];
 
 function formatKzt(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount) + " ₸";
@@ -27,6 +28,7 @@ function PricingContent() {
   const { isAuthenticated, subscription } = useAuth();
 
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [socialProof, setSocialProof] = useState<{ student_count: number; average_score: number | null } | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
   const [startingPlan, setStartingPlan] = useState<string | null>(null);
@@ -38,13 +40,20 @@ function PricingContent() {
   const discountCode = searchParams.get("discount") || undefined;
 
   useEffect(() => {
-    apiGetPlans()
-      .then((d) => setPlans(d.plans.filter((p) => CONSUMER_PLAN_IDS.includes(p.id))))
+    Promise.all([apiGetPlans(), apiGetSocialProof()])
+      .then(([p, sp]) => {
+        setPlans(p.plans.filter((pl) => CONSUMER_PLAN_IDS.includes(pl.id)));
+        setSocialProof(sp);
+      })
       .catch(() => setError("Не удалось загрузить тарифы"))
       .finally(() => setLoading(false));
   }, []);
 
   const handleStart = async (planId: string) => {
+    if (planId === "free") {
+      router.push(isAuthenticated ? "/dashboard" : "/register");
+      return;
+    }
     if (!isAuthenticated) {
       router.push("/register");
       return;
@@ -81,23 +90,29 @@ function PricingContent() {
   const featureRows = (plan: Plan) => {
     const l = plan.limits;
     const rows: { label: string; ok: boolean }[] = [
-      { label: t("features.faq_unlimited"), ok: true },
-      {
-        label:
-          l.simulator_sessions_per_month === null
-            ? t("features.sessions_unlimited")
-            : t(
-                l.simulator_sessions_per_month === 1 ? "features.sessions" : "features.sessions_plural",
-                { count: l.simulator_sessions_per_month }
-              ),
-        ok: true,
-      },
+      l.faq_per_day === null
+        ? { label: t("features.faq_unlimited"), ok: true }
+        : { label: t("features.faq_limited", { count: l.faq_per_day }), ok: true },
+      l.simulator_sessions_total != null
+        ? { label: t("features.sessions_total_one", { count: l.simulator_sessions_total }), ok: true }
+        : l.simulator_sessions_per_month === null
+        ? { label: t("features.sessions_unlimited"), ok: true }
+        : {
+            label: t(
+              l.simulator_sessions_per_month === 1 ? "features.sessions" : "features.sessions_plural",
+              { count: l.simulator_sessions_per_month }
+            ),
+            ok: true,
+          },
       { label: l.consul_mode ? t("features.mode_trainer_consul") : t("features.mode_trainer"), ok: true },
-      { label: t("features.risk_analysis"), ok: l.risk_analysis },
+      { label: t("features.detailed_feedback"), ok: l.detailed_feedback },
+      { label: t("features.risk_solutions"), ok: l.risk_solutions },
+      { label: t("features.ds160_guide"), ok: l.ds160_guide },
       { label: t("features.after_visa"), ok: l.after_visa },
       { label: t("features.emergency"), ok: l.emergency },
     ];
-    if (plan.id !== "basic") rows.push({ label: t("features.priority_support"), ok: true });
+    if (l.pdf_report) rows.push({ label: t("features.pdf_report"), ok: true });
+    if (l.priority_support) rows.push({ label: t("features.priority_support"), ok: true });
     return rows;
   };
 
@@ -149,8 +164,9 @@ function PricingContent() {
         ) : (
           <div className="grid md:grid-cols-3 gap-5 mb-10">
             {plans.map((plan) => {
+              const isFree = plan.id === "free";
               const isPopular = plan.id === "standard";
-              const isCurrent = subscription?.status === "active" && subscription.plan === plan.id;
+              const isCurrent = subscription?.plan === plan.id;
               const price = plan.prices_kzt[billingPeriod];
               return (
                 <div
@@ -171,9 +187,11 @@ function PricingContent() {
                   </h3>
                   <div className="mb-5">
                     <span className="text-3xl font-bold text-[#F0F0FF]">{formatKzt(price)}</span>
-                    <span className="text-[#8B8BA7] text-sm">
-                      {billingPeriod === "monthly" ? t("per_month") : t("per_year")}
-                    </span>
+                    {!isFree && (
+                      <span className="text-[#8B8BA7] text-sm">
+                        {billingPeriod === "monthly" ? t("per_month") : t("per_year")}
+                      </span>
+                    )}
                   </div>
                   <ul className="space-y-2.5 mb-6 flex-1">
                     {featureRows(plan).map((row, i) => (
@@ -181,7 +199,7 @@ function PricingContent() {
                         {row.ok ? (
                           <Check size={16} className="text-[#00D4AA] shrink-0 mt-0.5" />
                         ) : (
-                          <X size={16} className="text-[#8B8BA7] shrink-0 mt-0.5" />
+                          <Lock size={14} className="text-[#8B8BA7] shrink-0 mt-1" />
                         )}
                         <span className={row.ok ? "text-[#F0F0FF]" : "text-[#8B8BA7]"}>{row.label}</span>
                       </li>
@@ -196,7 +214,13 @@ function PricingContent() {
                         : "bg-[#1E1E2E] hover:bg-[#2A2A3A] text-[#F0F0FF]"
                     }`}
                   >
-                    {isCurrent ? t("cta_current") : startingPlan === plan.id ? t("processing") : t("cta_start")}
+                    {isCurrent
+                      ? t("cta_current")
+                      : startingPlan === plan.id
+                      ? t("processing")
+                      : isFree
+                      ? t("cta_free")
+                      : t("cta_start")}
                   </button>
                 </div>
               );
@@ -219,11 +243,22 @@ function PricingContent() {
           </div>
         )}
 
+        {/* Social proof */}
+        {socialProof && (
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#F0F0FF] mb-4">
+            {socialProof.student_count > 0 && (
+              <span>{t("social_proof.students", { count: socialProof.student_count })}</span>
+            )}
+            {socialProof.average_score != null && (
+              <span>{t("social_proof.average_score", { score: socialProof.average_score })}</span>
+            )}
+          </div>
+        )}
+
         {/* Trust row */}
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-[#8B8BA7] mb-14">
           <span>{t("trust.secure_payment")}</span>
           <span>{t("trust.cancel_anytime")}</span>
-          <span>{t("trust.trial_included")}</span>
         </div>
 
         {/* FAQ */}

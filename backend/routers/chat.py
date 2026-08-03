@@ -15,7 +15,7 @@ from app.models.profile import StudentProfile
 from app.models.user import User
 from app.services.ai_service import generate_chat_response
 from app.services.rag_service import search_knowledge
-from app.services.subscription_service import check_feature_access
+from app.services.subscription_service import PLAN_LIMITS, check_feature_access
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -40,7 +40,7 @@ async def send_message(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
                 "error": "faq_limit_reached",
-                "message": "Ты использовал 3 бесплатных вопроса сегодня",
+                "message": f"Лимит {PLAN_LIMITS['free']['faq_per_day']} вопросов на сегодня",
                 "upgrade_url": "/pricing",
             },
         )
@@ -58,8 +58,10 @@ async def send_message(
     student_profile: dict = {}
     if profile:
         student_profile = {
+            "name": profile.name,
             "country": profile.country,
             "course_year": profile.course_year,
+            "profession": profile.profession,
             "english_level": profile.english_level,
             "travel_history": profile.travel_history,
             "financial_source": profile.financial_source,

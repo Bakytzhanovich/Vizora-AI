@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogOut } from "lucide-react";
+import { LogOut, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
@@ -14,12 +14,16 @@ import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
 import { ReferralCard } from "@/components/referral/ReferralCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { PlanBadge } from "@/components/PlanBadge";
-import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode } from "@/lib/api";
+import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode, apiGetPlans } from "@/lib/api";
 import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
 
-const moduleHrefs = ["/chat", "/simulator", "/documents", "/roadmap"] as const;
-const moduleIcons = ["🤖", "🎤", "📄", "🗺️"];
-const moduleKeys = ["chat", "simulator", "documents", "roadmap"] as const;
+function formatKzt(amount: number): string {
+  return new Intl.NumberFormat("ru-RU").format(amount) + " ₸/мес";
+}
+
+const restModuleHrefs = ["/chat", "/simulator", "/documents"] as const;
+const restModuleIcons = ["🤖", "🎤", "📄"];
+const restModuleKeys = ["chat", "simulator", "documents"] as const;
 
 const riskColors: Record<string, string> = {
   high: "#FF6B6B",
@@ -36,7 +40,10 @@ export default function DashboardPage() {
   const [journeyProgress, setJourneyProgress] = useState(10);
   const [afterVisa, setAfterVisa] = useState<{ unlocked: boolean; pct: number; completed: number; total: number } | null>(null);
   const [referralStats, setReferralStats] = useState<{ totalActive: number; nextNeeded: number | null } | null>(null);
+  const [standardPriceKzt, setStandardPriceKzt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAllRisks, setShowAllRisks] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("access_token")) {
@@ -48,8 +55,9 @@ export default function DashboardPage() {
       apiGetRoadmap().catch(() => null),
       apiGetAfterVisaModules().catch(() => null),
       apiGetReferralCode().catch(() => null),
+      apiGetPlans().catch(() => null),
     ])
-      .then(([me, roadmap, av, ref]) => {
+      .then(([me, roadmap, av, ref, plansRes]) => {
         if (me.user.role === "admin") {
           router.replace("/admin/dashboard");
           return;
@@ -67,6 +75,10 @@ export default function DashboardPage() {
           const active = ref.stats.total_active;
           const next = ref.stats.next_tier;
           setReferralStats({ totalActive: active, nextNeeded: next ? next.referrals_needed - active : null });
+        }
+        if (plansRes) {
+          const standard = plansRes.plans.find((p) => p.id === "standard");
+          if (standard) setStandardPriceKzt(standard.prices_kzt.monthly);
         }
       })
       .catch(() => router.replace("/login"))
@@ -91,6 +103,7 @@ export default function DashboardPage() {
   const overallRisk = riskProfile?.overall_risk ?? "medium";
   const riskColor = riskColors[overallRisk];
   const topRisks = riskProfile?.risks.slice(0, 3) ?? [];
+  const isFree = subscription?.plan === "free";
 
   if (loading) {
     return (
@@ -101,7 +114,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-4 py-6 max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[#0A0A0F] px-4 py-6 max-w-5xl mx-auto">
       <PoweredByFooter />
       {/* Top nav */}
       <div className="flex items-center justify-between mb-8">
@@ -161,144 +174,246 @@ export default function DashboardPage() {
           <span>✓</span>
           <span>{t("dashboard:profile_complete")}</span>
         </div>
+        {isFree && subscription && (
+          <div className="mt-3 pt-3 border-t border-[#1E1E2E] text-xs text-[#8B8BA7]">
+            {t("dashboard:free_plan_usage", {
+              used: subscription.sessions_used ?? 0,
+              total: subscription.sessions_limit ?? 1,
+            })}
+          </div>
+        )}
       </motion.div>
 
-      {/* Risk profile */}
-      {riskProfile && topRisks.length > 0 && (
+      {/* Upgrade banner (FREE plan only) — visible but not aggressive */}
+      {isFree && standardPriceKzt !== null && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5 mb-5"
+          transition={{ delay: 0.15 }}
+          className="bg-gradient-to-r from-[#6C63FF]/10 to-[#6C63FF]/5 border border-[#6C63FF]/30 rounded-2xl p-5 mb-5"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[#F0F0FF] font-semibold text-sm">{t("dashboard:risk_profile")}</h2>
-            <span
-              className="text-xs font-bold px-2.5 py-1 rounded-full"
-              style={{ color: riskColor, background: `${riskColor}18` }}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">⭐</span>
+            <span className="text-[#F0F0FF] font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
+          </div>
+          <p className="text-[#8B8BA7] text-sm">{t("dashboard:upgrade_banner.line1")}</p>
+          <p className="text-[#8B8BA7] text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
+          <button
+            onClick={() => router.push("/pricing")}
+            className="w-full sm:w-auto bg-[#6C63FF] hover:bg-[#7C75FF] text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+          >
+            {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
+          </button>
+        </motion.div>
+      )}
+
+      {/* Main content (mobile: stacks in order below; desktop: 2/3 + 1/3 sidebar) */}
+      <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+        {/* Main column */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Risk profile */}
+          {riskProfile && topRisks.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
             >
-              {t(`dashboard:risk_${overallRisk}` as const)}
-            </span>
-          </div>
-          <div className="space-y-2.5">
-            {topRisks.map((risk, i) => (
-              <RiskCard key={risk.type} risk={risk} index={i} />
-            ))}
-          </div>
-          {topRisks.length === 0 && (
-            <p className="text-[#8B8BA7] text-sm text-center py-2">
-              {t("dashboard:no_risks")}
-            </p>
-          )}
-        </motion.div>
-      )}
-
-      {/* Modules */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:modules")}</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {moduleKeys.map((key, i) => (
-            <ModuleCard
-              key={key}
-              icon={moduleIcons[i]}
-              title={t(`dashboard:module_titles.${key}`)}
-              locked={false}
-              href={moduleHrefs[i]}
-              index={i}
-            />
-          ))}
-        </div>
-      </motion.div>
-
-      {/* After Visa card */}
-      {afterVisa !== null && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-5"
-        >
-          <AfterVisaCard
-            unlocked={afterVisa.unlocked}
-            overallPct={afterVisa.pct}
-            overallCompleted={afterVisa.completed}
-            overallTotal={afterVisa.total}
-          />
-        </motion.div>
-      )}
-
-      {/* Referral card */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.48 }}
-        className="mt-3"
-      >
-        <ReferralCard
-          totalActive={referralStats?.totalActive ?? 0}
-          nextTierNeeded={referralStats?.nextNeeded ?? undefined}
-        />
-      </motion.div>
-
-      {/* Emergency card */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
-        className="mt-5"
-      >
-        <button
-          onClick={() => router.push("/emergency")}
-          className="w-full text-left bg-[#13131A] border border-[#FF6B6B]/30 rounded-2xl p-5 hover:border-[#FF6B6B]/60 hover:bg-[#1A1010] transition-all active:scale-[0.98]"
-        >
-          <div className="flex items-center gap-4">
-            <div className="text-3xl shrink-0">🆘</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[#FF6B6B] font-bold text-base">{t("dashboard:emergency_banner.title")}</span>
-                <span className="text-[10px] font-bold bg-[#FF6B6B]/15 text-[#FF6B6B] px-2 py-0.5 rounded-full">
-                  {t("dashboard:emergency_banner.badge")}
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[#F0F0FF] font-semibold text-sm">{t("dashboard:risk_profile")}</h2>
+                <span
+                  className="text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ color: riskColor, background: `${riskColor}18` }}
+                >
+                  {t(`dashboard:risk_${overallRisk}` as const)}
                 </span>
               </div>
-              <p className="text-[#8B8BA7] text-sm">
-                {t("dashboard:emergency_banner.desc")}
-              </p>
-            </div>
-            <span className="text-[#FF6B6B] shrink-0">›</span>
-          </div>
-        </button>
-      </motion.div>
-
-      {/* Profile info */}
-      {profile && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-5 bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
-        >
-          <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:my_profile")}</h2>
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            {[
-              { label: t("dashboard:university"), value: profile.university },
-              { label: t("dashboard:course"), value: `${profile.course_year} ${t("dashboard:course_suffix")}` },
-              { label: t("dashboard:english"), value: t(`dashboard:english_levels.${profile.english_level}` as const, { defaultValue: profile.english_level }) },
-              { label: t("dashboard:country"), value: profile.country },
-              { label: t("dashboard:job_offer"), value: t(`dashboard:job_offer_status.${profile.job_offer}` as const, { defaultValue: profile.job_offer }) },
-              { label: t("dashboard:financing"), value: t(`dashboard:financing_source.${profile.financial_source}` as const, { defaultValue: profile.financial_source }) },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-[#0A0A0F] rounded-xl px-3 py-2.5">
-                <div className="text-[#8B8BA7] mb-0.5">{label}</div>
-                <div className="text-[#F0F0FF] font-medium">{value}</div>
+              <div className="space-y-2.5">
+                <RiskCard risk={topRisks[0]} index={0} locked={!(subscription?.limits.risk_solutions ?? true)} />
+                {showAllRisks &&
+                  topRisks.slice(1).map((risk, i) => (
+                    <RiskCard key={risk.type} risk={risk} index={i + 1} locked={!(subscription?.limits.risk_solutions ?? true)} />
+                  ))}
               </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+              {topRisks.length > 1 && (
+                <button
+                  onClick={() => setShowAllRisks((v) => !v)}
+                  className="flex items-center gap-1 text-[#8B8BA7] hover:text-[#F0F0FF] text-xs mt-3 transition-colors"
+                >
+                  {showAllRisks ? (
+                    <>
+                      <ChevronUp size={14} />
+                      {t("dashboard:hide_extra_risks")}
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={14} />
+                      {t("dashboard:show_more_risks", { count: topRisks.length - 1 })}
+                    </>
+                  )}
+                </button>
+              )}
+            </motion.div>
+          )}
+
+          {/* Modules */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:modules")}</h2>
+            <div className="mb-3">
+              <ModuleCard
+                icon="🗺️"
+                title={t("dashboard:module_titles.roadmap")}
+                subtitle={t("dashboard:continue_hint")}
+                locked={false}
+                href="/roadmap"
+                index={0}
+                featured
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {restModuleKeys.map((key, i) => (
+                <ModuleCard
+                  key={key}
+                  icon={restModuleIcons[i]}
+                  title={t(`dashboard:module_titles.${key}`)}
+                  locked={false}
+                  href={restModuleHrefs[i]}
+                  index={i}
+                />
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="mt-5 lg:mt-0 lg:col-span-1 space-y-3">
+          {/* After Visa card */}
+          {afterVisa !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <AfterVisaCard
+                unlocked={afterVisa.unlocked && (subscription?.limits.after_visa ?? true)}
+                overallPct={afterVisa.pct}
+                overallCompleted={afterVisa.completed}
+                overallTotal={afterVisa.total}
+              />
+            </motion.div>
+          )}
+
+          {/* Locked features (FREE plan only) */}
+          {isFree && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.42 }}
+              className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
+            >
+              <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:locked_features.title")}</h2>
+              <div className="space-y-2.5 mb-4">
+                {(["consul_mode", "detailed_feedback", "after_visa"] as const).map((key) => (
+                  <div key={key} className="flex items-center gap-2 text-sm text-[#8B8BA7]">
+                    <Lock size={14} className="shrink-0" />
+                    <span>{t(`dashboard:locked_features.${key}`)}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => router.push("/pricing")}
+                className="w-full text-xs font-semibold text-[#6C63FF] hover:text-[#9C8BFF] transition-colors text-left"
+              >
+                {t("dashboard:locked_features.cta")} →
+              </button>
+            </motion.div>
+          )}
+
+          {/* Referral card */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.48 }}
+          >
+            <ReferralCard
+              totalActive={referralStats?.totalActive ?? 0}
+              nextTierNeeded={referralStats?.nextNeeded ?? undefined}
+            />
+          </motion.div>
+
+          {/* Emergency card */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+          >
+            <button
+              onClick={() => router.push("/emergency")}
+              className="w-full text-left bg-[#13131A] border border-[#FF6B6B]/30 rounded-2xl p-5 hover:border-[#FF6B6B]/60 hover:bg-[#1A1010] transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-3xl shrink-0">🆘</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[#FF6B6B] font-bold text-base">{t("dashboard:emergency_banner.title")}</span>
+                    <span className="text-[10px] font-bold bg-[#FF6B6B]/15 text-[#FF6B6B] px-2 py-0.5 rounded-full">
+                      {t("dashboard:emergency_banner.badge")}
+                    </span>
+                  </div>
+                  <p className="text-[#8B8BA7] text-sm">
+                    {t("dashboard:emergency_banner.desc")}
+                  </p>
+                </div>
+                <span className="text-[#FF6B6B] shrink-0">›</span>
+              </div>
+            </button>
+          </motion.div>
+
+          {/* Profile info (collapsed by default) */}
+          {profile && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
+            >
+              <button
+                onClick={() => setShowProfile((v) => !v)}
+                className="flex items-center justify-between w-full"
+              >
+                <h2 className="text-[#F0F0FF] font-semibold text-sm">{t("dashboard:my_profile")}</h2>
+                {showProfile ? (
+                  <ChevronUp size={16} className="text-[#8B8BA7]" />
+                ) : (
+                  <ChevronDown size={16} className="text-[#8B8BA7]" />
+                )}
+              </button>
+              {showProfile && (
+                <div className="grid grid-cols-2 gap-3 text-xs mt-4">
+                  {[
+                    { label: t("dashboard:university"), value: profile.university },
+                    { label: t("dashboard:course"), value: `${profile.course_year} ${t("dashboard:course_suffix")}` },
+                    { label: t("dashboard:profession"), value: profile.profession },
+                    { label: t("dashboard:english"), value: t(`dashboard:english_levels.${profile.english_level}` as const, { defaultValue: profile.english_level }) },
+                    { label: t("dashboard:country"), value: profile.country },
+                    { label: t("dashboard:job_offer"), value: t(`dashboard:job_offer_status.${profile.job_offer}` as const, { defaultValue: profile.job_offer }) },
+                    { label: t("dashboard:financing"), value: t(`dashboard:financing_source.${profile.financial_source}` as const, { defaultValue: profile.financial_source }) },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-[#0A0A0F] rounded-xl px-3 py-2.5">
+                      <div className="text-[#8B8BA7] mb-0.5">{label}</div>
+                      <div className="text-[#F0F0FF] font-medium">{value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
