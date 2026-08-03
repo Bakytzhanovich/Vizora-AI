@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -19,7 +20,7 @@ from app.models.simulator import SimulatorSession
 from app.models.subscription_event import SubscriptionEvent
 from app.models.user import User
 from app.services import kaspi_pay_client
-from app.services.subscription_service import PLAN_LIMITS, get_user_access
+from app.services.subscription_service import PAID_PLANS, PLAN_LIMITS, get_user_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -211,8 +212,13 @@ async def _apply_successful_payment(
         raise HTTPException(status_code=404, detail="User not found")
 
     billing_period = checkout_event.billing_period or "monthly"
+    # Preserve remaining paid time only if this user was already on a paid
+    # plan — subscription_status alone can't signal that anymore, since FREE
+    # users are "active" too (there's no more "trial" status to tell them
+    # apart). A past_due paid user renewing still keeps their remaining days;
+    # a FREE user's first purchase always starts the clock from now.
     base = user.subscription_period_end if (
-        user.subscription_status == "active"
+        user.subscription_plan in PAID_PLANS
         and user.subscription_period_end
         and user.subscription_period_end > datetime.utcnow()
     ) else datetime.utcnow()
@@ -234,7 +240,15 @@ async def _apply_successful_payment(
             kaspi_payment_id=f"{payment_id}:succeeded",
         )
     )
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Concurrent duplicate delivery of the same "paid" event beat us to
+        # the commit — the unique kaspi_payment_id constraint is what
+        # actually enforces idempotency; treat the race as a no-op rather
+        # than surfacing a raw 500 to the webhook caller.
+        await db.rollback()
+        return {"status": "already_applied"}
     return {"status": "activated", "plan": user.subscription_plan, "period_end": user.subscription_period_end}
 
 
@@ -277,9 +291,11 @@ async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         )
         if checkout_event:
             user = await db.get(User, checkout_event.user_id)
-            # Only demote if this was a renewal for an already-active plan —
-            # a failed first-time checkout shouldn't push a trial user to past_due.
-            if user and user.subscription_status == "active":
+            # Only demote if they were already a paying subscriber — checking
+            # subscription_status alone isn't enough since FREE users are
+            # "active" too. A FREE user's first (failed) checkout attempt
+            # shouldn't push them into past_due; they just stay on FREE.
+            if user and user.subscription_plan in PAID_PLANS:
                 user.subscription_status = "past_due"
             db.add(
                 SubscriptionEvent(

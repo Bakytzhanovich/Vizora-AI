@@ -43,7 +43,7 @@ interface HistoryItem {
 export default function SimulatorPage() {
   const router = useRouter();
   const { t } = useTranslation("simulator");
-  const { subscription } = useAuth();
+  const { subscription, refreshProfile } = useAuth();
   const [step, setStep] = useState<Step>("mode_select");
   const [isStarting, setIsStarting] = useState(false);
   const [session, setSession] = useState<SessionData | null>(null);
@@ -100,6 +100,10 @@ export default function SimulatorPage() {
       });
       track("simulator_start", { mode, difficulty });
       setStep("interview");
+      // The server just incremented the session counter — refresh so a
+      // later SessionsLimitOverlay in this same visit shows the true count
+      // instead of the value cached from page load.
+      refreshProfile();
     } catch {
       alert(t("start_error"));
     } finally {

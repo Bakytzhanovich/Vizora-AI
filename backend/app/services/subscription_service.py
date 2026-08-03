@@ -110,9 +110,13 @@ async def get_user_access(user: User, db: AsyncSession) -> dict:
         total_used = await db.scalar(
             select(func.count()).select_from(SimulatorSession).where(SimulatorSession.user_id == user.id)
         )
-        result["sessions_used"] = total_used or 0
-        result["sessions_limit"] = limits["simulator_sessions_total"]
-        result["sessions_ok"] = (total_used or 0) < limits["simulator_sessions_total"]
+        limit = limits["simulator_sessions_total"]
+        # Cap the displayed count at the limit — a user who downgrades back to
+        # FREE after racking up many sessions on a paid plan would otherwise
+        # show a nonsensical "23/1 used" instead of a sane "1/1".
+        result["sessions_used"] = min(total_used or 0, limit)
+        result["sessions_limit"] = limit
+        result["sessions_ok"] = (total_used or 0) < limit
     else:
         result["sessions_ok"] = True  # unlimited
 

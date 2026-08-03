@@ -15,6 +15,7 @@ from app.services.documents_service import (
     compute_progress,
     generate_checklist,
 )
+from app.services.subscription_service import check_feature_access
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -111,7 +112,16 @@ async def update_checklist(
 
 
 @router.get("/ds160-guide")
-async def ds160_guide(_: str = Depends(get_current_user_id)):
+async def ds160_guide(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    has_access, reason = await check_feature_access(user_id, "ds160_guide", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+        )
     return {"steps": DS160_STEPS}
 
 

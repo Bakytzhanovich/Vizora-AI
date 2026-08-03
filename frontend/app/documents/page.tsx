@@ -37,6 +37,7 @@ export default function DocumentsPage() {
   const [checklist, setChecklist] = useState<DocumentItem[]>([]);
   const [progress, setProgress] = useState(0);
   const [ds160Steps, setDs160Steps] = useState<DS160Step[]>([]);
+  const [ds160Locked, setDs160Locked] = useState(false);
   const [mistakes, setMistakes] = useState<CommonMistake[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -49,11 +50,19 @@ export default function DocumentsPage() {
     }
 
     track("documents_viewed");
-    Promise.all([apiGetChecklist(), apiGetDS160Guide(), apiGetCommonMistakes()])
+    Promise.all([
+      apiGetChecklist(),
+      apiGetDS160Guide().catch(() => null),
+      apiGetCommonMistakes(),
+    ])
       .then(([cl, ds, cm]) => {
         setChecklist(cl.checklist);
         setProgress(cl.progress);
-        setDs160Steps(ds.steps);
+        if (ds) {
+          setDs160Steps(ds.steps);
+        } else {
+          setDs160Locked(true);
+        }
         setMistakes(cm.mistakes);
       })
       .catch(() => setError(true))
@@ -157,7 +166,23 @@ export default function DocumentsPage() {
               updating={updating}
             />
           )}
-          {activeTab === "ds160" && <DS160Guide steps={ds160Steps} />}
+          {activeTab === "ds160" && (
+            ds160Locked ? (
+              <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-6 text-center">
+                <div className="text-3xl mb-3">🔒</div>
+                <p className="text-[#F0F0FF] font-semibold text-sm mb-1">{t("ds160_locked_title")}</p>
+                <p className="text-[#8B8BA7] text-xs mb-4">{t("ds160_locked_desc")}</p>
+                <button
+                  onClick={() => router.push("/pricing")}
+                  className="bg-[#6C63FF] hover:bg-[#7C75FF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  {t("ds160_locked_cta")} →
+                </button>
+              </div>
+            ) : (
+              <DS160Guide steps={ds160Steps} />
+            )
+          )}
           {activeTab === "mistakes" && <CommonMistakes mistakes={mistakes} />}
         </motion.div>
       </div>

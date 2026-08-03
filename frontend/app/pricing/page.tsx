@@ -98,10 +98,10 @@ function PricingContent() {
         : l.simulator_sessions_per_month === null
         ? { label: t("features.sessions_unlimited"), ok: true }
         : {
-            label: t(
-              l.simulator_sessions_per_month === 1 ? "features.sessions" : "features.sessions_plural",
-              { count: l.simulator_sessions_per_month }
-            ),
+            // No plan ever sets a monthly quota of exactly 1 (free uses
+            // simulator_sessions_total instead, standard=5, premium=unlimited),
+            // so this branch only ever needs the plural form.
+            label: t("features.sessions_plural", { count: l.simulator_sessions_per_month }),
             ok: true,
           },
       { label: l.consul_mode ? t("features.mode_trainer_consul") : t("features.mode_trainer"), ok: true },

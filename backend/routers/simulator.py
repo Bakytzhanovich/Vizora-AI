@@ -99,19 +99,25 @@ async def start_session(
     if body.mode not in ("trainer", "consul"):
         raise HTTPException(status_code=400, detail="mode must be 'trainer' or 'consul'")
 
-    has_access, reason = await check_feature_access(user_id, "simulator", db)
-    if not has_access:
+    # A single access snapshot serves both checks below — check_feature_access
+    # would otherwise re-fetch the user and (for free-plan users) re-run the
+    # session COUNT(*) query twice per request for no reason.
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    access = await get_user_access(user, db)
+
+    if not access.get("sessions_ok", True):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+            detail={"error": "subscription_required", "reason": "sessions_limit", "upgrade_url": "/pricing"},
         )
 
     if body.mode == "consul":
-        consul_ok, consul_reason = await check_feature_access(user_id, "consul_mode", db)
-        if not consul_ok:
+        if not access["limits"].get("consul_mode", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={"error": "subscription_required", "reason": consul_reason, "upgrade_url": "/pricing"},
+                detail={"error": "subscription_required", "reason": "subscription_required", "upgrade_url": "/pricing"},
             )
         # Phase 1 of the structured interview — the real opening question a visa officer asks.
         opening = "Good morning. What is the purpose of your visit to the United States?"
