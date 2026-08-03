@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,8 +15,18 @@ from app.services.after_visa_service import (
     get_module,
     get_modules_summary,
 )
+from app.services.subscription_service import check_feature_access
 
 router = APIRouter(prefix="/after-visa", tags=["after-visa"])
+
+
+async def _require_after_visa_access(user_id: str, db: AsyncSession) -> None:
+    has_access, reason = await check_feature_access(user_id, "after_visa", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+        )
 
 
 async def _visa_received(user_id: str, db: AsyncSession) -> bool:
@@ -40,6 +50,7 @@ async def list_modules(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_after_visa_access(user_id, db)
     unlocked = await _visa_received(user_id, db)
     completed_ids = await _get_completed_ids(user_id, db) if unlocked else set()
 
@@ -67,6 +78,7 @@ async def get_module_content(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_after_visa_access(user_id, db)
     module = get_module(module_id)
     if not module:
         from fastapi import HTTPException, status
@@ -108,6 +120,7 @@ async def update_progress(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_after_visa_access(user_id, db)
     existing = await db.scalar(
         select(AfterVisaProgress).where(
             and_(

@@ -15,6 +15,7 @@ from app.models.profile import StudentProfile
 from app.models.user import User
 from app.services.ai_service import generate_chat_response
 from app.services.rag_service import search_knowledge
+from app.services.subscription_service import PLAN_LIMITS, check_feature_access
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -32,6 +33,17 @@ async def send_message(
 ):
     if not body.message.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message is empty")
+
+    has_access, reason = await check_feature_access(user_id, "faq", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "faq_limit_reached",
+                "message": f"Лимит {PLAN_LIMITS['free']['faq_per_day']} вопросов на сегодня",
+                "upgrade_url": "/pricing",
+            },
+        )
 
     session_id = body.session_id or str(uuid.uuid4())
 

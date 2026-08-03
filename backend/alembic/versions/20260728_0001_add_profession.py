@@ -1,7 +1,7 @@
 """add profession to student_profiles
 
 Revision ID: 20260728_0001
-Revises: 20260727_0004
+Revises: 20260727_0005
 Create Date: 2026-07-28 12:00:00
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "20260728_0001"
-down_revision = "20260727_0004"
+down_revision = "20260727_0005"
 branch_labels = None
 depends_on = None
 

@@ -13,13 +13,21 @@ from app.core.database import AsyncSessionLocal, get_db
 from app.core.security import get_current_user_id
 from app.models.profile import StudentProfile
 from app.models.simulator import SimulatorSession
+from app.models.user import User
 from app.services.simulator_service import (
     INTERVIEW_QUESTION_BANK,
     generate_feedback,
     generate_simulator_response,
 )
+from app.services.pdf_report_service import generate_session_pdf
 from app.services.stt_service import speech_to_text
+from app.services.subscription_service import check_feature_access, get_user_access, increment_simulator_usage
 from app.services.tts_service import text_to_speech
+
+# Fixed count used only for the free-plan "here's what you missed" upsell
+# copy (see /respond's trial_session_ended response) — it doesn't drive the
+# actual question bank, which samples a variable mix per session.
+FREE_SESSION_TOTAL_QUESTIONS = 15
 
 router = APIRouter(prefix="/simulator", tags=["simulator"])
 
@@ -91,7 +99,20 @@ async def start_session(
     if body.mode not in ("trainer", "consul"):
         raise HTTPException(status_code=400, detail="mode must be 'trainer' or 'consul'")
 
+    has_access, reason = await check_feature_access(user_id, "simulator", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+        )
+
     if body.mode == "consul":
+        consul_ok, consul_reason = await check_feature_access(user_id, "consul_mode", db)
+        if not consul_ok:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"error": "subscription_required", "reason": consul_reason, "upgrade_url": "/pricing"},
+            )
         # Phase 1 of the structured interview — the real opening question a visa officer asks.
         opening = "Good morning. What is the purpose of your visit to the United States?"
     else:
@@ -101,6 +122,12 @@ async def start_session(
             "Отвечай на вопросы на английском. Начнём!\n\n"
             f"First question: {first_question}"
         )
+
+    # Consumed the moment a session starts, not when it ends — otherwise the
+    # check above (sessions_used < limit) can never see a session that was
+    # started but never finished, letting a user start unlimited concurrent
+    # sessions (e.g. in separate tabs) that all pass the same stale count.
+    await increment_simulator_usage(user_id, db)
 
     transcript = [{"role": "officer", "content": opening, "timestamp": datetime.utcnow().isoformat()}]
 
@@ -136,6 +163,23 @@ async def respond(
         "content": body.student_answer.strip(),
         "timestamp": datetime.utcnow().isoformat(),
     })
+
+    user = await db.get(User, user_id)
+    access = await get_user_access(user, db)
+    max_minutes = access["limits"].get("simulator_session_max_minutes")
+    if max_minutes is not None:
+        elapsed_minutes = (datetime.utcnow() - session.created_at).total_seconds() / 60
+        if elapsed_minutes >= max_minutes:
+            answered = len([t for t in transcript if t["role"] == "student"])
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "trial_session_ended",
+                    "answered": answered,
+                    "total": FREE_SESSION_TOTAL_QUESTIONS,
+                    "upgrade_url": "/pricing",
+                },
+            )
 
     async def event_stream():
         accumulated = ""
@@ -273,3 +317,35 @@ async def get_session(
         "transcript": json.loads(session.transcript),
         "feedback": json.loads(session.feedback) if session.feedback else None,
     }
+
+
+@router.get("/session/{session_id}/pdf-report")
+async def get_session_pdf_report(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    has_access, reason = await check_feature_access(user_id, "pdf_report", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+        )
+
+    session = await _load_session(db, session_id, user_id)
+    if not session.completed or not session.feedback:
+        raise HTTPException(status_code=400, detail="Session isn't finished yet")
+
+    pdf_bytes = generate_session_pdf(
+        session_mode=session.mode,
+        difficulty=session.difficulty,
+        created_at=session.created_at,
+        duration_seconds=session.duration_seconds or 0,
+        feedback=json.loads(session.feedback),
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="vizora-report-{session_id[:8]}.pdf"'},
+    )

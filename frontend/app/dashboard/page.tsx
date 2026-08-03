@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogOut, ChevronDown, ChevronUp } from "lucide-react";
+import { LogOut, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
@@ -13,8 +13,13 @@ import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
 import { ReferralCard } from "@/components/referral/ReferralCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode } from "@/lib/api";
-import type { UserProfile, RiskProfile } from "@/lib/api";
+import { PlanBadge } from "@/components/PlanBadge";
+import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode, apiGetPlans } from "@/lib/api";
+import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
+
+function formatKzt(amount: number): string {
+  return new Intl.NumberFormat("ru-RU").format(amount) + " ₸/мес";
+}
 
 const restModuleHrefs = ["/chat", "/simulator", "/documents"] as const;
 const restModuleIcons = ["🤖", "🎤", "📄"];
@@ -31,9 +36,11 @@ export default function DashboardPage() {
   const { t } = useTranslation(["common", "dashboard"]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [journeyProgress, setJourneyProgress] = useState(10);
   const [afterVisa, setAfterVisa] = useState<{ unlocked: boolean; pct: number; completed: number; total: number } | null>(null);
   const [referralStats, setReferralStats] = useState<{ totalActive: number; nextNeeded: number | null } | null>(null);
+  const [standardPriceKzt, setStandardPriceKzt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAllRisks, setShowAllRisks] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -48,8 +55,9 @@ export default function DashboardPage() {
       apiGetRoadmap().catch(() => null),
       apiGetAfterVisaModules().catch(() => null),
       apiGetReferralCode().catch(() => null),
+      apiGetPlans().catch(() => null),
     ])
-      .then(([me, roadmap, av, ref]) => {
+      .then(([me, roadmap, av, ref, plansRes]) => {
         if (me.user.role === "admin") {
           router.replace("/admin/dashboard");
           return;
@@ -60,12 +68,17 @@ export default function DashboardPage() {
         }
         setProfile(me.profile);
         setRiskProfile(me.risk_profile);
+        setSubscription(me.subscription);
         if (roadmap) setJourneyProgress(roadmap.progress);
         if (av) setAfterVisa({ unlocked: av.unlocked, pct: av.overall_pct, completed: av.overall_completed, total: av.overall_total });
         if (ref) {
           const active = ref.stats.total_active;
           const next = ref.stats.next_tier;
           setReferralStats({ totalActive: active, nextNeeded: next ? next.referrals_needed - active : null });
+        }
+        if (plansRes) {
+          const standard = plansRes.plans.find((p) => p.id === "standard");
+          if (standard) setStandardPriceKzt(standard.prices_kzt.monthly);
         }
       })
       .catch(() => router.replace("/login"))
@@ -90,6 +103,7 @@ export default function DashboardPage() {
   const overallRisk = riskProfile?.overall_risk ?? "medium";
   const riskColor = riskColors[overallRisk];
   const topRisks = riskProfile?.risks.slice(0, 3) ?? [];
+  const isFree = subscription?.plan === "free";
 
   if (loading) {
     return (
@@ -106,6 +120,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8">
         <BrandedLogo />
         <div className="flex items-center gap-3">
+          <PlanBadge subscription={subscription} />
           <LanguageSwitcher />
           <button
             onClick={logout}
@@ -159,7 +174,38 @@ export default function DashboardPage() {
           <span>✓</span>
           <span>{t("dashboard:profile_complete")}</span>
         </div>
+        {isFree && subscription && (
+          <div className="mt-3 pt-3 border-t border-[#1E1E2E] text-xs text-[#8B8BA7]">
+            {t("dashboard:free_plan_usage", {
+              used: subscription.sessions_used ?? 0,
+              total: subscription.sessions_limit ?? 1,
+            })}
+          </div>
+        )}
       </motion.div>
+
+      {/* Upgrade banner (FREE plan only) — visible but not aggressive */}
+      {isFree && standardPriceKzt !== null && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-gradient-to-r from-[#6C63FF]/10 to-[#6C63FF]/5 border border-[#6C63FF]/30 rounded-2xl p-5 mb-5"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">⭐</span>
+            <span className="text-[#F0F0FF] font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
+          </div>
+          <p className="text-[#8B8BA7] text-sm">{t("dashboard:upgrade_banner.line1")}</p>
+          <p className="text-[#8B8BA7] text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
+          <button
+            onClick={() => router.push("/pricing")}
+            className="w-full sm:w-auto bg-[#6C63FF] hover:bg-[#7C75FF] text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+          >
+            {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
+          </button>
+        </motion.div>
+      )}
 
       {/* Main content (mobile: stacks in order below; desktop: 2/3 + 1/3 sidebar) */}
       <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
@@ -183,10 +229,10 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="space-y-2.5">
-                <RiskCard risk={topRisks[0]} index={0} />
+                <RiskCard risk={topRisks[0]} index={0} locked={!(subscription?.limits.risk_solutions ?? true)} />
                 {showAllRisks &&
                   topRisks.slice(1).map((risk, i) => (
-                    <RiskCard key={risk.type} risk={risk} index={i + 1} />
+                    <RiskCard key={risk.type} risk={risk} index={i + 1} locked={!(subscription?.limits.risk_solutions ?? true)} />
                   ))}
               </div>
               {topRisks.length > 1 && (
@@ -253,11 +299,37 @@ export default function DashboardPage() {
               transition={{ delay: 0.4 }}
             >
               <AfterVisaCard
-                unlocked={afterVisa.unlocked}
+                unlocked={afterVisa.unlocked && (subscription?.limits.after_visa ?? true)}
                 overallPct={afterVisa.pct}
                 overallCompleted={afterVisa.completed}
                 overallTotal={afterVisa.total}
               />
+            </motion.div>
+          )}
+
+          {/* Locked features (FREE plan only) */}
+          {isFree && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.42 }}
+              className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
+            >
+              <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:locked_features.title")}</h2>
+              <div className="space-y-2.5 mb-4">
+                {(["consul_mode", "detailed_feedback", "after_visa"] as const).map((key) => (
+                  <div key={key} className="flex items-center gap-2 text-sm text-[#8B8BA7]">
+                    <Lock size={14} className="shrink-0" />
+                    <span>{t(`dashboard:locked_features.${key}`)}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => router.push("/pricing")}
+                className="w-full text-xs font-semibold text-[#6C63FF] hover:text-[#9C8BFF] transition-colors text-left"
+              >
+                {t("dashboard:locked_features.cta")} →
+              </button>
             </motion.div>
           )}
 

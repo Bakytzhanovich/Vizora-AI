@@ -5,6 +5,7 @@ import "./globals.css";
 import { BrandingProvider } from "@/context/BrandingContext";
 import { TelegramAuthHandler } from "@/components/TelegramAuthHandler";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
+import { PaymentIssueBanner } from "@/components/PaymentIssueBanner";
 import { I18nInit } from "@/components/I18nInit";
 
 const inter = Inter({
@@ -96,6 +97,7 @@ export default function RootLayout({
         <BrandingProvider>
           <TelegramAuthHandler />
           <PushNotificationPrompt />
+          <PaymentIssueBanner />
           {children}
         </BrandingProvider>
       </body>

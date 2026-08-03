@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiLogin, apiGoogleLogin, apiRegister, apiGetMe, apiLogout } from "@/lib/api";
-import type { UserProfile, RiskProfile } from "@/lib/api";
+import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
 import i18n, { setStoredLanguage, type SupportedLanguage } from "@/lib/i18n";
 
 interface AuthUser {
@@ -17,6 +17,7 @@ interface AuthState {
   user: AuthUser | null;
   profile: UserProfile | null;
   riskProfile: RiskProfile | null;
+  subscription: SubscriptionInfo | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -27,6 +28,7 @@ export function useAuth() {
     user: null,
     profile: null,
     riskProfile: null,
+    subscription: null,
     isAuthenticated: false,
     isLoading: true,
   });
@@ -42,7 +44,7 @@ export function useAuth() {
   };
 
   const applyUserState = useCallback(
-    ({ user, profile, risk_profile }: Awaited<ReturnType<typeof apiGetMe>>) => {
+    ({ user, profile, risk_profile, subscription }: Awaited<ReturnType<typeof apiGetMe>>) => {
       // Sync has_profile with server truth.
       if (profile) {
         localStorage.setItem("has_profile", "true");
@@ -61,6 +63,7 @@ export function useAuth() {
         user,
         profile,
         riskProfile: risk_profile,
+        subscription: subscription ?? null,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -79,7 +82,7 @@ export function useAuth() {
       applyUserState(me);
     } catch {
       clearTokens();
-      setState({ user: null, profile: null, riskProfile: null, isAuthenticated: false, isLoading: false });
+      setState({ user: null, profile: null, riskProfile: null, subscription: null, isAuthenticated: false, isLoading: false });
     }
   }, [applyUserState]);
 
@@ -119,11 +122,11 @@ export function useAuth() {
       // Best-effort server-side revocation; local cleanup still runs.
     }
     clearTokens();
-    setState({ user: null, profile: null, riskProfile: null, isAuthenticated: false, isLoading: false });
+    setState({ user: null, profile: null, riskProfile: null, subscription: null, isAuthenticated: false, isLoading: false });
     router.push("/login");
   };
 
-  const refreshProfile = () => loadUser();
+  const refreshProfile = loadUser;
 
   return { ...state, login, loginWithGoogle, logout, register, refreshProfile };
 }

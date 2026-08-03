@@ -18,6 +18,8 @@ from app.services.referral_service import (
     grant_welcome_bonus,
 )
 from app.services.risk_service import generate_risk_profile
+from app.services.subscription_service import get_user_access
+from app.services.trial_notifications import get_subscription_banner
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -146,7 +148,21 @@ async def get_me(
     )
     profile = profile_result.scalar_one_or_none()
 
+    # Risks themselves are always visible (even on FREE) — only the "how to
+    # fix" advice is plan-gated, and that's a frontend-side lock driven by
+    # subscription.limits.risk_solutions, not something hidden at the API level.
     risk = json.loads(profile.risk_profile) if profile and profile.risk_profile else None
+
+    access = await get_user_access(user, db)
+    banner = get_subscription_banner(user.subscription_status)
+    subscription = {
+        "plan": access["plan"],
+        "limits": access["limits"],
+        "period_end": user.subscription_period_end.isoformat() if user.subscription_period_end else None,
+        "sessions_used": access.get("sessions_used"),
+        "sessions_limit": access.get("sessions_limit"),
+        "banner": banner,
+    }
 
     # Build branding block
     branding = {"name": "Vizora AI", "logo_url": None, "primary_color": "#6C63FF", "is_white_label": False}
@@ -182,4 +198,5 @@ async def get_me(
         } if profile else None,
         "risk_profile": risk,
         "branding": branding,
+        "subscription": subscription,
     }

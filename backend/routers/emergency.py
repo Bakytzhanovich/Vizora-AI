@@ -14,6 +14,7 @@ from app.services.emergency_service import (
     get_scenarios,
     get_step,
 )
+from app.services.subscription_service import check_feature_access
 
 router = APIRouter(prefix="/emergency", tags=["emergency"])
 
@@ -43,6 +44,13 @@ async def start_session(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
+    has_access, reason = await check_feature_access(user_id, "emergency", db)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"error": "subscription_required", "reason": reason, "upgrade_url": "/pricing"},
+        )
+
     scenario = get_scenario(body.scenario_id)
     if not scenario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")

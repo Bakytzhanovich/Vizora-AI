@@ -7,8 +7,16 @@ import { useTranslation } from "react-i18next";
 import { ModeSelector } from "@/components/simulator/ModeSelector";
 import { InterviewScreen } from "@/components/simulator/InterviewScreen";
 import { ResultsScreen, FeedbackData } from "@/components/simulator/ResultsScreen";
+import { SessionsLimitOverlay } from "@/components/simulator/SessionsLimitOverlay";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { track } from "@/lib/analytics";
+import { useAuth } from "@/hooks/useAuth";
+
+const PLAN_LABELS: Record<string, string> = {
+  free: "Бесплатный",
+  standard: "Стандарт",
+  premium: "Премиум",
+};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -35,11 +43,13 @@ interface HistoryItem {
 export default function SimulatorPage() {
   const router = useRouter();
   const { t } = useTranslation("simulator");
+  const { subscription } = useAuth();
   const [step, setStep] = useState<Step>("mode_select");
   const [isStarting, setIsStarting] = useState(false);
   const [session, setSession] = useState<SessionData | null>(null);
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [sessionsLimitHit, setSessionsLimitHit] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -67,7 +77,19 @@ export default function SimulatorPage() {
         body: JSON.stringify({ mode, difficulty }),
       });
 
-      if (!res.ok) throw new Error("Failed to start");
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const reason = body?.detail?.reason;
+        if (reason === "sessions_limit") {
+          setSessionsLimitHit(true);
+          return;
+        }
+        if (reason === "subscription_required") {
+          router.push("/pricing");
+          return;
+        }
+        throw new Error("Failed to start");
+      }
       const data = await res.json();
 
       setSession({
@@ -108,7 +130,21 @@ export default function SimulatorPage() {
   };
 
   if (step === "mode_select") {
-    return <><ModeSelector onStart={handleStart} isLoading={isStarting} /><PoweredByFooter /></>;
+    return (
+      <>
+        <ModeSelector onStart={handleStart} isLoading={isStarting} />
+        <PoweredByFooter />
+        {sessionsLimitHit && subscription?.plan && subscription.sessions_limit != null && (
+          <SessionsLimitOverlay
+            planLabel={PLAN_LABELS[subscription.plan] ?? subscription.plan}
+            sessionsUsed={subscription.sessions_used ?? subscription.sessions_limit}
+            sessionsLimit={subscription.sessions_limit}
+            neverResets={subscription.limits.simulator_sessions_total != null}
+            onWait={() => setSessionsLimitHit(false)}
+          />
+        )}
+      </>
+    );
   }
 
   if (step === "interview" && session) {

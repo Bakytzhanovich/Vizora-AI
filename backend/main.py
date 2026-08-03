@@ -36,6 +36,8 @@ import app.models.after_visa  # noqa: F401
 import app.models.referral  # noqa: F401
 import app.models.analytics  # noqa: F401
 import app.models.knowledge_base  # noqa: F401
+import app.models.push_subscription  # noqa: F401
+import app.models.subscription_event  # noqa: F401
 from app.models.user import User
 from routers.auth import router as auth_router
 from routers.profile import router as profile_router
@@ -52,6 +54,7 @@ from routers.analytics import router as analytics_router
 from routers.internal import router as internal_router
 from routers.admin import router as admin_router
 from routers.push import router as push_router
+from routers.payments import router as payments_router
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -126,9 +129,13 @@ async def lifespan(app: FastAPI):
     # Start web push inactivity/interview reminder scheduler
     from app.services.push_scheduler import start_push_scheduler, stop_push_scheduler
     start_push_scheduler()
+    # Start monthly session / daily FAQ usage-counter reset scheduler
+    from app.services.subscription_scheduler import start_subscription_scheduler, stop_subscription_scheduler
+    start_subscription_scheduler()
     yield
     stop_kb_scheduler()
     stop_push_scheduler()
+    stop_subscription_scheduler()
 
 
 app = FastAPI(
@@ -193,6 +200,7 @@ app.include_router(analytics_router, prefix="/api")
 app.include_router(internal_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(push_router, prefix="/api")
+app.include_router(payments_router, prefix="/api")
 
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(_static_dir, exist_ok=True)
