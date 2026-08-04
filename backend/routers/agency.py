@@ -20,6 +20,7 @@ from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
 from app.services.roadmap_service import _PROGRESS_WEIGHTS
+from app.services.subscription_service import get_agency_billing_status
 from app.services.subscription_service import set_free_plan
 
 router = APIRouter(prefix="/agency", tags=["agency"])
@@ -287,7 +288,7 @@ async def agency_me(
         "email": agency.email,
         "country": agency.country,
         "contact_phone": agency.contact_phone,
-        "subscription_plan": agency.subscription_plan,
+        "billing": get_agency_billing_status(agency),
         "white_label_name": agency.white_label_name,
         "white_label_logo_url": agency.white_label_logo_url,
         "white_label_primary_color": agency.white_label_primary_color,

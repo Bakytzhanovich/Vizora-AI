@@ -15,12 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user_id
+from app.models.agency import Agency
 from app.models.profile import StudentProfile
 from app.models.simulator import SimulatorSession
 from app.models.subscription_event import SubscriptionEvent
 from app.models.user import User
 from app.services import kaspi_pay_client
-from app.services.subscription_service import PAID_PLANS, PLAN_LIMITS, get_user_access
+from app.services.subscription_service import AGENCY_PLANS, PAID_PLANS, PLAN_LIMITS, get_user_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -174,14 +175,20 @@ def _period_length(billing_period: str) -> timedelta:
 
 
 async def _apply_successful_payment(
-    payment_id: str, db: AsyncSession, expected_user_id: str | None = None
+    payment_id: str,
+    db: AsyncSession,
+    expected_user_id: str | None = None,
+    expected_agency_id: str | None = None,
 ) -> dict:
-    """Shared by the real webhook and the mock-mode completion endpoint.
-    Idempotent — replaying the same payment_id is a no-op on the second call.
+    """Shared by the real webhook and the mock-mode completion endpoints (both
+    the student and the agency one). Idempotent — replaying the same
+    payment_id is a no-op on the second call.
 
-    expected_user_id is set only by the mock-complete endpoint (an
-    authenticated caller simulating their own Kaspi redirect) — the real
-    webhook has no caller identity to check, it's authenticated by signature.
+    expected_user_id/expected_agency_id are set only by the mock-complete
+    endpoints (an authenticated caller simulating their own Kaspi redirect) —
+    the real webhook has no caller identity to check, it's authenticated by
+    signature. The checkout event's own user_id/agency_id (exactly one is
+    ever set) decides which side of the business gets activated.
     """
     # Succeeded/failed events are stored under a suffixed id (see below) since
     # kaspi_payment_id is unique and the same payment_id already owns the
@@ -203,6 +210,9 @@ async def _apply_successful_payment(
     )
     if not checkout_event:
         raise HTTPException(status_code=404, detail="Unknown payment_id")
+
+    if checkout_event.agency_id is not None:
+        return await _apply_successful_agency_payment(checkout_event, payment_id, db, expected_agency_id)
 
     if expected_user_id is not None and checkout_event.user_id != expected_user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
@@ -252,6 +262,49 @@ async def _apply_successful_payment(
     return {"status": "activated", "plan": user.subscription_plan, "period_end": user.subscription_period_end}
 
 
+async def _apply_successful_agency_payment(
+    checkout_event: SubscriptionEvent,
+    payment_id: str,
+    db: AsyncSession,
+    expected_agency_id: str | None,
+) -> dict:
+    if expected_agency_id is not None and checkout_event.agency_id != expected_agency_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
+
+    agency = await db.get(Agency, checkout_event.agency_id)
+    if not agency:
+        raise HTTPException(status_code=404, detail="Agency not found")
+
+    billing_period = checkout_event.billing_period or "monthly"
+    base = agency.subscription_period_end if (
+        agency.subscription_plan in AGENCY_PLANS
+        and agency.subscription_period_end
+        and agency.subscription_period_end > datetime.utcnow()
+    ) else datetime.utcnow()
+
+    agency.subscription_plan = checkout_event.plan
+    agency.subscription_billing_period = billing_period
+    agency.subscription_period_end = base + _period_length(billing_period)
+    agency.kaspi_last_payment_id = payment_id
+
+    db.add(
+        SubscriptionEvent(
+            agency_id=agency.id,
+            event_type="payment_succeeded",
+            plan=checkout_event.plan,
+            amount=checkout_event.amount,
+            currency="kzt",
+            kaspi_payment_id=f"{payment_id}:succeeded",
+        )
+    )
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        return {"status": "already_applied"}
+    return {"status": "activated", "plan": agency.subscription_plan, "period_end": agency.subscription_period_end}
+
+
 @router.post("/webhook")
 async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     raw_body = await request.body()
@@ -290,23 +343,39 @@ async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
             )
         )
         if checkout_event:
-            user = await db.get(User, checkout_event.user_id)
-            # Only demote if they were already a paying subscriber — checking
-            # subscription_status alone isn't enough since FREE users are
-            # "active" too. A FREE user's first (failed) checkout attempt
-            # shouldn't push them into past_due; they just stay on FREE.
-            if user and user.subscription_plan in PAID_PLANS:
-                user.subscription_status = "past_due"
-            db.add(
-                SubscriptionEvent(
-                    user_id=checkout_event.user_id,
-                    event_type="payment_failed",
-                    plan=checkout_event.plan,
-                    amount=checkout_event.amount,
-                    currency="kzt",
-                    kaspi_payment_id=f"{payment_id}:failed",
+            if checkout_event.agency_id is not None:
+                # Agencies have no "past_due" concept — a failed renewal
+                # simply leaves subscription_period_end where it was, and
+                # get_agency_billing_status() naturally reports it as lapsed
+                # once that date passes.
+                db.add(
+                    SubscriptionEvent(
+                        agency_id=checkout_event.agency_id,
+                        event_type="payment_failed",
+                        plan=checkout_event.plan,
+                        amount=checkout_event.amount,
+                        currency="kzt",
+                        kaspi_payment_id=f"{payment_id}:failed",
+                    )
                 )
-            )
+            else:
+                user = await db.get(User, checkout_event.user_id)
+                # Only demote if they were already a paying subscriber — checking
+                # subscription_status alone isn't enough since FREE users are
+                # "active" too. A FREE user's first (failed) checkout attempt
+                # shouldn't push them into past_due; they just stay on FREE.
+                if user and user.subscription_plan in PAID_PLANS:
+                    user.subscription_status = "past_due"
+                db.add(
+                    SubscriptionEvent(
+                        user_id=checkout_event.user_id,
+                        event_type="payment_failed",
+                        plan=checkout_event.plan,
+                        amount=checkout_event.amount,
+                        currency="kzt",
+                        kaspi_payment_id=f"{payment_id}:failed",
+                    )
+                )
             await db.commit()
         return {"received": True, "status": "payment_failed_recorded"}
 

@@ -71,6 +71,13 @@ function _saveAuthData(data: {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface AgencyBilling {
+  status: "paid" | "expired_paid" | "free" | "expired_free";
+  plan?: string;
+  period_end?: string;
+  free_until?: string;
+}
+
 export interface AgencyMe {
   id: string;
   name: string;
@@ -78,7 +85,7 @@ export interface AgencyMe {
   email: string;
   country: string;
   contact_phone: string | null;
-  subscription_plan: string;
+  billing: AgencyBilling;
   white_label_name: string | null;
   student_count: number;
   created_at: string;
@@ -371,5 +378,31 @@ export async function agencyAssignStudents(
     student_ids: studentIds,
     manager_id: managerId,
   });
+  return data;
+}
+
+// ─── Billing ──────────────────────────────────────────────────────────────────
+
+export interface CreateAgencyPaymentResponse {
+  payment_id: string;
+  pay_url: string;
+  amount: number;
+  currency: string;
+  mock_mode: boolean;
+}
+
+export async function agencyCreatePayment(
+  plan: string,
+  billingPeriod: "monthly" | "yearly"
+): Promise<CreateAgencyPaymentResponse> {
+  const { data } = await agencyApi.post<CreateAgencyPaymentResponse>("/billing/create-payment", {
+    plan,
+    billing_period: billingPeriod,
+  });
+  return data;
+}
+
+export async function agencyMockCompletePayment(paymentId: string) {
+  const { data } = await agencyApi.post(`/billing/mock-complete/${paymentId}`);
   return data;
 }

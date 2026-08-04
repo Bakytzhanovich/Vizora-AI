@@ -47,6 +47,7 @@ from routers.documents import router as documents_router
 from routers.roadmap import router as roadmap_router
 from routers.agency import router as agency_router
 from routers.agency_team import router as agency_team_router
+from routers.agency_billing import router as agency_billing_router
 from routers.emergency import router as emergency_router
 from routers.after_visa import router as after_visa_router
 from routers.referral import router as referral_router
@@ -193,6 +194,7 @@ app.include_router(documents_router, prefix="/api")
 app.include_router(roadmap_router, prefix="/api")
 app.include_router(agency_router, prefix="/api")
 app.include_router(agency_team_router, prefix="/api")
+app.include_router(agency_billing_router, prefix="/api")
 app.include_router(emergency_router, prefix="/api")
 app.include_router(after_visa_router, prefix="/api")
 app.include_router(referral_router, prefix="/api")

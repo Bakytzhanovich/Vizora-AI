@@ -17,6 +17,7 @@ node_modules/
 # Misc
 .DS_Store
 *.db
+backend/static/agency-logos/
 
 # Claude Code local worktrees
 .claude/worktrees/

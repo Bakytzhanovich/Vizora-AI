@@ -8,6 +8,7 @@ import { StatsCard } from "@/components/agency/StatsCard";
 import { AlertCard } from "@/components/agency/AlertCard";
 import { AddStudentModal } from "@/components/agency/AddStudentModal";
 import { AIInsightBox } from "@/components/agency/AIInsightBox";
+import { BillingBadge } from "@/components/agency/BillingBadge";
 import {
   agencyGetMe,
   agencyGetAnalytics,
@@ -108,12 +109,12 @@ export default function AgencyDashboardPage() {
           ) : (
             <h1 className="text-2xl font-bold text-gray-900">{me?.name}</h1>
           )}
-          <p className="text-sm text-gray-500 mt-0.5">
-            {me?.student_count} студентов
-            {role === "admin" && (
-              <> · план <span className="font-semibold text-blue-600 capitalize">{me?.subscription_plan}</span></>
-            )}
-          </p>
+          <p className="text-sm text-gray-500 mt-0.5">{me?.student_count} студентов</p>
+          {role === "admin" && me?.billing && (
+            <div className="mt-2">
+              <BillingBadge billing={me.billing} />
+            </div>
+          )}
         </div>
         <button
           onClick={() => setShowModal(true)}

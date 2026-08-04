@@ -6,6 +6,7 @@ import { AgencyLayout } from "@/components/agency/AgencyLayout";
 import { ColorPicker } from "@/components/branding/ColorPicker";
 import { LogoUpload } from "@/components/branding/LogoUpload";
 import { WhiteLabelPreview } from "@/components/branding/WhiteLabelPreview";
+import { BillingBadge } from "@/components/agency/BillingBadge";
 import {
   agencyGetMe,
   agencyUpdateSettings,
@@ -254,7 +255,6 @@ export default function AgencySettingsPage() {
             {[
               { label: "Email", value: me?.email },
               { label: "Страна", value: me?.country },
-              { label: "Тарифный план", value: me?.subscription_plan ?? "trial" },
               {
                 label: "Дата регистрации",
                 value: me?.created_at
@@ -267,6 +267,12 @@ export default function AgencySettingsPage() {
                 <span className="text-sm font-medium text-gray-900 capitalize">{value}</span>
               </div>
             ))}
+            {me?.billing && (
+              <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <span className="text-sm text-gray-500">Тарифный план</span>
+                <BillingBadge billing={me.billing} />
+              </div>
+            )}
           </div>
         </div>
 

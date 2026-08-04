@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, LayoutDashboard, Users, BarChart2, Settings, UsersRound } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, BarChart2, Settings, UsersRound, CreditCard } from "lucide-react";
 import { agencyLogout } from "@/lib/agency-api";
 import { VizoraMark } from "@/components/VizoraMark";
 
@@ -11,6 +11,7 @@ const ADMIN_NAV = [
   { href: "/agency/students", label: "Студенты", icon: Users },
   { href: "/agency/analytics", label: "Аналитика", icon: BarChart2 },
   { href: "/agency/team", label: "Команда", icon: UsersRound },
+  { href: "/agency/pricing", label: "Тариф", icon: CreditCard },
   { href: "/agency/settings", label: "Настройки", icon: Settings },
 ];
 

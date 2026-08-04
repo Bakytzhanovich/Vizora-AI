@@ -9,15 +9,18 @@ is emulated by each successful Kaspi payment pushing subscription_period_end
 forward (see routers/payments.py).
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.agency import Agency
 from app.models.simulator import SimulatorSession
 from app.models.user import User
 
 PAID_PLANS = ("standard", "premium", "agency_starter", "agency_business", "agency_partner")
+AGENCY_PLANS = ("agency_starter", "agency_business", "agency_partner")
+AGENCY_FREE_PERIOD_DAYS = 30
 
 PLAN_LIMITS: dict[str, dict] = {
     "free": {
@@ -172,3 +175,24 @@ async def increment_simulator_usage(user_id: str, db: AsyncSession) -> None:
     if user:
         user.sessions_used_this_month += 1
         await db.commit()
+
+
+def get_agency_billing_status(agency: Agency) -> dict:
+    """Powers the agency dashboard/settings billing badge.
+
+    An agency has no trial concept anymore — it's either on a paid plan
+    (subscription_period_end in the future) or coasting on a 30-day free
+    period counted from signup. Both can lapse, which is surfaced as a
+    distinct status so the frontend can show the right CTA.
+    """
+    now = datetime.utcnow()
+    if agency.subscription_plan in AGENCY_PLANS:
+        period_end = agency.subscription_period_end
+        if period_end and period_end > now:
+            return {"status": "paid", "plan": agency.subscription_plan, "period_end": period_end}
+        return {"status": "expired_paid", "plan": agency.subscription_plan, "period_end": period_end}
+
+    free_until = agency.created_at + timedelta(days=AGENCY_FREE_PERIOD_DAYS)
+    if now < free_until:
+        return {"status": "free", "free_until": free_until}
+    return {"status": "expired_free", "free_until": free_until}

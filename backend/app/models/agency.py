@@ -1,13 +1,24 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, String
 
 from app.core.database import Base
 
 
 class Agency(Base):
     __tablename__ = "agencies"
+    __table_args__ = (
+        CheckConstraint(
+            "subscription_plan IS NULL OR subscription_plan IN "
+            "('agency_starter', 'agency_business', 'agency_partner')",
+            name="ck_agencies_subscription_plan",
+        ),
+        CheckConstraint(
+            "subscription_billing_period IS NULL OR subscription_billing_period IN ('monthly', 'yearly')",
+            name="ck_agencies_subscription_billing_period",
+        ),
+    )
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(200), nullable=False)
@@ -15,7 +26,12 @@ class Agency(Base):
     password_hash = Column(String(200), nullable=False)
     country = Column(String(10), nullable=False)
     contact_phone = Column(String(50), nullable=True)
-    subscription_plan = Column(String(50), default="trial", nullable=False)
+    # NULL = no paid plan yet; the 30-day free period since signup applies
+    # (see app/services/subscription_service.get_agency_billing_status).
+    subscription_plan = Column(String(50), nullable=True)
+    subscription_billing_period = Column(String(10), nullable=True)  # "monthly" | "yearly"
+    subscription_period_end = Column(DateTime, nullable=True)
+    kaspi_last_payment_id = Column(String(64), nullable=True)
     white_label_name = Column(String(200), nullable=True)
     white_label_logo_url = Column(String(500), nullable=True)
     white_label_primary_color = Column(String(20), nullable=True)
