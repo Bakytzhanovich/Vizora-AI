@@ -21,29 +21,46 @@ def upgrade() -> None:
     # allows, while either the old OR the new constraint is still active,
     # fails outright. Drop -> update -> recreate is the only ordering with no
     # window where the constraint disagrees with the data it's checking.
-    op.drop_constraint("ck_users_subscription_plan", "users", type_="check")
+    #
+    # IF EXISTS / guarded create: a prior failed deploy attempt left
+    # production with this constraint already dropped (but never
+    # recreated), so a plain drop_constraint() 404s with UndefinedObjectError
+    # — this migration must be safe to (re-)run from any partial state.
+    op.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_subscription_plan")
 
     op.execute("UPDATE users SET subscription_plan = 'free' WHERE subscription_plan IS NULL OR subscription_plan = 'basic'")
     op.execute("UPDATE users SET subscription_status = 'active' WHERE subscription_status IN ('trial', 'expired')")
 
     # subscription_plan used to allow "basic" as the cheapest paid tier —
     # the new model replaces it with a permanent "free" plan instead.
-    op.create_check_constraint(
-        "ck_users_subscription_plan",
-        "users",
-        "subscription_plan IS NULL OR subscription_plan IN "
-        "('free', 'standard', 'premium', 'agency_starter', 'agency_business', 'agency_partner')",
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_users_subscription_plan') THEN
+                ALTER TABLE users ADD CONSTRAINT ck_users_subscription_plan
+                CHECK (subscription_plan IS NULL OR subscription_plan IN
+                ('free', 'standard', 'premium', 'agency_starter', 'agency_business', 'agency_partner'));
+            END IF;
+        END $$;
+        """
     )
 
 
 def downgrade() -> None:
-    op.drop_constraint("ck_users_subscription_plan", "users", type_="check")
+    op.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_subscription_plan")
 
     op.execute("UPDATE users SET subscription_plan = 'basic' WHERE subscription_plan = 'free'")
 
-    op.create_check_constraint(
-        "ck_users_subscription_plan",
-        "users",
-        "subscription_plan IS NULL OR subscription_plan IN "
-        "('basic', 'standard', 'premium', 'agency_starter', 'agency_business', 'agency_partner')",
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_users_subscription_plan') THEN
+                ALTER TABLE users ADD CONSTRAINT ck_users_subscription_plan
+                CHECK (subscription_plan IS NULL OR subscription_plan IN
+                ('basic', 'standard', 'premium', 'agency_starter', 'agency_business', 'agency_partner'));
+            END IF;
+        END $$;
+        """
     )
