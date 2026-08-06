@@ -4,6 +4,7 @@ import "./globals.css";
 import { BrandingProvider } from "@/context/BrandingContext";
 import { TelegramAuthHandler } from "@/components/TelegramAuthHandler";
 import { TelegramSdkScript } from "@/components/TelegramSdkScript";
+import { PwaServiceWorker } from "@/components/PwaServiceWorker";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { PaymentIssueBanner } from "@/components/PaymentIssueBanner";
 import { I18nInit } from "@/components/I18nInit";
@@ -75,6 +76,15 @@ export const metadata: Metadata = {
       "max-image-preview": "large",
     },
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Vizora AI",
+  },
+  icons: {
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export default function RootLayout({
@@ -86,6 +96,7 @@ export default function RootLayout({
     <html lang="ru" className={`dark ${inter.variable}`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#0A0A0F" />
         {/* Telegram Mini App SDK — loaded after hydration so a slow/throttled
             fetch of this script on mobile networks never blocks the initial
             page render for everyone else. TelegramAuthHandler listens for the
@@ -95,6 +106,7 @@ export default function RootLayout({
       </head>
       <body className="bg-[#0A0A0F] text-[#F0F0FF] antialiased font-sans">
         <I18nInit />
+        <PwaServiceWorker />
         <BrandingProvider>
           <TelegramAuthHandler />
           <PushNotificationPrompt />

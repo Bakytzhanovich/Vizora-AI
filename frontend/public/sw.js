@@ -1,5 +1,29 @@
-// Minimal service worker: only handles Web Push display + notification clicks.
-// No offline caching — intentionally out of scope for this feature.
+// Service worker: handles Web Push display + notification clicks, plus a
+// minimal offline fallback (just enough for PWA installability — this app is
+// a personalized, API-backed dashboard, so there's no real offline mode;
+// navigation just falls back to a static "you're offline" page).
+
+const OFFLINE_CACHE = "vizora-offline-v1";
+const OFFLINE_URL = "/offline.html";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(OFFLINE_CACHE).then((cache) => cache.add(OFFLINE_URL))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(OFFLINE_URL))
+    );
+  }
+});
 
 self.addEventListener("push", (event) => {
   if (!event.data) return;
