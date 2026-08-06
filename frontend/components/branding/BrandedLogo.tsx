@@ -33,7 +33,7 @@ export function BrandedLogo({ size = "md", className = "" }: Props) {
       ) : (
         <VizoraMark className={s.logo} />
       )}
-      <span className={`text-[#F0F0FF] font-bold ${s.text}`}>{branding.name}</span>
+      <span className={`text-[#F0F0FF] font-bold whitespace-nowrap ${s.text}`}>{branding.name}</span>
     </div>
   );
 }

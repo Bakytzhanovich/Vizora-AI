@@ -117,7 +117,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-6 max-w-5xl mx-auto">
       <PoweredByFooter />
       {/* Top nav */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between flex-wrap gap-y-3 mb-8">
         <BrandedLogo />
         <div className="flex items-center gap-3">
           <PlanBadge subscription={subscription} />

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { BrandingProvider } from "@/context/BrandingContext";
 import { TelegramAuthHandler } from "@/components/TelegramAuthHandler";
+import { TelegramSdkScript } from "@/components/TelegramSdkScript";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { PaymentIssueBanner } from "@/components/PaymentIssueBanner";
 import { I18nInit } from "@/components/I18nInit";
@@ -91,11 +91,7 @@ export default function RootLayout({
             page render for everyone else. TelegramAuthHandler listens for the
             "telegram-sdk-loaded" event as a fallback in case it mounts before
             this finishes loading. */}
-        <Script
-          src="https://telegram.org/js/telegram-web-app.js"
-          strategy="afterInteractive"
-          onLoad={() => window.dispatchEvent(new Event("telegram-sdk-loaded"))}
-        />
+        <TelegramSdkScript />
       </head>
       <body className="bg-[#0A0A0F] text-[#F0F0FF] antialiased font-sans">
         <I18nInit />
