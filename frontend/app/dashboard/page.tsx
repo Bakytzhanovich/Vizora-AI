@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronUp, Lock, Check, Sparkles, Map, MessageCircle, Mic, FileText, LifeBuoy } from "lucide-react";
+import { LogOut, ChevronDown, ChevronUp, Lock, Check, Sparkles, Map, MessageCircle, Mic, FileText, LifeBuoy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
-import { DashboardHeaderMenu } from "@/components/dashboard/DashboardHeaderMenu";
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
 import { ReferralCard } from "@/components/referral/ReferralCard";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode, apiGetPlans } from "@/lib/api";
 import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
 
@@ -118,7 +118,16 @@ export default function DashboardPage() {
       {/* Top nav */}
       <div className="flex items-center justify-between mb-8">
         <BrandedLogo />
-        <DashboardHeaderMenu subscription={subscription} onLogout={logout} />
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#1E1E2E] hover:bg-[#26263A] transition-colors"
+          >
+            <LogOut size={14} />
+            {t("common:nav.logout")}
+          </button>
+        </div>
       </div>
 
       {/* Greeting */}
