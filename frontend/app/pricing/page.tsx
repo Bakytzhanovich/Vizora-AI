@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { Check, Lock } from "lucide-react";
+import { ArrowLeft, Check, Lock } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -119,6 +119,14 @@ function PricingContent() {
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-10">
       <div className="max-w-5xl mx-auto">
+        <button
+          onClick={() => (window.history.length > 1 ? router.back() : router.push(isAuthenticated ? "/dashboard" : "/"))}
+          className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-sm mb-6 transition-colors"
+        >
+          <ArrowLeft size={16} />
+          {t("common:common.back")}
+        </button>
+
         {/* Hero */}
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-[#F0F0FF] mb-2">{t("hero_title")}</h1>
