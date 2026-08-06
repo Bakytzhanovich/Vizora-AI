@@ -124,7 +124,7 @@ export default function DashboardPage() {
           <LanguageSwitcher />
           <button
             onClick={logout}
-            className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-sm transition-colors"
+            className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#1E1E2E] hover:bg-[#26263A] transition-colors"
           >
             <LogOut size={14} />
             {t("common:nav.logout")}

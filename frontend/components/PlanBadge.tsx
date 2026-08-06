@@ -28,7 +28,7 @@ export function PlanBadge({ subscription }: { subscription: SubscriptionInfo | n
     return (
       <button
         onClick={() => router.push("/pricing?renew=1")}
-        className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-[#FF6B6B]/15 text-[#FF6B6B]"
+        className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#FF6B6B]/15 text-[#FF6B6B]"
       >
         <AlertTriangle size={12} /> Проблема с оплатой
       </button>
@@ -39,7 +39,7 @@ export function PlanBadge({ subscription }: { subscription: SubscriptionInfo | n
     return (
       <button
         onClick={() => router.push("/pricing")}
-        className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#6C63FF]/15 text-[#6C63FF]"
+        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#6C63FF]/15 text-[#6C63FF]"
       >
         {PLAN_LABELS.free}
       </button>
@@ -49,7 +49,7 @@ export function PlanBadge({ subscription }: { subscription: SubscriptionInfo | n
   const label = PLAN_LABELS[subscription.plan] ?? subscription.plan;
   const until = subscription.period_end ? ` • до ${formatShortDate(subscription.period_end)}` : "";
   return (
-    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#00D4AA]/15 text-[#00D4AA]">
+    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#00D4AA]/15 text-[#00D4AA]">
       {label}
       {until}
     </span>
