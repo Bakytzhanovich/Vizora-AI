@@ -86,10 +86,15 @@ export default function RootLayout({
     <html lang="ru" className={`dark ${inter.variable}`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* Telegram Mini App SDK — must load before any JS runs */}
+        {/* Telegram Mini App SDK — loaded after hydration so a slow/throttled
+            fetch of this script on mobile networks never blocks the initial
+            page render for everyone else. TelegramAuthHandler listens for the
+            "telegram-sdk-loaded" event as a fallback in case it mounts before
+            this finishes loading. */}
         <Script
           src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
+          onLoad={() => window.dispatchEvent(new Event("telegram-sdk-loaded"))}
         />
       </head>
       <body className="bg-[#0A0A0F] text-[#F0F0FF] antialiased font-sans">
