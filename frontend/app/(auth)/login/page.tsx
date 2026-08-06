@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AxiosError } from "axios";
 import { VizoraMark } from "@/components/VizoraMark";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import { OfficialSeal } from "@/components/OfficialSeal";
 import { apiGetSocialProof } from "@/lib/api";
 
 interface FormErrors {
@@ -99,6 +100,7 @@ export default function LoginPage() {
             <span className="text-[#F0F0FF] font-bold text-xl">
               Vizora <span className="text-[#6C63FF]">AI</span>
             </span>
+            <OfficialSeal className="w-6 h-6 ml-0.5" />
           </Link>
           <h1 className="text-2xl font-bold text-[#F0F0FF] mb-2">Добро пожаловать</h1>
           <p className="text-[#8B8BA7] text-sm mb-3">Войди в свой аккаунт</p>
