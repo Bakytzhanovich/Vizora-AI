@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { AlertTriangle, Lock } from "lucide-react";
 import type { RiskItem } from "@/lib/api";
 
 const severityConfig = {
@@ -31,7 +32,7 @@ export function RiskCard({ risk, index, locked = false }: Props) {
       transition={{ delay: 0.1 * index }}
       className={`flex items-start gap-3 px-4 py-3.5 rounded-xl border ${cfg.bg} ${cfg.border}`}
     >
-      <span className="text-lg mt-0.5 shrink-0">⚠️</span>
+      <AlertTriangle size={18} className="mt-0.5 shrink-0" style={{ color: cfg.color }} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className="text-[#F0F0FF] text-sm font-semibold">{risk.label_ru}</span>
@@ -51,11 +52,13 @@ export function RiskCard({ risk, index, locked = false }: Props) {
               onClick={() => setShowUnlockInfo((v) => !v)}
               className="text-[#6C63FF] text-xs font-semibold flex items-center gap-1 hover:text-[#9C8BFF] transition-colors"
             >
-              🔒 Доступно в СТАНДАРТ плане
+              <Lock size={11} /> Доступно в СТАНДАРТ плане
             </button>
             {showUnlockInfo && (
               <div className="mt-2 bg-[#0A0A0F] border border-[#6C63FF]/30 rounded-lg p-3">
-                <p className="text-[#F0F0FF] text-xs font-semibold mb-1">🔒 Доступно в СТАНДАРТ плане</p>
+                <p className="text-[#F0F0FF] text-xs font-semibold mb-1 flex items-center gap-1">
+                  <Lock size={11} /> Доступно в СТАНДАРТ плане
+                </p>
                 <p className="text-[#8B8BA7] text-xs mb-2">Узнай как устранить твои риски</p>
                 <button
                   onClick={() => router.push("/pricing")}

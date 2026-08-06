@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Lock, type LucideIcon } from "lucide-react";
 
 interface Props {
-  icon: string;
+  icon: LucideIcon;
   title: string;
   locked?: boolean;
   href?: string | null;
@@ -14,7 +15,7 @@ interface Props {
   subtitle?: string;
 }
 
-export function ModuleCard({ icon, title, locked = true, href, index, featured = false, subtitle }: Props) {
+export function ModuleCard({ icon: Icon, title, locked = true, href, index, featured = false, subtitle }: Props) {
   const router = useRouter();
   const { t } = useTranslation("dashboard");
 
@@ -30,7 +31,9 @@ export function ModuleCard({ icon, title, locked = true, href, index, featured =
         onClick={handleClick}
         className="relative bg-gradient-to-r from-[#6C63FF]/15 to-[#6C63FF]/5 border border-[#6C63FF]/40 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:border-[#6C63FF] transition-all duration-200 active:scale-[0.99] shadow-lg shadow-[#6C63FF]/5"
       >
-        <div className="text-4xl shrink-0">{icon}</div>
+        <div className="w-12 h-12 rounded-xl bg-[#6C63FF]/15 flex items-center justify-center shrink-0">
+          <Icon size={22} className="text-[#6C63FF]" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <span className="text-[#F0F0FF] font-semibold text-base">{title}</span>
@@ -57,12 +60,18 @@ export function ModuleCard({ icon, title, locked = true, href, index, featured =
           : "border-[#6C63FF]/30 hover:border-[#6C63FF] hover:bg-[#6C63FF]/5 cursor-pointer shadow-lg shadow-[#6C63FF]/5"
       }`}
     >
-      <div className="text-3xl">{icon}</div>
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+          locked ? "bg-[#8B8BA7]/10" : "bg-[#6C63FF]/15"
+        }`}
+      >
+        <Icon size={20} className={locked ? "text-[#8B8BA7]" : "text-[#6C63FF]"} />
+      </div>
       <div>
         <div className="text-[#F0F0FF] font-semibold text-sm">{title}</div>
         {locked ? (
           <div className="text-[#8B8BA7] text-xs mt-1 flex items-center gap-1">
-            <span>🔒</span> {t("coming_soon")}
+            <Lock size={11} /> {t("coming_soon")}
           </div>
         ) : (
           <div className="text-[#6C63FF] text-xs mt-1 flex items-center gap-1">

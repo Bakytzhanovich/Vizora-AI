@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogOut, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { LogOut, ChevronDown, ChevronUp, Lock, Check, Sparkles, Map, MessageCircle, Mic, FileText, LifeBuoy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
@@ -22,7 +22,7 @@ function formatKzt(amount: number): string {
 }
 
 const restModuleHrefs = ["/chat", "/simulator", "/documents"] as const;
-const restModuleIcons = ["🤖", "🎤", "📄"];
+const restModuleIcons = [MessageCircle, Mic, FileText];
 const restModuleKeys = ["chat", "simulator", "documents"] as const;
 
 const riskColors: Record<string, string> = {
@@ -140,7 +140,7 @@ export default function DashboardPage() {
         className="mb-6"
       >
         <h1 className="text-2xl sm:text-3xl font-bold text-[#F0F0FF] mb-1">
-          {t("dashboard:greeting", { name: profile?.name })} 👋
+          {t("dashboard:greeting", { name: profile?.name })}
         </h1>
         {daysUntilInterview !== null ? (
           <p className="text-[#8B8BA7]">
@@ -171,7 +171,7 @@ export default function DashboardPage() {
           />
         </div>
         <div className="flex items-center gap-2 text-xs text-[#00D4AA]">
-          <span>✓</span>
+          <Check size={14} />
           <span>{t("dashboard:profile_complete")}</span>
         </div>
         {isFree && subscription && (
@@ -193,7 +193,7 @@ export default function DashboardPage() {
           className="bg-gradient-to-r from-[#6C63FF]/10 to-[#6C63FF]/5 border border-[#6C63FF]/30 rounded-2xl p-5 mb-5"
         >
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg">⭐</span>
+            <Sparkles size={16} className="text-[#6C63FF]" />
             <span className="text-[#F0F0FF] font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
           </div>
           <p className="text-[#8B8BA7] text-sm">{t("dashboard:upgrade_banner.line1")}</p>
@@ -265,7 +265,7 @@ export default function DashboardPage() {
             <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:modules")}</h2>
             <div className="mb-3">
               <ModuleCard
-                icon="🗺️"
+                icon={Map}
                 title={t("dashboard:module_titles.roadmap")}
                 subtitle={t("dashboard:continue_hint")}
                 locked={false}
@@ -356,7 +356,9 @@ export default function DashboardPage() {
               className="w-full text-left bg-[#13131A] border border-[#FF6B6B]/30 rounded-2xl p-5 hover:border-[#FF6B6B]/60 hover:bg-[#1A1010] transition-all active:scale-[0.98]"
             >
               <div className="flex items-center gap-4">
-                <div className="text-3xl shrink-0">🆘</div>
+                <div className="w-12 h-12 rounded-xl bg-[#FF6B6B]/15 flex items-center justify-center shrink-0">
+                  <LifeBuoy size={22} className="text-[#FF6B6B]" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[#FF6B6B] font-bold text-base">{t("dashboard:emergency_banner.title")}</span>

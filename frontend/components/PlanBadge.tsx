@@ -1,15 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
 import type { SubscriptionInfo } from "@/lib/api";
 
 const PLAN_LABELS: Record<string, string> = {
-  free: "🆓 Бесплатный",
-  standard: "⭐ Стандарт",
-  premium: "💎 Премиум",
-  agency_starter: "🏢 Agency Starter",
-  agency_business: "🏢 Agency Business",
-  agency_partner: "🏢 Agency Partner",
+  free: "Бесплатный",
+  standard: "Стандарт",
+  premium: "Премиум",
+  agency_starter: "Agency Starter",
+  agency_business: "Agency Business",
+  agency_partner: "Agency Partner",
 };
 
 function formatShortDate(iso: string): string {
@@ -27,9 +28,9 @@ export function PlanBadge({ subscription }: { subscription: SubscriptionInfo | n
     return (
       <button
         onClick={() => router.push("/pricing?renew=1")}
-        className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#FF6B6B]/15 text-[#FF6B6B]"
+        className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-[#FF6B6B]/15 text-[#FF6B6B]"
       >
-        ⚠️ Проблема с оплатой
+        <AlertTriangle size={12} /> Проблема с оплатой
       </button>
     );
   }

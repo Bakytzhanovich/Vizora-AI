@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { Gift } from "lucide-react";
 
 interface ReferralCardProps {
   totalActive?: number;
@@ -21,7 +22,9 @@ export function ReferralCard({ totalActive = 0, nextTierNeeded }: ReferralCardPr
       className="w-full text-left bg-gradient-to-r from-[#6C63FF]/10 to-[#F59E0B]/5 border border-[#6C63FF]/20 rounded-2xl p-4 hover:border-[#6C63FF]/40 transition-all active:scale-[0.98]"
     >
       <div className="flex items-center gap-3">
-        <span className="text-2xl shrink-0">🎁</span>
+        <div className="w-10 h-10 rounded-xl bg-[#6C63FF]/15 flex items-center justify-center shrink-0">
+          <Gift size={18} className="text-[#6C63FF]" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-[#F0F0FF] font-semibold text-sm">{t("referral_card.title")}</span>
