@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, GraduationCap, Building2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { AxiosError } from "axios";
 import { VizoraMark } from "@/components/VizoraMark";
 import { GoogleAuthButton } from "@/components/auth/GoogleAuthButton";
+import { apiGetSocialProof } from "@/lib/api";
 
 interface FormErrors {
   email?: string;
@@ -26,6 +27,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [slowLoading, setSlowLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [studentCount, setStudentCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    apiGetSocialProof()
+      .then((data) => setStudentCount(data.student_count))
+      .catch(() => {});
+  }, []);
 
   const redirectAfterAuth = (user: { role: string }, profile: unknown) => {
     if (user.role === "admin") {
@@ -93,7 +101,18 @@ export default function LoginPage() {
             </span>
           </Link>
           <h1 className="text-2xl font-bold text-[#F0F0FF] mb-2">Добро пожаловать</h1>
-          <p className="text-[#8B8BA7] text-sm">Войди в свой аккаунт</p>
+          <p className="text-[#8B8BA7] text-sm mb-3">Войди в свой аккаунт</p>
+          {studentCount !== null && studentCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center gap-1.5 text-xs text-[#8B8BA7] bg-[#13131A] border border-[#1E1E2E] rounded-full px-3 py-1.5"
+            >
+              <GraduationCap size={14} className="text-[#6C63FF]" />
+              <span>{studentCount}+ студентов готовятся к интервью в США</span>
+            </motion.div>
+          )}
         </div>
 
         <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-6 sm:p-8">
@@ -187,7 +206,7 @@ export default function LoginPage() {
             href="/agency/login"
             className="inline-flex items-center gap-1.5 text-xs text-[#8B8BA7]/60 hover:text-[#8B8BA7] transition-colors border border-[#1E1E2E] rounded-lg px-3 py-1.5"
           >
-            <span>🏢</span>
+            <Building2 size={13} />
             Войти как агентство
           </Link>
         </div>
