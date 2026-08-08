@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { AlertTriangle, Lock } from "lucide-react";
@@ -23,7 +22,6 @@ interface Props {
 export function RiskCard({ risk, index, locked = false }: Props) {
   const router = useRouter();
   const cfg = severityConfig[risk.severity];
-  const [showUnlockInfo, setShowUnlockInfo] = useState(false);
 
   return (
     <motion.div
@@ -47,28 +45,18 @@ export function RiskCard({ risk, index, locked = false }: Props) {
         {!locked ? (
           <p className="text-[#8B8BA7] text-xs leading-relaxed">{risk.advice_ru}</p>
         ) : (
-          <>
+          <div>
+            <p className="text-[#8B8BA7] text-xs mb-1">Как решить:</p>
+            <p className="text-[#8B8BA7] text-xs leading-relaxed blur-[4px] select-none pointer-events-none">
+              {risk.advice_ru}
+            </p>
             <button
-              onClick={() => setShowUnlockInfo((v) => !v)}
-              className="text-[#6C63FF] text-xs font-semibold flex items-center gap-1 hover:text-[#9C8BFF] transition-colors"
+              onClick={() => router.push("/pricing")}
+              className="text-[#6C63FF] text-xs font-semibold flex items-center gap-1 hover:text-[#9C8BFF] transition-colors mt-1.5"
             >
-              <Lock size={11} /> Доступно в СТАНДАРТ плане
+              <Lock size={11} /> Разблокировать решения →
             </button>
-            {showUnlockInfo && (
-              <div className="mt-2 bg-[#0A0A0F] border border-[#6C63FF]/30 rounded-lg p-3">
-                <p className="text-[#F0F0FF] text-xs font-semibold mb-1 flex items-center gap-1">
-                  <Lock size={11} /> Доступно в СТАНДАРТ плане
-                </p>
-                <p className="text-[#8B8BA7] text-xs mb-2">Узнай как устранить твои риски</p>
-                <button
-                  onClick={() => router.push("/pricing")}
-                  className="text-[#6C63FF] text-xs font-bold hover:text-[#9C8BFF] transition-colors"
-                >
-                  Разблокировать →
-                </button>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
     </motion.div>

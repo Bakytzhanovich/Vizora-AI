@@ -1,29 +1,27 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Check, Lock } from "lucide-react";
+import { ArrowLeft, Check, Lock, GraduationCap, Star, Lightbulb } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-import {
-  apiGetPlans,
-  apiGetSocialProof,
-  apiCreatePayment,
-  apiMockCompletePayment,
-  type Plan,
-  type CreatePaymentResponse,
-} from "@/lib/api";
+import { apiGetPlans, apiGetSocialProof, type Plan } from "@/lib/api";
 
 const CONSUMER_PLAN_IDS = ["free", "standard", "premium"];
+const TELEGRAM_SUPPORT_URL = "https://t.me/vizora_support";
 
 function formatKzt(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount) + " ₸";
 }
 
+interface FeatureRow {
+  label: string;
+  ok: boolean;
+}
+
 function PricingContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { t } = useTranslation("pricing");
   const { isAuthenticated, subscription } = useAuth();
 
@@ -31,13 +29,7 @@ function PricingContent() {
   const [socialProof, setSocialProof] = useState<{ student_count: number; average_score: number | null } | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
-  const [startingPlan, setStartingPlan] = useState<string | null>(null);
-  const [pendingPayment, setPendingPayment] = useState<
-    (CreatePaymentResponse & { plan: string }) | null
-  >(null);
   const [error, setError] = useState<string | null>(null);
-
-  const discountCode = searchParams.get("discount") || undefined;
 
   useEffect(() => {
     Promise.all([apiGetPlans(), apiGetSocialProof()])
@@ -49,72 +41,66 @@ function PricingContent() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleStart = async (planId: string) => {
+  const handleStart = (planId: string) => {
     if (planId === "free") {
       router.push(isAuthenticated ? "/dashboard" : "/register");
       return;
     }
-    if (!isAuthenticated) {
-      router.push("/register");
-      return;
-    }
-    setError(null);
-    setStartingPlan(planId);
-    try {
-      const result = await apiCreatePayment(planId, billingPeriod, discountCode);
-      if (result.mock_mode) {
-        setPendingPayment({ ...result, plan: planId });
-      } else {
-        window.location.href = result.pay_url;
-      }
-    } catch {
-      setError("Не удалось создать платёж. Попробуй ещё раз.");
-    } finally {
-      setStartingPlan(null);
-    }
+    // No automated checkout yet — Standard/Premium are activated manually
+    // after the student pays via Telegram (see routers/internal.py).
+    window.open(TELEGRAM_SUPPORT_URL, "_blank", "noopener,noreferrer");
   };
 
-  const handleMockComplete = async () => {
-    if (!pendingPayment) return;
-    setStartingPlan(pendingPayment.plan);
-    try {
-      await apiMockCompletePayment(pendingPayment.payment_id);
-      router.push("/dashboard?payment=success");
-    } catch {
-      setError("Не удалось подтвердить тестовый платёж.");
-    } finally {
-      setStartingPlan(null);
-    }
-  };
-
-  const featureRows = (plan: Plan) => {
+  const featureRows = (plan: Plan): FeatureRow[] => {
     const l = plan.limits;
-    const rows: { label: string; ok: boolean }[] = [
-      l.faq_per_day === null
-        ? { label: t("features.faq_unlimited"), ok: true }
-        : { label: t("features.faq_limited", { count: l.faq_per_day }), ok: true },
-      l.simulator_sessions_total != null
-        ? { label: t("features.sessions_total_one", { count: l.simulator_sessions_total }), ok: true }
-        : l.simulator_sessions_per_month === null
-        ? { label: t("features.sessions_unlimited"), ok: true }
-        : {
-            // No plan ever sets a monthly quota of exactly 1 (free uses
-            // simulator_sessions_total instead, standard=5, premium=unlimited),
-            // so this branch only ever needs the plural form.
-            label: t("features.sessions_plural", { count: l.simulator_sessions_per_month }),
-            ok: true,
-          },
-      { label: l.consul_mode ? t("features.mode_trainer_consul") : t("features.mode_trainer"), ok: true },
-      { label: t("features.detailed_feedback"), ok: l.detailed_feedback },
-      { label: t("features.risk_solutions"), ok: l.risk_solutions },
-      { label: t("features.ds160_guide"), ok: l.ds160_guide },
-      { label: t("features.after_visa"), ok: l.after_visa },
-      { label: t("features.emergency"), ok: l.emergency },
+    if (plan.id === "free") {
+      return [
+        { label: t("features.faq_limited", { count: l.faq_per_day }), ok: true },
+        {
+          label: t("features.sessions_total_limited_time", {
+            count: l.simulator_sessions_total,
+            minutes: l.simulator_session_max_minutes,
+          }),
+          ok: true,
+        },
+        { label: t("features.mode_trainer"), ok: true },
+        { label: t("features.documents_checklist"), ok: true },
+        { label: t("features.risk_profile"), ok: true },
+        { label: t("features.risk_solutions"), ok: false },
+        { label: t("features.consul_mode"), ok: false },
+        { label: t("features.detailed_feedback"), ok: false },
+        { label: t("features.ds160_guide"), ok: false },
+        { label: t("features.after_visa"), ok: false },
+        { label: t("features.emergency"), ok: false },
+      ];
+    }
+    if (plan.id === "standard") {
+      return [
+        { label: t("features.faq_unlimited"), ok: true },
+        { label: t("features.sessions_plural", { count: l.simulator_sessions_per_month }), ok: true },
+        { label: t("features.mode_trainer_consul"), ok: true },
+        { label: t("features.detailed_feedback"), ok: true },
+        { label: t("features.risk_solutions_full"), ok: true },
+        { label: t("features.ds160_guide_full"), ok: true },
+        { label: t("features.after_visa"), ok: true },
+        { label: t("features.emergency"), ok: true },
+        { label: t("features.unlimited_sessions"), ok: false },
+        { label: t("features.pdf_report"), ok: false },
+        { label: t("features.early_access"), ok: false },
+      ];
+    }
+    // premium
+    return [
+      { label: t("features.everything_standard"), ok: true },
+      { label: t("features.unlimited_sessions"), ok: true },
+      { label: t("features.pdf_report"), ok: true },
+      { label: t("features.priority_support"), ok: true },
+      { label: t("features.early_access"), ok: true },
     ];
-    if (l.pdf_report) rows.push({ label: t("features.pdf_report"), ok: true });
-    if (l.priority_support) rows.push({ label: t("features.priority_support"), ok: true });
-    return rows;
   };
+
+  const standardPlan = plans.find((p) => p.id === "standard");
+  const standardMonthly = standardPlan?.prices_kzt.monthly;
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] px-4 py-10">
@@ -132,12 +118,6 @@ function PricingContent() {
           <h1 className="text-3xl sm:text-4xl font-bold text-[#F0F0FF] mb-2">{t("hero_title")}</h1>
           <p className="text-[#8B8BA7]">{t("hero_subtitle")}</p>
         </div>
-
-        {discountCode && (
-          <div className="max-w-md mx-auto mb-6 text-center text-sm font-semibold text-[#FF6B6B] bg-[#FF6B6B]/10 border border-[#FF6B6B]/30 rounded-xl py-2 px-4">
-            {t("discount_active")}
-          </div>
-        )}
 
         {/* Billing toggle */}
         <div className="flex justify-center mb-10">
@@ -170,12 +150,13 @@ function PricingContent() {
             <div className="w-10 h-10 border-2 border-[#6C63FF]/30 border-t-[#6C63FF] rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid md:grid-cols-3 gap-5 mb-10">
+          <div className="grid md:grid-cols-3 gap-5 mb-8">
             {plans.map((plan) => {
               const isFree = plan.id === "free";
               const isPopular = plan.id === "standard";
               const isCurrent = subscription?.plan === plan.id;
               const price = plan.prices_kzt[billingPeriod];
+              const monthlyEquivalent = billingPeriod === "yearly" ? Math.round(price / 12) : null;
               return (
                 <div
                   key={plan.id}
@@ -186,18 +167,29 @@ function PricingContent() {
                   }`}
                 >
                   {isPopular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full bg-[#6C63FF] text-white">
-                      ⭐ {t("popular_badge")}
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full bg-[#6C63FF] text-white">
+                      <Star size={11} fill="currentColor" /> {t("popular_badge")}
                     </span>
                   )}
                   <h3 className="text-lg font-bold text-[#F0F0FF] mb-1">
                     {t(`plan_names.${plan.id}`)}
                   </h3>
                   <div className="mb-5">
-                    <span className="text-3xl font-bold text-[#F0F0FF]">{formatKzt(price)}</span>
-                    {!isFree && (
-                      <span className="text-[#8B8BA7] text-sm">
-                        {billingPeriod === "monthly" ? t("per_month") : t("per_year")}
+                    {isFree ? (
+                      <>
+                        <span className="text-3xl font-bold text-[#F0F0FF]">0 ₸</span>
+                        <div className="text-[#8B8BA7] text-xs mt-0.5">{t("forever")}</div>
+                      </>
+                    ) : billingPeriod === "yearly" ? (
+                      <>
+                        <span className="text-3xl font-bold text-[#F0F0FF]">{formatKzt(monthlyEquivalent ?? 0)}</span>
+                        <span className="text-[#8B8BA7] text-sm">{t("per_month")}</span>
+                        <div className="text-[#8B8BA7] text-xs mt-0.5">{formatKzt(price)}{t("per_year")}</div>
+                      </>
+                    ) : (
+                      <span className="text-3xl font-bold text-[#F0F0FF]">
+                        {formatKzt(price)}
+                        <span className="text-[#8B8BA7] text-sm">{t("per_month")}</span>
                       </span>
                     )}
                   </div>
@@ -215,39 +207,34 @@ function PricingContent() {
                   </ul>
                   <button
                     onClick={() => handleStart(plan.id)}
-                    disabled={startingPlan === plan.id || isCurrent}
+                    disabled={isCurrent}
                     className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
                       isPopular
                         ? "bg-[#6C63FF] hover:bg-[#7C75FF] text-white"
                         : "bg-[#1E1E2E] hover:bg-[#2A2A3A] text-[#F0F0FF]"
                     }`}
                   >
-                    {isCurrent
-                      ? t("cta_current")
-                      : startingPlan === plan.id
-                      ? t("processing")
-                      : isFree
-                      ? t("cta_free")
-                      : t("cta_start")}
+                    {isCurrent ? t("cta_current") : isFree ? t("cta_free") : t("cta_start")}
                   </button>
+                  {!isFree && !isCurrent && (
+                    <p className="text-[#8B8BA7] text-[11px] text-center mt-2">{t("telegram_cta_notice")}</p>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
 
-        {/* Mock payment confirmation */}
-        {pendingPayment && (
-          <div className="max-w-md mx-auto mb-10 rounded-2xl border border-[#6C63FF]/40 bg-[#13131A] p-5 text-center">
-            <p className="text-xs text-[#8B8BA7] mb-3">{t("mock_mode_notice")}</p>
-            <p className="text-[#F0F0FF] font-semibold mb-4">{formatKzt(pendingPayment.amount)}</p>
-            <button
-              onClick={handleMockComplete}
-              disabled={startingPlan === pendingPayment.plan}
-              className="w-full py-3 rounded-xl text-sm font-semibold bg-[#00D4AA] hover:bg-[#00B894] text-black disabled:opacity-60"
-            >
-              {startingPlan === pendingPayment.plan ? t("processing") : t("mock_complete_button")}
-            </button>
+        {/* Value box */}
+        {standardMonthly != null && (
+          <div className="max-w-2xl mx-auto mb-10 rounded-2xl border border-[#6C63FF]/30 bg-[#6C63FF]/5 p-5 flex items-start gap-3">
+            <Lightbulb size={20} className="text-[#6C63FF] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[#F0F0FF] font-semibold text-sm mb-1">{t("value_box.title")}</p>
+              <p className="text-[#8B8BA7] text-sm">
+                {t("value_box.text", { price: formatKzt(standardMonthly) })}
+              </p>
+            </div>
           </div>
         )}
 
@@ -255,17 +242,23 @@ function PricingContent() {
         {socialProof && (
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#F0F0FF] mb-4">
             {socialProof.student_count > 0 && (
-              <span>{t("social_proof.students", { count: socialProof.student_count })}</span>
+              <span className="flex items-center gap-1.5">
+                <GraduationCap size={15} className="text-[#6C63FF]" />
+                {t("social_proof.students", { count: socialProof.student_count })}
+              </span>
             )}
             {socialProof.average_score != null && (
-              <span>{t("social_proof.average_score", { score: socialProof.average_score })}</span>
+              <span className="flex items-center gap-1.5">
+                <Star size={15} className="text-[#F59E0B]" fill="currentColor" />
+                {t("social_proof.average_score", { score: socialProof.average_score })}
+              </span>
             )}
           </div>
         )}
 
         {/* Trust row */}
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-[#8B8BA7] mb-14">
-          <span>{t("trust.secure_payment")}</span>
+          <span>{t("trust.no_card_free")}</span>
           <span>{t("trust.cancel_anytime")}</span>
         </div>
 

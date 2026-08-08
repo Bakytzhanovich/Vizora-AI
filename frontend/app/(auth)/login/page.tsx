@@ -67,10 +67,22 @@ export default function LoginPage() {
     if (!validate()) return;
     setLoading(true);
     setErrors({});
-    const slowTimer = setTimeout(() => setSlowLoading(true), 4000);
+    const slowTimer = setTimeout(() => setSlowLoading(true), 2500);
     try {
-      const { user, profile } = await login(email, password);
-      redirectAfterAuth(user, profile);
+      let result;
+      try {
+        result = await login(email, password);
+      } catch (err) {
+        const axErr = err as AxiosError<{ detail: string }>;
+        // A free-tier Render instance that just woke from sleep can drop or
+        // 5xx the very first request — retry once silently before showing
+        // anything scary. A genuine wrong password is a stable 401 on every
+        // attempt, so it's never retried here (also spares the login
+        // endpoint's rate limit from a needless second call).
+        if (axErr.response?.status === 401) throw err;
+        result = await login(email, password);
+      }
+      redirectAfterAuth(result.user, result.profile);
     } catch (err) {
       const axErr = err as AxiosError<{ detail: string }>;
       if (axErr.response?.status === 401) {
@@ -188,7 +200,7 @@ export default function LoginPage() {
                 animate={{ opacity: 1 }}
                 className="text-[#8B8BA7] text-xs text-center"
               >
-                Сервер просыпается после простоя — это может занять до минуты. Спасибо за терпение 🙏
+                Сервер просыпается после простоя — это может занять до минуты.
               </motion.p>
             )}
           </form>

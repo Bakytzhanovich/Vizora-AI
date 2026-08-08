@@ -30,8 +30,8 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 # a spec literally. Yearly = 12 months at a 30% discount, rounded to a clean number.
 PLAN_PRICES_KZT: dict[str, dict[str, int]] = {
     "free": {"monthly": 0, "yearly": 0},
-    "standard": {"monthly": 4_900, "yearly": 41_200},
-    "premium": {"monthly": 7_900, "yearly": 66_400},
+    "standard": {"monthly": 3_900, "yearly": 32_760},
+    "premium": {"monthly": 6_900, "yearly": 57_960},
     "agency_starter": {"monthly": 149_000, "yearly": 1_251_600},
     "agency_business": {"monthly": 299_000, "yearly": 2_511_600},
     "agency_partner": {"monthly": 499_000, "yearly": 4_191_600},

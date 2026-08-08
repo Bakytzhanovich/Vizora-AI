@@ -11,6 +11,7 @@ import { SessionsLimitOverlay } from "@/components/simulator/SessionsLimitOverla
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
+import { apiGetPlans } from "@/lib/api";
 
 const PLAN_LABELS: Record<string, string> = {
   free: "Бесплатный",
@@ -50,6 +51,8 @@ export default function SimulatorPage() {
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sessionsLimitHit, setSessionsLimitHit] = useState(false);
+  const [standardPriceKzt, setStandardPriceKzt] = useState<number | null>(null);
+  const [premiumPriceKzt, setPremiumPriceKzt] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -63,7 +66,23 @@ export default function SimulatorPage() {
       .then((r) => r.json())
       .then((d) => setHistory(d.sessions ?? []))
       .catch(() => {});
+
+    apiGetPlans()
+      .then((d) => {
+        const standard = d.plans.find((p) => p.id === "standard");
+        const premium = d.plans.find((p) => p.id === "premium");
+        if (standard) setStandardPriceKzt(standard.prices_kzt.monthly);
+        if (premium) setPremiumPriceKzt(premium.prices_kzt.monthly);
+      })
+      .catch(() => {});
   }, [router]);
+
+  const completedSessions = history.filter((h) => h.completed);
+  const totalQuestions = completedSessions.reduce((sum, h) => sum + (h.question_count || 0), 0);
+  const scoredSessions = completedSessions.filter((h) => h.scores != null);
+  const avgScore = scoredSessions.length > 0
+    ? scoredSessions.reduce((sum, h) => sum + (h.scores?.overall ?? 0), 0) / scoredSessions.length
+    : null;
 
   const handleStart = async (mode: "trainer" | "consul", difficulty: string) => {
     const token = localStorage.getItem("access_token");
@@ -145,6 +164,10 @@ export default function SimulatorPage() {
             sessionsLimit={subscription.sessions_limit}
             neverResets={subscription.limits.simulator_sessions_total != null}
             onWait={() => setSessionsLimitHit(false)}
+            totalQuestions={totalQuestions}
+            avgScore={avgScore}
+            standardPriceKzt={standardPriceKzt}
+            premiumPriceKzt={premiumPriceKzt}
           />
         )}
       </>

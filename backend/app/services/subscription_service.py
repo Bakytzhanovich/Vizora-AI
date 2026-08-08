@@ -24,10 +24,10 @@ AGENCY_FREE_PERIOD_DAYS = 30
 
 PLAN_LIMITS: dict[str, dict] = {
     "free": {
-        "faq_per_day": 5,
-        "simulator_sessions_total": 1,
+        "faq_per_day": 10,
+        "simulator_sessions_total": 3,
         "simulator_sessions_per_month": None,
-        "simulator_session_max_minutes": 5,
+        "simulator_session_max_minutes": 3,
         "consul_mode": False,
         "detailed_feedback": False,
         "risk_solutions": False,
@@ -40,7 +40,7 @@ PLAN_LIMITS: dict[str, dict] = {
     "standard": {
         "faq_per_day": None,
         "simulator_sessions_total": None,
-        "simulator_sessions_per_month": 5,
+        "simulator_sessions_per_month": 15,
         "simulator_session_max_minutes": None,
         "consul_mode": True,
         "detailed_feedback": True,

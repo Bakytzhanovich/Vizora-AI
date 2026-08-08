@@ -243,7 +243,13 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
   const isBusy = isStreaming || voiceState === "processing" || isPlaying;
 
   if (trialEnded) {
-    return <TrialSessionEndedModal answered={trialEnded.answered} total={trialEnded.total} />;
+    return (
+      <TrialSessionEndedModal
+        answered={trialEnded.answered}
+        total={trialEnded.total}
+        onSeeResults={handleEnd}
+      />
+    );
   }
 
   return (

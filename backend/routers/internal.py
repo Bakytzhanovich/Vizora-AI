@@ -191,3 +191,74 @@ async def notifications_due(
             })
 
     return {"students": students, "count": len(students)}
+
+
+# ─── Manual subscription activation ─────────────────────────────────────────
+# No automated payment yet (Kaspi/Stripe both pending) — a student pays via
+# Telegram (see /pricing) and the founder activates their plan by hand here.
+
+STUDENT_PLANS = ("free", "standard", "premium")
+
+
+class ActivateSubscriptionRequest(BaseModel):
+    email: EmailStr
+    plan: str
+    days: int = 30
+
+
+@router.post("/activate-subscription")
+async def activate_subscription(
+    request: Request,
+    body: ActivateSubscriptionRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    _check_admin_secret(request)
+
+    if body.plan not in STUDENT_PLANS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown plan: {body.plan}. Must be one of {STUDENT_PLANS}",
+        )
+    if body.days <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="days must be positive")
+
+    user = await db.scalar(select(User).where(User.email == body.email.lower()))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.subscription_status = "active"
+    user.subscription_plan = body.plan
+    user.subscription_period_end = datetime.utcnow() + timedelta(days=body.days)
+    user.sessions_used_this_month = 0
+    await db.commit()
+
+    return {"success": True, "message": "Активировано"}
+
+
+@router.get("/subscriptions")
+async def list_subscriptions(request: Request, db: AsyncSession = Depends(get_db)):
+    _check_admin_secret(request)
+
+    rows = await db.execute(
+        select(
+            User.id,
+            User.email,
+            User.subscription_plan,
+            User.subscription_status,
+            User.subscription_period_end,
+            User.sessions_used_this_month,
+        ).order_by(User.created_at.desc())
+    )
+    return {
+        "users": [
+            {
+                "id": r.id,
+                "email": r.email,
+                "plan": r.subscription_plan or "free",
+                "status": r.subscription_status,
+                "period_end": r.subscription_period_end.isoformat() if r.subscription_period_end else None,
+                "sessions_used_this_month": r.sessions_used_this_month,
+            }
+            for r in rows
+        ]
+    }
