@@ -3,7 +3,7 @@ import json
 import random
 from typing import Any, AsyncGenerator
 
-from app.services.ai_service import get_ai_client, get_chat_model
+from app.services.ai_service import get_ai_client, get_chat_model, strip_unexpected_scripts
 
 # Full question bank sourced from official agency interview prep document (58 real questions).
 # 70% of these are asked at every interview. Order within each phase reflects real consul flow.
@@ -581,7 +581,9 @@ async def generate_simulator_response(
             continue
         delta = chunk.choices[0].delta.content
         if delta:
-            yield delta
+            cleaned = strip_unexpected_scripts(delta)
+            if cleaned:
+                yield cleaned
 
 
 _FEEDBACK_FALLBACK: dict[str, Any] = {

@@ -46,8 +46,14 @@ function PricingContent() {
       router.push(isAuthenticated ? "/dashboard" : "/register");
       return;
     }
-    // No automated checkout yet — Standard/Premium are activated manually
-    // after the student pays via Telegram (see routers/internal.py).
+    // Standard/Premium are activated manually by email after the student
+    // pays via Telegram (see routers/internal.py) — an account has to exist
+    // first or that lookup 404s, so an anonymous visitor registers before
+    // being sent to Telegram.
+    if (!isAuthenticated) {
+      router.push("/register");
+      return;
+    }
     window.open(TELEGRAM_SUPPORT_URL, "_blank", "noopener,noreferrer");
   };
 

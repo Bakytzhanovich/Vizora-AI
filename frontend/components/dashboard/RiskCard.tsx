@@ -47,8 +47,14 @@ export function RiskCard({ risk, index, locked = false }: Props) {
         ) : (
           <div>
             <p className="text-[#8B8BA7] text-xs mb-1">Как решить:</p>
-            <p className="text-[#8B8BA7] text-xs leading-relaxed blur-[4px] select-none pointer-events-none">
-              {risk.advice_ru}
+            {/* Placeholder blocks, not risk.advice_ru — a CSS blur alone
+                would still ship the real gated text in the DOM, readable via
+                devtools/view-source regardless of the visual filter. */}
+            <p
+              aria-hidden="true"
+              className="text-[#8B8BA7] text-xs leading-relaxed blur-[4px] select-none pointer-events-none"
+            >
+              ▓▓▓▓▓▓▓▓▓ ▓▓▓▓▓▓ ▓▓▓ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ▓▓▓▓▓▓▓▓ ▓▓▓▓▓▓▓▓▓▓
             </p>
             <button
               onClick={() => router.push("/pricing")}

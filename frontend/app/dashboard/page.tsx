@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [afterVisa, setAfterVisa] = useState<{ unlocked: boolean; pct: number; completed: number; total: number } | null>(null);
   const [referralStats, setReferralStats] = useState<{ totalActive: number; nextNeeded: number | null } | null>(null);
   const [standardPriceKzt, setStandardPriceKzt] = useState<number | null>(null);
+  const [standardSessionsPerMonth, setStandardSessionsPerMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAllRisks, setShowAllRisks] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -77,7 +78,10 @@ export default function DashboardPage() {
         }
         if (plansRes) {
           const standard = plansRes.plans.find((p) => p.id === "standard");
-          if (standard) setStandardPriceKzt(standard.prices_kzt.monthly);
+          if (standard) {
+            setStandardPriceKzt(standard.prices_kzt.monthly);
+            setStandardSessionsPerMonth(standard.limits.simulator_sessions_per_month);
+          }
         }
       })
       .catch(() => router.replace("/login"))
@@ -194,7 +198,9 @@ export default function DashboardPage() {
             <Sparkles size={16} className="text-[#6C63FF]" />
             <span className="text-[#F0F0FF] font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
           </div>
-          <p className="text-[#8B8BA7] text-sm">{t("dashboard:upgrade_banner.line1")}</p>
+          <p className="text-[#8B8BA7] text-sm">
+            {t("dashboard:upgrade_banner.line1", { count: standardSessionsPerMonth ?? 15 })}
+          </p>
           <p className="text-[#8B8BA7] text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
           <button
             onClick={() => router.push("/pricing")}

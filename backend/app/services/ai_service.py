@@ -1,8 +1,32 @@
+import re
 from typing import Any, AsyncGenerator
 
 from openai import AsyncOpenAI
 
 from app.core.config import settings
+
+# Llama models (used via Groq for speed/cost) occasionally leak stray tokens
+# from an unrelated script into otherwise-correct ru/kz/en output — a known
+# multilingual-decoding quirk, worse for lower-resource languages like
+# Kazakhstan's — rather than anything this app's prompts control. Cyrillic
+# and Latin are always legitimate here (ru/kz responses, English consul
+# dialogue); these other scripts never are, so they're stripped defensively
+# from every streamed chunk before it reaches the client.
+_UNEXPECTED_SCRIPT_RE = re.compile(
+    "["
+    "一-鿿"  # CJK Unified Ideographs
+    "぀-ヿ"  # Hiragana + Katakana
+    "가-힯"  # Hangul syllables
+    "฀-๿"  # Thai
+    "؀-ۿ"  # Arabic
+    "ऀ-ॿ"  # Devanagari
+    "]+"
+)
+
+
+def strip_unexpected_scripts(text: str) -> str:
+    return _UNEXPECTED_SCRIPT_RE.sub("", text)
+
 
 # Supported providers. All use the OpenAI SDK — only base_url and API key differ.
 _PROVIDER_CONFIGS: dict[str, dict] = {
@@ -203,4 +227,6 @@ async def generate_chat_response(
             continue
         delta = chunk.choices[0].delta.content
         if delta:
-            yield delta
+            cleaned = strip_unexpected_scripts(delta)
+            if cleaned:
+                yield cleaned
