@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import random
 from typing import Any, AsyncGenerator
 
@@ -712,24 +713,6 @@ async def generate_feedback(
   Не пиши общий разбор "для всех" — recommendation и next_session_focus должны звучать так,
   будто написаны именно под его специальность и его конкретные риски, а не шаблонно"""
 
-    client = get_ai_client()
-    response = await client.chat.completions.create(
-        model=get_chat_model(),
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-        max_tokens=3000,
-    )
-
-    raw = (response.choices[0].message.content or "{}").strip()
-    # Strip markdown code fences if model adds them
-    if raw.startswith("```"):
-        raw = raw.split("```", 2)[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.strip()
-    if raw.endswith("```"):
-        raw = raw[:-3].strip()
-
     def _as_score(value: Any, default: float = 5.0) -> float:
         """The model returns free-text JSON with no schema enforcement — coerce defensively
         instead of trusting scores to already be numbers."""
@@ -738,26 +721,69 @@ async def generate_feedback(
         except (TypeError, ValueError):
             return default
 
-    try:
-        data = json.loads(raw)
-        s = data.get("scores", {})
-        confidence = _as_score(s.get("confidence"))
-        language = _as_score(s.get("language"))
-        content = _as_score(s.get("content"))
-        overall = (
-            _as_score(s["overall"])
-            if "overall" in s and s["overall"] is not None
-            else round((confidence + language + content) / 3, 1)
+    async def _attempt() -> dict[str, Any] | None:
+        client = get_ai_client()
+        response = await client.chat.completions.create(
+            model=get_chat_model(),
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=4096,
+            # Forces valid JSON at the API level instead of hoping the model
+            # honors the "return ONLY JSON" prompt instruction — Groq/OpenAI/
+            # Gemini's OpenAI-compat endpoint all support this.
+            response_format={"type": "json_object"},
         )
-        data["scores"] = {**s, "confidence": confidence, "language": language, "content": content, "overall": overall}
 
-        # Reveal the randomly-assigned officer personality only for the strict consul mode —
-        # trainer mode has no officer roleplay to reveal.
-        if mode == "consul":
-            personality = get_officer_personality(session_id)
-            data["officer_personality"] = personality
-            data["officer_reveal"] = _officer_reveal_text(personality, overall)
+        raw = ""
+        try:
+            # response.choices[0] raises IndexError (not caught below without
+            # this try starting here) when the provider returns an empty
+            # choices list — happens for content-filtered/safety-blocked
+            # completions on some OpenAI-compatible backends.
+            raw = (response.choices[0].message.content or "{}").strip()
+            # Strip markdown code fences if the model adds them anyway
+            if raw.startswith("```"):
+                raw = raw.split("```", 2)[1]
+                if raw.startswith("json"):
+                    raw = raw[4:]
+                raw = raw.strip()
+            if raw.endswith("```"):
+                raw = raw[:-3].strip()
 
-        return data
-    except (json.JSONDecodeError, TypeError, ValueError, KeyError):
-        return _FEEDBACK_FALLBACK
+            data = json.loads(raw)
+            s = data.get("scores", {})
+            if not isinstance(s, dict):
+                s = {}
+            confidence = _as_score(s.get("confidence"))
+            language = _as_score(s.get("language"))
+            content = _as_score(s.get("content"))
+            overall = (
+                _as_score(s["overall"])
+                if "overall" in s and s["overall"] is not None
+                else round((confidence + language + content) / 3, 1)
+            )
+            data["scores"] = {**s, "confidence": confidence, "language": language, "content": content, "overall": overall}
+
+            # Reveal the randomly-assigned officer personality only for the strict consul mode —
+            # trainer mode has no officer roleplay to reveal.
+            if mode == "consul":
+                personality = get_officer_personality(session_id)
+                data["officer_personality"] = personality
+                data["officer_reveal"] = _officer_reveal_text(personality, overall)
+
+            return data
+        except (json.JSONDecodeError, TypeError, ValueError, KeyError, AttributeError, IndexError):
+            logging.getLogger(__name__).warning(
+                "generate_feedback: unparseable model output for session=%s, raw[:500]=%r",
+                session_id, raw[:500],
+            )
+            return None
+
+    # One retry before giving up — a truncated/malformed response is often a
+    # one-off (long transcript pushing near the token limit, a rare model
+    # slip), and the fallback below discards all real analysis, so it's worth
+    # a second attempt rather than defaulting to it immediately.
+    result = await _attempt()
+    if result is None:
+        result = await _attempt()
+    return result if result is not None else _FEEDBACK_FALLBACK

@@ -9,9 +9,14 @@ import { ModuleGrid } from "@/components/after-visa/ModuleGrid";
 import { apiGetAfterVisaModules, type AfterVisaModulesResponse } from "@/lib/api";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 
+interface ApiErrorShape {
+  response?: { status?: number; data?: { detail?: { error?: string } } };
+}
+
 export default function AfterVisaPage() {
   const router = useRouter();
   const [data, setData] = useState<AfterVisaModulesResponse | null>(null);
+  const [subscriptionLocked, setSubscriptionLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,7 +26,12 @@ export default function AfterVisaPage() {
     }
     apiGetAfterVisaModules()
       .then(setData)
-      .catch(() => {})
+      .catch((err: unknown) => {
+        const e = err as ApiErrorShape;
+        if (e.response?.status === 403 && e.response?.data?.detail?.error === "subscription_required") {
+          setSubscriptionLocked(true);
+        }
+      })
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -29,6 +39,24 @@ export default function AfterVisaPage() {
     return (
       <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-[#00D4AA]/30 border-t-[#00D4AA] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (subscriptionLocked) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center px-4 text-center gap-4">
+        <div className="text-5xl">🔒</div>
+        <h2 className="text-[#F0F0FF] font-bold text-xl">Раздел доступен по подписке</h2>
+        <p className="text-[#8B8BA7] text-sm max-w-xs">
+          Модуль «После визы» открыт на планах СТАНДАРТ и ПРЕМИУМ
+        </p>
+        <button
+          onClick={() => router.push("/pricing")}
+          className="px-6 py-3 rounded-xl bg-[#6C63FF] text-white text-sm font-semibold"
+        >
+          Перейти к тарифам
+        </button>
       </div>
     );
   }

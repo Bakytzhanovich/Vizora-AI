@@ -121,10 +121,8 @@ async def create_payment(
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if body.plan not in PLAN_PRICES_KZT:
+    if body.plan not in ("standard", "premium"):
         raise HTTPException(status_code=400, detail=f"Unknown plan: {body.plan}")
-    if body.plan == "free":
-        raise HTTPException(status_code=400, detail="Free plan doesn't require payment")
     if body.billing_period not in ("monthly", "yearly"):
         raise HTTPException(status_code=400, detail="billing_period must be 'monthly' or 'yearly'")
 
@@ -210,6 +208,17 @@ async def _apply_successful_payment(
     )
     if not checkout_event:
         raise HTTPException(status_code=404, detail="Unknown payment_id")
+
+    # A caller asserting a specific identity (either mock-complete endpoint)
+    # must match the checkout's actual domain — a student-authenticated
+    # caller can never complete an agency checkout and vice versa, regardless
+    # of whether the specific id happens to match. The real webhook has no
+    # caller identity at all (both stay None), so neither check fires there —
+    # it's authenticated by signature instead, per this function's docstring.
+    if expected_user_id is not None and checkout_event.agency_id is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
+    if expected_agency_id is not None and checkout_event.user_id is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
 
     if checkout_event.agency_id is not None:
         return await _apply_successful_agency_payment(checkout_event, payment_id, db, expected_agency_id)

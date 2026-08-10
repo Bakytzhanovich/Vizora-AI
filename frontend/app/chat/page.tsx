@@ -160,7 +160,8 @@ export default function ChatPage() {
   }, [isStreaming, sessionId, scrollToBottom, t]);
 
   const clearHistory = async () => {
-    await fetchWithAuth(`${API_URL}/api/chat/history`, { method: "DELETE" });
+    const res = await fetchWithAuth(`${API_URL}/api/chat/history`, { method: "DELETE" });
+    if (!res.ok) return;
     setMessages([]);
   };
 

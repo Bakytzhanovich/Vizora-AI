@@ -92,7 +92,7 @@ export default function AgencyDashboardPage() {
       {showModal && (
         <AddStudentModal
           onClose={() => setShowModal(false)}
-          onAdded={() => { setShowModal(false); loadData(); }}
+          onAdded={() => loadData()}
         />
       )}
 

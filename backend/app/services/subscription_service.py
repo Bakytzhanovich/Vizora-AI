@@ -171,10 +171,15 @@ async def check_feature_access(user_id: str, feature: str, db: AsyncSession) -> 
 
 
 async def increment_simulator_usage(user_id: str, db: AsyncSession) -> None:
+    # No commit here on purpose: the only caller (simulator.start_session) holds
+    # a `with_for_update()` lock on this same user row for the duration of the
+    # check-increment-insert sequence. Committing here would release that lock
+    # before the new SimulatorSession row is inserted, reopening the race the
+    # lock exists to close (concurrent /start calls both reading "under limit").
+    # The caller's own commit persists this mutation together with the insert.
     user = await db.get(User, user_id)
     if user:
         user.sessions_used_this_month += 1
-        await db.commit()
 
 
 def get_agency_billing_status(agency: Agency) -> dict:

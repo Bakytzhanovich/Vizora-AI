@@ -99,12 +99,28 @@ async def start_session(
     if body.mode not in ("trainer", "consul"):
         raise HTTPException(status_code=400, detail="mode must be 'trainer' or 'consul'")
 
-    # A single access snapshot serves both checks below — check_feature_access
-    # would otherwise re-fetch the user and (for free-plan users) re-run the
-    # session COUNT(*) query twice per request for no reason.
-    user = await db.get(User, user_id)
+    # Row-locked (not db.get) so two concurrent /start calls for the same user
+    # (e.g. two browser tabs) can't both read "under the limit" before either
+    # has committed its new session — the second request blocks here until
+    # the first's single commit (below, after the session insert) releases the
+    # lock, so its own limit check (and the free plan's live COUNT(*) in
+    # get_user_access) sees the first session that was just inserted. This
+    # only holds if nothing in between commits early — increment_simulator_usage
+    # deliberately does not commit for this reason.
+    #
+    # get_user_access() is the one exception: it commits internally when it
+    # demotes a just-lapsed paid plan to free (subscription_service.py), which
+    # would release this lock right before its own session-count check runs —
+    # reopening the same race for exactly that transition. Call it once to
+    # flush any pending demotion, then re-acquire the lock: the plan is now
+    # already "free" and persisted, so this second call can't itself commit
+    # and drop the lock before the insert further down.
+    user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    await get_user_access(user, db)
+
+    user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
     access = await get_user_access(user, db)
 
     if not access.get("sessions_ok", True):
@@ -163,12 +179,13 @@ async def respond(
     session = await _load_session(db, body.session_id, user_id)
     profile, risks = await _load_profile(db, user_id)
 
-    transcript: list[dict] = json.loads(session.transcript)
-    transcript.append({
+    student_message = {
         "role": "student",
         "content": body.student_answer.strip(),
         "timestamp": datetime.utcnow().isoformat(),
-    })
+    }
+    transcript: list[dict] = json.loads(session.transcript)
+    transcript.append(student_message)
 
     user = await db.get(User, user_id)
     access = await get_user_access(user, db)
@@ -198,25 +215,35 @@ async def respond(
             yield "I'm sorry, there seems to be a technical issue. Please try again."
             return  # Don't commit error text as a real officer turn
 
-        transcript.append({
+        officer_message = {
             "role": "officer",
             "content": accumulated,
             "timestamp": datetime.utcnow().isoformat(),
-        })
-        student_turns = len([t for t in transcript if t["role"] == "student"])
+        }
 
         # Use a fresh session — the dependency-injected one closes when the
         # route handler returns StreamingResponse, before this generator runs.
+        # Row-locked and re-read here (not reusing the `transcript` list built
+        # at request start) so two overlapping /respond calls for the same
+        # session — e.g. a client retry after a slow/timed-out request —
+        # append on top of each other's committed work instead of the second
+        # one's commit silently overwriting the first's exchange.
         async with AsyncSessionLocal() as save_db:
             result = await save_db.execute(
-                select(SimulatorSession).where(
+                select(SimulatorSession)
+                .where(
                     SimulatorSession.id == body.session_id,
                     SimulatorSession.user_id == user_id,
                 )
+                .with_for_update()
             )
             fresh = result.scalar_one_or_none()
             if fresh:
-                fresh.transcript = json.dumps(transcript, ensure_ascii=False)
+                current_transcript: list[dict] = json.loads(fresh.transcript)
+                current_transcript.append(student_message)
+                current_transcript.append(officer_message)
+                student_turns = len([t for t in current_transcript if t["role"] == "student"])
+                fresh.transcript = json.dumps(current_transcript, ensure_ascii=False)
                 fresh.question_count = student_turns
                 save_db.add(fresh)
                 await save_db.commit()

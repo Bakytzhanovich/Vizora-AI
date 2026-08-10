@@ -226,7 +226,9 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
         body: JSON.stringify({ session_id: sessionId, duration_seconds: timer }),
       });
+      if (!res.ok) throw new Error(`/simulator/end failed: ${res.status}`);
       const data = await res.json();
+      if (!data.feedback) throw new Error("/simulator/end returned no feedback");
       onEnd(data.feedback);
     } catch {
       onEnd({

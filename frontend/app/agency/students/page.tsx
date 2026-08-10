@@ -99,7 +99,7 @@ export default function AgencyStudentsPage() {
       {showModal && (
         <AddStudentModal
           onClose={() => setShowModal(false)}
-          onAdded={() => { setShowModal(false); load(search, sort, activeTab); }}
+          onAdded={() => load(search, sort, activeTab)}
         />
       )}
 
