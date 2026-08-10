@@ -26,9 +26,17 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
+    // /auth/* itself issues/validates credentials — a 401 from /auth/login
+    // (wrong password) or /auth/refresh (no/expired session) means "not
+    // authenticated", not "token expired", so retrying it via a refresh call
+    // is nonsensical: it just chains a second, unrelated 401 and then wipes
+    // storage + hard-redirects the user away from the login page they're
+    // already on, discarding whatever they'd typed.
+    const isAuthEndpoint = typeof original?.url === "string" && original.url.startsWith("/auth/");
     if (
       error.response?.status === 401 &&
       !original._retry &&
+      !isAuthEndpoint &&
       typeof window !== "undefined"
     ) {
       original._retry = true;
