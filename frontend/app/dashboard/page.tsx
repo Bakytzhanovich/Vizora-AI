@@ -89,6 +89,7 @@ export default function DashboardPage() {
   }, [router]);
 
   const logout = () => {
+    if (!confirm(t("common:nav.logout_confirm"))) return;
     ["access_token", "refresh_token", "user_id", "has_profile", "user_name"].forEach(
       (k) => localStorage.removeItem(k)
     );

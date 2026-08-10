@@ -8,7 +8,8 @@
     "emergency": "Помощь",
     "after_visa": "После визы",
     "referral": "Пригласить друзей",
-    "logout": "Выйти"
+    "logout": "Выйти",
+    "logout_confirm": "Точно хочешь выйти?"
   },
   "common": {
     "loading": "Загрузка...",

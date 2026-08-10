@@ -8,7 +8,8 @@
     "emergency": "Көмек",
     "after_visa": "Виза алғаннан кейін",
     "referral": "Досыңды шақыр",
-    "logout": "Шығу"
+    "logout": "Шығу",
+    "logout_confirm": "Шығуға сенімдісің бе?"
   },
   "common": {
     "loading": "Жүктелуде...",
