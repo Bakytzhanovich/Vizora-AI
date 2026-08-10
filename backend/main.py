@@ -5,12 +5,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
-from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+from starlette.datastructures import MutableHeaders
+
+from middleware.rate_limit import limiter, rate_limit_exceeded_handler
 
 # No handler is configured anywhere else, so without this every logger.info() in
 # the app (bootstrap admin, migrations, ...) is silently dropped by the default
@@ -38,6 +40,7 @@ import app.models.analytics  # noqa: F401
 import app.models.knowledge_base  # noqa: F401
 import app.models.push_subscription  # noqa: F401
 import app.models.subscription_event  # noqa: F401
+import app.models.security_log  # noqa: F401
 from app.models.user import User
 from routers.auth import router as auth_router
 from routers.profile import router as profile_router
@@ -56,8 +59,6 @@ from routers.internal import router as internal_router
 from routers.admin import router as admin_router
 from routers.push import router as push_router
 from routers.payments import router as payments_router
-
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
 def run_migrations() -> None:
@@ -146,7 +147,33 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
+
+class SecurityHeadersMiddleware:
+    """Raw ASGI middleware — not @app.middleware("http")/BaseHTTPMiddleware,
+    for the same reason as CatchAllExceptionMiddleware below: that wraps
+    call_next() in a way that buffers the whole response body, which breaks
+    the StreamingResponse endpoints (/chat/message, /simulator/respond)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["X-Frame-Options"] = "DENY"
+                headers["X-XSS-Protection"] = "1; mode=block"
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 
 class CatchAllExceptionMiddleware:
@@ -173,9 +200,12 @@ class CatchAllExceptionMiddleware:
             await response(scope, receive, send)
 
 
-# Order matters: add_middleware prepends, so CORSMiddleware (added second)
-# ends up wrapping CatchAllExceptionMiddleware (added first).
+# Order matters: add_middleware prepends, so each subsequent call wraps
+# (runs before) the ones already added — TrustedHostMiddleware ends up
+# outermost (rejects a bad Host header before anything else runs), then
+# CORS, then SecurityHeaders, then CatchAll innermost around routing itself.
 app.add_middleware(CatchAllExceptionMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -183,6 +213,21 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
+)
+
+# Rejects requests whose Host header doesn't match a known hostname for THIS
+# backend (guards against Host-header-injection attacks e.g. cache/link
+# poisoning). Deliberately does NOT include a "*" wildcard — that would
+# accept literally any Host and defeat the point. Render's own onrender.com
+# subdomain plus localhost for local dev; add a custom domain here once one
+# is pointed at this backend.
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[
+        "vizora-backend-d6kv.onrender.com",
+        "localhost",
+        "127.0.0.1",
+    ],
 )
 
 app.include_router(early_access_router, prefix="/api")

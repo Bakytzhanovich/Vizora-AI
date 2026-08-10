@@ -28,6 +28,13 @@ def strip_unexpected_scripts(text: str) -> str:
     return _UNEXPECTED_SCRIPT_RE.sub("", text)
 
 
+# Shared across every AsyncOpenAI client below — the SDK's own default is 10
+# minutes, far too long for a request/response web handler. A single source
+# of truth avoids one client silently drifting back to an unbounded wait if
+# a future edit only updates some of the constructors.
+_OPENAI_TIMEOUT_SECONDS = 30.0
+
+
 # Supported providers. All use the OpenAI SDK — only base_url and API key differ.
 _PROVIDER_CONFIGS: dict[str, dict] = {
     "openai": {
@@ -62,7 +69,7 @@ def get_ai_client() -> AsyncOpenAI:
             raise ValueError(
                 f"AI_PROVIDER is '{provider}' but {cfg['key_attr']} is not set in .env"
             )
-        kwargs: dict = {"api_key": api_key}
+        kwargs: dict = {"api_key": api_key, "timeout": _OPENAI_TIMEOUT_SECONDS}
         if cfg["base_url"]:
             kwargs["base_url"] = cfg["base_url"]
         _client = AsyncOpenAI(**kwargs)
@@ -94,7 +101,7 @@ def get_openai_audio_client() -> AsyncOpenAI:
     """
     global _audio_client
     if _audio_client is None:
-        _audio_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        _audio_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=_OPENAI_TIMEOUT_SECONDS)
     return _audio_client
 
 
@@ -109,7 +116,7 @@ def get_openai_embed_client() -> AsyncOpenAI:
     """
     global _embed_client
     if _embed_client is None:
-        _embed_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        _embed_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, timeout=_OPENAI_TIMEOUT_SECONDS)
     return _embed_client
 
 
@@ -138,7 +145,7 @@ def get_stt_client() -> tuple[AsyncOpenAI, str]:
             raise ValueError(
                 f"STT provider is '{provider}' but {cfg['key_attr']} is not set in .env"
             )
-        kwargs: dict = {"api_key": api_key}
+        kwargs: dict = {"api_key": api_key, "timeout": _OPENAI_TIMEOUT_SECONDS}
         if cfg["base_url"]:
             kwargs["base_url"] = cfg["base_url"]
         _stt_client = AsyncOpenAI(**kwargs)

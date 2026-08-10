@@ -1,3 +1,5 @@
+import asyncio
+import io
 import json
 import os
 import secrets
@@ -6,6 +8,7 @@ from datetime import datetime
 
 import bcrypt
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from PIL import Image
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +25,7 @@ from app.models.user import User
 from app.services.roadmap_service import _PROGRESS_WEIGHTS
 from app.services.subscription_service import get_agency_billing_status
 from app.services.subscription_service import set_free_plan
+from middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/agency", tags=["agency"])
 
@@ -209,7 +213,8 @@ async def agency_register(body: AgencyRegisterBody, db: AsyncSession = Depends(g
 
 
 @router.post("/login")
-async def agency_login(body: AgencyLoginBody, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def agency_login(request: Request, body: AgencyLoginBody, db: AsyncSession = Depends(get_db)):
     # Try Agency owner login first
     agency = await db.scalar(select(Agency).where(Agency.email == body.email))
     if agency and bcrypt.checkpw(body.password.encode(), agency.password_hash.encode()):
@@ -893,6 +898,26 @@ async def update_white_label(
 _LOGO_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "agency-logos")
 _ALLOWED_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
 _MAX_SIZE = 2 * 1024 * 1024
+# Cross-checked against Pillow's own detected format after opening the file —
+# the client-supplied Content-Type header alone is trivially spoofable (e.g.
+# uploading an .html/.svg payload labeled "image/png").
+_EXPECTED_PIL_FORMAT = {
+    "image/png": "PNG",
+    "image/jpeg": "JPEG",
+    "image/jpg": "JPEG",
+    "image/webp": "WEBP",
+}
+_EXT_BY_PIL_FORMAT = {"PNG": "png", "JPEG": "jpg", "WEBP": "webp"}
+
+
+def _open_and_verify_image(contents: bytes) -> str:
+    """Runs Pillow's decode/verify (sync, CPU-bound) — call via
+    asyncio.to_thread so it doesn't block the event loop for concurrent
+    requests, including unrelated in-flight streaming responses."""
+    img = Image.open(io.BytesIO(contents))
+    detected_format = img.format
+    img.verify()
+    return detected_format
 
 
 @router.post("/white-label/logo")
@@ -909,8 +934,21 @@ async def upload_logo(
     if len(contents) > _MAX_SIZE:
         raise HTTPException(status_code=422, detail="File too large (max 2MB)")
 
+    # Verify the bytes are actually a decodable image of the claimed type —
+    # not just trusting the client-supplied Content-Type header.
+    try:
+        detected_format = await asyncio.to_thread(_open_and_verify_image, contents)
+    except Exception:
+        raise HTTPException(status_code=422, detail="Повреждённый файл изображения")
+    if detected_format != _EXPECTED_PIL_FORMAT.get(file.content_type):
+        raise HTTPException(status_code=422, detail="Файл не соответствует заявленному типу")
+
     os.makedirs(_LOGO_DIR, exist_ok=True)
-    ext = "png" if file.content_type == "image/png" else "jpg"
+    # Derived from the verified detected format, not the (already-checked but
+    # separately-sourced) Content-Type header — e.g. a genuine WebP upload
+    # must not be saved as .jpg, which would serve it with a mismatched
+    # Content-Type via StaticFiles and fail to render in the browser.
+    ext = _EXT_BY_PIL_FORMAT[detected_format]
     filename = f"{ctx.agency_id}.{ext}"
     path = os.path.join(_LOGO_DIR, filename)
     with open(path, "wb") as f:

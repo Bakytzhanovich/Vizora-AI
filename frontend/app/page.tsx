@@ -7,7 +7,7 @@ import { Agencies } from "@/components/Agencies";
 import { EarlyAccess } from "@/components/EarlyAccess";
 import { Footer } from "@/components/Footer";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora.kz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
 
 const jsonLd = {
   "@context": "https://schema.org",

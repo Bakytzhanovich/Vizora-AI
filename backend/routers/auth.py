@@ -6,12 +6,10 @@ import urllib.parse
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -26,15 +24,17 @@ from app.core.security import (
 from app.models.profile import StudentProfile
 from app.models.referral import Referral, ReferralCode
 from app.models.user import User
+from app.services.security_logger import log_suspicious_activity
 from app.services.subscription_service import set_free_plan
+from middleware.rate_limit import limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=100)
     referral_code: str | None = None
 
     @field_validator("password")
@@ -47,6 +47,12 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
+    # No max_length here (unlike RegisterRequest) — this must keep accepting
+    # whatever password an account was actually created with. RegisterRequest
+    # had no max_length before this security pass either, so a pre-existing
+    # account's real password could be longer than any cap added here now;
+    # rejecting it at the Pydantic layer would permanently lock that user out
+    # before verify_password() ever gets a chance to check it.
     password: str
 
 
@@ -130,7 +136,7 @@ async def _issue_login_response(
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("10/minute")
+@limiter.limit("3/minute")  # spam-registration protection
 async def register(
     request: Request,
     body: RegisterRequest,
@@ -193,7 +199,7 @@ async def register(
 
 
 @router.post("/login", response_model=TokenResponse)
-@limiter.limit("10/minute")
+@limiter.limit("5/minute")  # brute-force protection
 async def login(
     request: Request,
     body: LoginRequest,
@@ -204,6 +210,12 @@ async def login(
     user = result.scalar_one_or_none()
 
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
+        await log_suspicious_activity(
+            event_type="failed_login",
+            ip=get_remote_address(request),
+            user_id=user.id if user else None,
+            details={"email": body.email.lower()},
+        )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
 
     return await _issue_login_response(user, response, db)
@@ -266,6 +278,7 @@ async def google_auth(
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
+@limiter.limit("3/minute")
 async def refresh(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     _validate_origin(request)
     refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)

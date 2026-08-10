@@ -3,15 +3,16 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Bot, Mic, FileText } from "lucide-react";
 
 interface SolutionFeature {
-  icon: string;
   title: string;
   description: string;
   bullets: string[];
   badge: string;
 }
 
+const icons = [Bot, Mic, FileText];
 const badgeColor = "bg-[#6C63FF]/10 text-[#9C8BFF] border-[#6C63FF]/20";
 
 interface RiskItem {
@@ -86,7 +87,12 @@ export function Solution() {
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="text-4xl">{f.icon}</div>
+                  <div>
+                    {(() => {
+                      const Icon = icons[i] ?? icons[0];
+                      return <Icon size={32} strokeWidth={1.75} className="text-[#9C8BFF]" />;
+                    })()}
+                  </div>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeColor}`}>
                     {f.badge}
                   </span>

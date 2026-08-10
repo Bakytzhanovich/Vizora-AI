@@ -2,10 +2,11 @@ import json
 import logging
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +24,7 @@ from app.services.pdf_report_service import generate_session_pdf
 from app.services.stt_service import speech_to_text
 from app.services.subscription_service import check_feature_access, get_user_access, increment_simulator_usage
 from app.services.tts_service import text_to_speech
+from middleware.rate_limit import limiter
 
 # Fixed count used only for the free-plan "here's what you missed" upsell
 # copy (see /respond's trial_session_ended response) — it doesn't drive the
@@ -68,14 +70,14 @@ async def _load_session(db: AsyncSession, session_id: str, user_id: str) -> Simu
 # ─── Schemas ──────────────────────────────────────────────────────────────────
 
 class StartRequest(BaseModel):
-    mode: str  # 'trainer' | 'consul'
-    difficulty: str = "medium"  # 'easy' | 'medium' | 'hard'
+    mode: Literal["trainer", "consul"]
+    difficulty: Literal["easy", "medium", "hard"] = "medium"
 
 
 class RespondRequest(BaseModel):
-    session_id: str
-    student_answer: str
-    question_number: int = 1
+    session_id: str = Field(min_length=1, max_length=100)
+    student_answer: str = Field(min_length=1, max_length=1000)
+    question_number: int = Field(default=1, ge=0, le=50)
 
 
 class EndRequest(BaseModel):
@@ -91,14 +93,13 @@ class TTSRequest(BaseModel):
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.post("/start", status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")  # expensive endpoint (AI-generated opening question)
 async def start_session(
+    request: Request,
     body: StartRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
-    if body.mode not in ("trainer", "consul"):
-        raise HTTPException(status_code=400, detail="mode must be 'trainer' or 'consul'")
-
     # Row-locked (not db.get) so two concurrent /start calls for the same user
     # (e.g. two browser tabs) can't both read "under the limit" before either
     # has committed its new session — the second request blocks here until
@@ -168,7 +169,9 @@ async def start_session(
 
 
 @router.post("/respond")
+@limiter.limit("30/minute")
 async def respond(
+    request: Request,
     body: RespondRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
@@ -277,16 +280,27 @@ async def end_session(
     return {"feedback": feedback, "session_id": session.id}
 
 
+_MAX_AUDIO_SIZE = 10 * 1024 * 1024  # 10MB — generous for a single spoken answer
+
+
 @router.post("/transcribe")
+@limiter.limit("20/minute")
 async def transcribe(
+    request: Request,
     audio: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id),
 ):
     audio_bytes = await audio.read()
     if len(audio_bytes) < 100:
         raise HTTPException(status_code=400, detail="Audio too short")
+    if len(audio_bytes) > _MAX_AUDIO_SIZE:
+        raise HTTPException(status_code=400, detail="Audio too large (max 10MB)")
 
-    text = await speech_to_text(audio_bytes, audio.filename or "audio.webm")
+    try:
+        text = await speech_to_text(audio_bytes, audio.filename or "audio.webm")
+    except Exception:
+        logging.getLogger(__name__).exception("speech_to_text failed for user=%s", user_id)
+        raise HTTPException(status_code=502, detail="Не удалось распознать речь. Попробуй ещё раз.")
     return {"text": text}
 
 

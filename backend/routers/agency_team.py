@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +18,7 @@ from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
 from app.services.roadmap_service import _PROGRESS_WEIGHTS
+from middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/agency/team", tags=["agency-team"])
 
@@ -155,7 +156,9 @@ async def get_team(
 
 
 @router.post("/invite", status_code=201)
+@limiter.limit("3/hour")
 async def invite_member(
+    request: Request,
     body: InviteBody,
     ctx: AgencyCtx = Depends(require_admin),
     db: AsyncSession = Depends(get_db),

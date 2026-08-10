@@ -8,26 +8,6 @@ import { useTranslation } from "react-i18next";
 
 const statValues = [4100, 46, 3, 250000];
 
-function useCountUp(target: number, duration = 1800, inView = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0;
-    const step = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [target, duration, inView]);
-  return count;
-}
-
 interface Stat {
   value: number;
   prefix?: string;
@@ -44,7 +24,6 @@ function StatCard({
   inView: boolean;
   index: number;
 }) {
-  const count = useCountUp(stat.value, 1800, inView);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -54,7 +33,7 @@ function StatCard({
     >
       <div className="text-2xl sm:text-3xl font-bold text-[#F0F0FF] mb-1">
         {stat.prefix ?? ""}
-        {count.toLocaleString("ru-RU")}
+        {stat.value.toLocaleString("ru-RU")}
         {stat.suffix}
       </div>
       <div className="text-xs sm:text-sm text-[#8B8BA7] max-w-[140px] mx-auto leading-tight">

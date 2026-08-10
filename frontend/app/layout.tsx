@@ -16,7 +16,7 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora.kz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
 
 export const metadata: Metadata = {
   title: {

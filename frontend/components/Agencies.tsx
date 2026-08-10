@@ -3,14 +3,16 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Clock, BarChart3, Trophy } from "lucide-react";
 
 interface Benefit {
-  icon: string;
   title: string;
   description: string;
   metric: string;
   metric_label: string;
 }
+
+const icons = [Clock, BarChart3, Trophy];
 
 interface Plan {
   name: string;
@@ -19,7 +21,7 @@ interface Plan {
   features: string[];
 }
 
-const planPrices = ["$150", "$300", "$700"];
+const planPrices = ["$299", "$599", "$999"];
 const planHighlight = [false, true, false];
 
 export function Agencies() {
@@ -88,7 +90,12 @@ export function Agencies() {
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#00D4AA]/5 rounded-full blur-2xl group-hover:bg-[#00D4AA]/10 transition-all duration-300" />
 
               <div className="relative z-10">
-                <div className="text-4xl mb-4">{b.icon}</div>
+                <div className="mb-4">
+                  {(() => {
+                    const Icon = icons[i] ?? icons[0];
+                    return <Icon size={32} strokeWidth={1.75} className="text-[#00D4AA]" />;
+                  })()}
+                </div>
                 <h3 className="text-[#F0F0FF] font-bold text-lg mb-3">{b.title}</h3>
                 <p className="text-[#8B8BA7] text-sm leading-relaxed mb-5">{b.description}</p>
 

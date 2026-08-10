@@ -3,12 +3,14 @@ import uuid
 
 import bcrypt
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from slowapi.util import get_remote_address
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
+from app.services.security_logger import log_suspicious_activity
 from sqlalchemy.ext.asyncio import AsyncSession
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -60,12 +62,24 @@ def decode_token(token: str, expected_type: str = "access") -> str:
     return payload["sub"]
 
 
-def get_current_user_id(
+async def get_current_user_id(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> str:
     if not credentials:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return decode_token(credentials.credentials, expected_type="access")
+    try:
+        return decode_token(credentials.credentials, expected_type="access")
+    except HTTPException as exc:
+        # Expired tokens are routine (every user hits this eventually) — only
+        # log genuinely malformed/tampered/wrong-type tokens as suspicious.
+        if exc.detail != "Token expired":
+            await log_suspicious_activity(
+                event_type="invalid_jwt",
+                ip=get_remote_address(request),
+                details={"reason": exc.detail, "path": request.url.path},
+            )
+        raise
 
 
 async def get_current_user(

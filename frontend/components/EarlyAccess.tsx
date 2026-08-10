@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { CheckCircle, Loader2, Users } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { track } from "@/lib/analytics";
 
@@ -17,7 +17,6 @@ export function EarlyAccess() {
   const [userType, setUserType] = useState<UserType>("student");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [count] = useState(47);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,17 +94,6 @@ export function EarlyAccess() {
           {t("early_access.subtitle_3")}
         </motion.p>
 
-        {/* Counter */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="inline-flex items-center gap-2 text-[#8B8BA7] text-sm mb-10"
-        >
-          <Users size={14} className="text-[#6C63FF]" />
-          {t("early_access.signed_up")}{" "}
-          <span className="text-[#F0F0FF] font-semibold">{count} {t("early_access.signed_up_suffix")}</span>
-        </motion.div>
 
         {/* Form */}
         <AnimatePresence mode="wait">

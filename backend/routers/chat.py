@@ -2,9 +2,9 @@ import json
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,17 +16,20 @@ from app.models.user import User
 from app.services.ai_service import generate_chat_response
 from app.services.rag_service import search_knowledge
 from app.services.subscription_service import PLAN_LIMITS, check_feature_access
+from middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 class MessageRequest(BaseModel):
-    message: str
-    session_id: str | None = None
+    message: str = Field(min_length=1, max_length=2000)
+    session_id: str | None = Field(default=None, max_length=100)
 
 
 @router.post("/message")
+@limiter.limit("20/minute")  # OpenAI cost protection
 async def send_message(
+    request: Request,
     body: MessageRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),

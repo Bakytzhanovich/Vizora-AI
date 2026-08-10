@@ -3,13 +3,15 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Target, AlertTriangle, Moon } from "lucide-react";
 
 interface ProblemItem {
-  icon: string;
   title: string;
   description: string;
   detail: string;
 }
+
+const icons = [Target, AlertTriangle, Moon];
 
 export function Problem() {
   const { t } = useTranslation("landing");
@@ -69,7 +71,12 @@ export function Problem() {
               <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#FF6B6B]/5 rounded-full blur-2xl group-hover:bg-[#FF6B6B]/10 transition-all duration-300" />
 
               <div className="relative z-10">
-                <div className="text-4xl mb-4">{p.icon}</div>
+                <div className="mb-4">
+                  {(() => {
+                    const Icon = icons[i] ?? icons[0];
+                    return <Icon size={32} strokeWidth={1.75} className="text-[#FF6B6B]" />;
+                  })()}
+                </div>
 
                 <h3 className="text-[#F0F0FF] font-bold text-lg mb-3 leading-snug">
                   {p.title}

@@ -3,14 +3,16 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { UserCircle, Target, Mic, Plane } from "lucide-react";
 
 interface Step {
   number: string;
-  icon: string;
   title: string;
   description: string;
   detail: string;
 }
+
+const icons = [UserCircle, Target, Mic, Plane];
 
 export function HowItWorks() {
   const { t } = useTranslation("landing");
@@ -76,7 +78,10 @@ export function HowItWorks() {
                   {/* Outer ring */}
                   <div className="w-20 h-20 rounded-full border border-[#1E1E2E] bg-[#13131A] flex items-center justify-center relative z-10">
                     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#6C63FF]/20 to-[#6C63FF]/5 border border-[#6C63FF]/20 flex items-center justify-center">
-                      <span className="text-2xl">{step.icon}</span>
+                      {(() => {
+                        const Icon = icons[i] ?? icons[0];
+                        return <Icon size={22} strokeWidth={1.75} className="text-[#6C63FF]" />;
+                      })()}
                     </div>
                   </div>
                   {/* Step number badge */}

@@ -1,6 +1,6 @@
 import { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora.kz";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -22,6 +22,7 @@ export default function robots(): MetadataRoute.Robots {
           "/agency/students",
           "/agency/analytics",
           "/agency/settings",
+          "/admin",
         ],
       },
     ],
