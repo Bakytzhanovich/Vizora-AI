@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from collections import defaultdict
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -75,6 +76,68 @@ async def _daily_counts(db: AsyncSession, column, since: datetime, *where) -> di
         q = q.where(condition)
     rows = await db.execute(q)
     return {str(row[0]): row[1] for row in rows.all()}
+
+
+async def _compute_weekly_retention(db: AsyncSession) -> dict:
+    """D7 returning-rate by weekly signup cohort.
+
+    "Returned" means the user has *any* product activity (a tracked
+    analytics event, a chat message, a simulator session, or roadmap/
+    document progress) strictly between 1 and 7 days after they registered
+    — the standard "came back within their first week" definition, not
+    activity on exactly day 7. A cohort only gets a rate once its day-7
+    window has fully elapsed; cohorts still inside that window are reported
+    with a null rate instead of a misleadingly low one.
+    """
+    now = datetime.utcnow()
+    users = (await db.execute(select(User.id, User.created_at))).all()
+    if not users:
+        return {"cohorts": [], "overall_d7_rate": None, "eligible_users": 0}
+
+    activity_sources = [
+        (AnalyticsEvent.user_id, AnalyticsEvent.created_at),
+        (ChatMessage.user_id, ChatMessage.created_at),
+        (SimulatorSession.user_id, SimulatorSession.created_at),
+        (RoadmapProgress.user_id, RoadmapProgress.created_at),
+        (DocumentProgress.user_id, DocumentProgress.updated_at),
+    ]
+    activity_by_user: dict[str, list[datetime]] = defaultdict(list)
+    for user_col, ts_col in activity_sources:
+        rows = await db.execute(select(user_col, ts_col).where(user_col.isnot(None)))
+        for uid, ts in rows.all():
+            if uid and ts:
+                activity_by_user[uid].append(ts)
+
+    cohorts: dict[str, dict] = defaultdict(lambda: {"cohort_size": 0, "eligible": 0, "eligible_retained": 0})
+    for uid, created_at in users:
+        week_start = (created_at.date() - timedelta(days=created_at.weekday())).isoformat()
+        window_start = created_at + timedelta(days=1)
+        window_end = created_at + timedelta(days=7)
+        cohort = cohorts[week_start]
+        cohort["cohort_size"] += 1
+        if now >= window_end:
+            cohort["eligible"] += 1
+            if any(window_start <= ts <= window_end for ts in activity_by_user.get(uid, [])):
+                cohort["eligible_retained"] += 1
+
+    cohort_list = []
+    total_eligible = 0
+    total_retained = 0
+    for week_start in sorted(cohorts.keys()):
+        c = cohorts[week_start]
+        rate = round(c["eligible_retained"] / c["eligible"] * 100, 1) if c["eligible"] else None
+        cohort_list.append({
+            "week_start": week_start,
+            "cohort_size": c["cohort_size"],
+            "eligible": c["eligible"],
+            "retained_d7": c["eligible_retained"],
+            "retention_rate": rate,
+        })
+        total_eligible += c["eligible"]
+        total_retained += c["eligible_retained"]
+
+    overall_rate = round(total_retained / total_eligible * 100, 1) if total_eligible else None
+    return {"cohorts": cohort_list, "overall_d7_rate": overall_rate, "eligible_users": total_eligible}
 
 
 @router.get("/overview")
@@ -468,6 +531,7 @@ async def admin_analytics(
             {"event": row.event, "count": row.count}
             for row in top_event_rows
         ],
+        "retention": await _compute_weekly_retention(db),
     }
 
 

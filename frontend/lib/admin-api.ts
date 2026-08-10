@@ -110,6 +110,17 @@ export interface AdminAnalytics {
   funnel: Record<string, number>;
   product_usage: Record<string, number>;
   top_events: Array<{ event: string; count: number }>;
+  retention: {
+    cohorts: Array<{
+      week_start: string;
+      cohort_size: number;
+      eligible: number;
+      retained_d7: number;
+      retention_rate: number | null;
+    }>;
+    overall_d7_rate: number | null;
+    eligible_users: number;
+  };
 }
 
 export interface AdminSystem {

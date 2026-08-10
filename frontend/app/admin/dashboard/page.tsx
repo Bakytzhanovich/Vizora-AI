@@ -356,6 +356,51 @@ function AnalyticsSection({ data }: { data: AdminAnalytics }) {
         </Panel>
       </div>
 
+      <Panel title="Retention (D7 по когортам)">
+        {data.retention.eligible_users === 0 ? (
+          <EmptyState text="Пока нет пользователей старше 7 дней — рано считать retention" />
+        ) : (
+          <>
+            <div className="mb-4 flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-white">
+                {data.retention.overall_d7_rate ?? 0}%
+              </span>
+              <span className="text-sm text-[#81889B]">
+                вернулись в первую неделю ({data.retention.eligible_users} пользователей старше 7 дней)
+              </span>
+            </div>
+            <div className="space-y-2">
+              {data.retention.cohorts.map((cohort) => (
+                <div key={cohort.week_start} className="flex items-center gap-3">
+                  <span className="w-20 shrink-0 text-xs text-[#81889B]">
+                    {new Date(cohort.week_start).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
+                  </span>
+                  <div className="h-2 flex-1 rounded-full bg-[#0D0F16]">
+                    {cohort.retention_rate !== null && (
+                      <div
+                        className="h-2 rounded-full bg-emerald-400"
+                        style={{ width: `${Math.min(100, cohort.retention_rate)}%` }}
+                      />
+                    )}
+                  </div>
+                  <span className="w-28 shrink-0 text-right text-xs">
+                    {cohort.retention_rate !== null ? (
+                      <span className="font-semibold text-white">
+                        {cohort.retention_rate}% ({cohort.retained_d7}/{cohort.eligible})
+                      </span>
+                    ) : (
+                      <span className="text-[#81889B]">
+                        ждём 7 дней ({cohort.cohort_size})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </Panel>
+
       <Panel title="Активность за 14 дней">
         <div className="flex h-56 items-end gap-2 overflow-x-auto">
           {data.activity_14d.map((item) => {
