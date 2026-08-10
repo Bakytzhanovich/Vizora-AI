@@ -13,6 +13,7 @@ import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
 import { ReferralCard } from "@/components/referral/ReferralCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { LogoutConfirmModal } from "@/components/ui/LogoutConfirmModal";
 import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode, apiGetPlans } from "@/lib/api";
 import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
 
@@ -44,6 +45,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showAllRisks, setShowAllRisks] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("access_token")) {
@@ -89,7 +91,6 @@ export default function DashboardPage() {
   }, [router]);
 
   const logout = () => {
-    if (!confirm(t("common:nav.logout_confirm"))) return;
     ["access_token", "refresh_token", "user_id", "has_profile", "user_name"].forEach(
       (k) => localStorage.removeItem(k)
     );
@@ -126,7 +127,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <button
-            onClick={logout}
+            onClick={() => setShowLogoutConfirm(true)}
             className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#1E1E2E] hover:bg-[#26263A] transition-colors"
           >
             <LogOut size={14} />
@@ -421,6 +422,13 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onConfirm={logout}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
+      )}
     </div>
   );
 }
