@@ -82,5 +82,35 @@
     "officer": "Офицер",
     "trainer": "Тренер",
     "you": "Сіз"
+  },
+  "trial_ended": {
+    "title": "Тегін сеанс — 3 минут",
+    "answered_one": "Сен {{count}} сұраққа жауап бердің.",
+    "answered_few": "Сен {{count}} сұраққа жауап бердің.",
+    "answered_many": "Сен {{count}} сұраққа жауап бердің.",
+    "real_interview_note": "Нақты интервьюде олар {{count}}+.",
+    "continue_with_standard": "СТАНДАРТ жоспарымен дайындықты жалғастыр:",
+    "subscribe_cta": "Жазылу →",
+    "see_results": "Аяқтап, нәтижені көру"
+  },
+  "sessions_limit": {
+    "used_all_free": "Сен барлық {{count}} тегін сеансты пайдаландың",
+    "in_sessions_you": "{{count}} сеанс ішінде сен:",
+    "session_word_one": "сеанс",
+    "session_word_other": "сеанс",
+    "session_word_nom_one": "сеанс",
+    "session_word_nom_other": "сеанс",
+    "answered_questions": "{{count}} сұраққа жауап бердің",
+    "average_score": "Орташа балл: {{score}}/10",
+    "need_subscription": "Жалғастыру үшін жазылым керек:",
+    "standard_cta": "СТАНДАРТ {{price}} →",
+    "premium_cta": "ПРЕМИУМ {{price}} →",
+    "sessions_ended": "Сеанстар аяқталды",
+    "plan_limit": "{{plan}} жоспарында: айына {{count}} сеанс",
+    "used_of": "Сен пайдаландың: {{used}}/{{limit}}",
+    "next_reset": "Келесі жаңарту: {{date}}",
+    "upgrade_hint": "Немесе {{plan}} жоспарына көш: {{benefit}}",
+    "upgrade_cta": "Жаңарту →",
+    "wait_cta": "Күту"
   }
 }

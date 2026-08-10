@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { MessageCircle } from "lucide-react";
 import { apiGetPlans } from "@/lib/api";
 
@@ -12,6 +13,7 @@ function formatKzt(amount: number): string {
 /** Shown once a FREE-plan user hits their daily FAQ question cap. */
 export function FaqLimitCard() {
   const router = useRouter();
+  const { t } = useTranslation("chat");
   const [faqPerDay, setFaqPerDay] = useState<number | null>(null);
   const [standardPriceKzt, setStandardPriceKzt] = useState<number | null>(null);
 
@@ -32,14 +34,16 @@ export function FaqLimitCard() {
         <MessageCircle size={18} className="text-[#6C63FF]" />
       </div>
       <p className="text-[#F0F0FF] font-semibold text-sm mb-1">
-        Использовано {faqPerDay ?? 10}/{faqPerDay ?? 10} вопросов сегодня
+        {t("faq_limit.used_today", { count: faqPerDay ?? 10 })}
       </p>
-      <p className="text-[#8B8BA7] text-xs mb-4">Обновится завтра в 00:00</p>
+      <p className="text-[#8B8BA7] text-xs mb-4">{t("faq_limit.resets_tomorrow")}</p>
       <button
         onClick={() => router.push("/pricing")}
         className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[#6C63FF] hover:bg-[#7C75FF] text-white transition-colors"
       >
-        {standardPriceKzt !== null ? `Получить безлимит — ${formatKzt(standardPriceKzt)} →` : "Получить безлимит →"}
+        {standardPriceKzt !== null
+          ? t("faq_limit.get_unlimited_price", { price: formatKzt(standardPriceKzt) })
+          : t("faq_limit.get_unlimited")}
       </button>
     </div>
   );

@@ -82,5 +82,35 @@
     "officer": "Офицер",
     "trainer": "Тренер",
     "you": "Вы"
+  },
+  "trial_ended": {
+    "title": "Бесплатная сессия — 3 минуты",
+    "answered_one": "Ты успел ответить на {{count}} вопрос.",
+    "answered_few": "Ты успел ответить на {{count}} вопроса.",
+    "answered_many": "Ты успел ответить на {{count}} вопросов.",
+    "real_interview_note": "В реальном интервью их {{count}}+.",
+    "continue_with_standard": "Продолжи подготовку с СТАНДАРТ:",
+    "subscribe_cta": "Подписаться →",
+    "see_results": "Завершить и посмотреть результат"
+  },
+  "sessions_limit": {
+    "used_all_free": "Ты использовал все {{count}} бесплатные сессии",
+    "in_sessions_you": "За {{count}} {{sessionWord}} ты:",
+    "session_word_one": "сессию",
+    "session_word_other": "сессий",
+    "session_word_nom_one": "сессия",
+    "session_word_nom_other": "сессии",
+    "answered_questions": "Прошёл {{count}} вопросов",
+    "average_score": "Средний балл: {{score}}/10",
+    "need_subscription": "Для продолжения нужна подписка:",
+    "standard_cta": "СТАНДАРТ {{price}} →",
+    "premium_cta": "ПРЕМИУМ {{price}} →",
+    "sessions_ended": "Сессии закончились",
+    "plan_limit": "В плане {{plan}}: {{count}} {{sessionWord}}/мес",
+    "used_of": "Ты использовал: {{used}}/{{limit}}",
+    "next_reset": "Следующее обновление: {{date}}",
+    "upgrade_hint": "Или апгрейд на {{plan}}: {{benefit}}",
+    "upgrade_cta": "Апгрейд →",
+    "wait_cta": "Подождать"
   }
 }

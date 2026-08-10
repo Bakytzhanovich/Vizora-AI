@@ -13,12 +13,6 @@ import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 import { apiGetPlans } from "@/lib/api";
 
-const PLAN_LABELS: Record<string, string> = {
-  free: "Бесплатный",
-  standard: "Стандарт",
-  premium: "Премиум",
-};
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 type Step = "mode_select" | "interview" | "results";
@@ -159,7 +153,11 @@ export default function SimulatorPage() {
         <PoweredByFooter />
         {sessionsLimitHit && subscription?.plan && subscription.sessions_limit != null && (
           <SessionsLimitOverlay
-            planLabel={PLAN_LABELS[subscription.plan] ?? subscription.plan}
+            planLabel={
+              subscription.plan
+                ? t(`plan_names.${subscription.plan}`, { ns: "pricing", defaultValue: subscription.plan })
+                : ""
+            }
             sessionsUsed={subscription.sessions_used ?? subscription.sessions_limit}
             sessionsLimit={subscription.sessions_limit}
             neverResets={subscription.limits.simulator_sessions_total != null}

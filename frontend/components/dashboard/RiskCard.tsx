@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Lock } from "lucide-react";
 import type { RiskItem } from "@/lib/api";
 
 const severityConfig = {
-  high: { color: "#FF6B6B", bg: "bg-[#FF6B6B]/10", border: "border-[#FF6B6B]/20", label: "Высокий риск" },
-  medium: { color: "#F59E0B", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/20", label: "Средний риск" },
-  low: { color: "#00D4AA", bg: "bg-[#00D4AA]/10", border: "border-[#00D4AA]/20", label: "Низкий риск" },
+  high: { color: "#FF6B6B", bg: "bg-[#FF6B6B]/10", border: "border-[#FF6B6B]/20", key: "risk_high" },
+  medium: { color: "#F59E0B", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/20", key: "risk_medium" },
+  low: { color: "#00D4AA", bg: "bg-[#00D4AA]/10", border: "border-[#00D4AA]/20", key: "risk_low" },
 };
 
 interface Props {
@@ -21,6 +22,7 @@ interface Props {
 
 export function RiskCard({ risk, index, locked = false }: Props) {
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
   const cfg = severityConfig[risk.severity];
 
   return (
@@ -38,7 +40,7 @@ export function RiskCard({ risk, index, locked = false }: Props) {
             className="text-[10px] font-bold px-2 py-0.5 rounded-full"
             style={{ color: cfg.color, background: `${cfg.color}18` }}
           >
-            {cfg.label}
+            {t(cfg.key)}
           </span>
         </div>
 
@@ -46,7 +48,7 @@ export function RiskCard({ risk, index, locked = false }: Props) {
           <p className="text-[#8B8BA7] text-xs leading-relaxed">{risk.advice_ru}</p>
         ) : (
           <div>
-            <p className="text-[#8B8BA7] text-xs mb-1">Как решить:</p>
+            <p className="text-[#8B8BA7] text-xs mb-1">{t("how_to_fix")}</p>
             {/* Placeholder blocks, not risk.advice_ru — a CSS blur alone
                 would still ship the real gated text in the DOM, readable via
                 devtools/view-source regardless of the visual filter. */}
@@ -60,7 +62,7 @@ export function RiskCard({ risk, index, locked = false }: Props) {
               onClick={() => router.push("/pricing")}
               className="text-[#6C63FF] text-xs font-semibold flex items-center gap-1 hover:text-[#9C8BFF] transition-colors mt-1.5"
             >
-              <Lock size={11} /> Разблокировать решения →
+              <Lock size={11} /> {t("unlock_solutions")}
             </button>
           </div>
         )}
