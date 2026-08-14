@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import json
@@ -6,7 +7,7 @@ import urllib.parse
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +35,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(max_length=100)
+    password: str
     referral_code: str | None = None
 
     @field_validator("password")
@@ -42,6 +43,14 @@ class RegisterRequest(BaseModel):
     def password_length(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError("Пароль должен содержать минимум 8 символов")
+        # bcrypt's hard limit is 72 *bytes*, not characters — a Cyrillic/
+        # multi-byte password can exceed that well under 72 characters.
+        # Field(max_length=...) alone can't express this (it counts
+        # codepoints), and the old max_length=100 let 73-100 byte passwords
+        # through Pydantic only to crash bcrypt.hashpw() with an uncaught
+        # ValueError inside register() — a 500 instead of a clean 422.
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Пароль слишком длинный (максимум 72 байта)")
         return v
 
 
@@ -209,13 +218,20 @@ async def login(
     result = await db.execute(select(User).where(User.email == body.email.lower()))
     user = result.scalar_one_or_none()
 
-    if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
-        await log_suspicious_activity(
+    # verify_password is now async (bcrypt runs in a thread) — only call it
+    # when there's an actual hash to check against, same short-circuit the
+    # old inline `or` chain gave for free.
+    password_valid = bool(user and user.password_hash and await verify_password(body.password, user.password_hash))
+    if not password_valid:
+        # Fire-and-forget — must not add DB latency to the 401 the client is
+        # waiting on, and a wrong-password typo (not just an attack) hits
+        # this on every failed attempt.
+        asyncio.create_task(log_suspicious_activity(
             event_type="failed_login",
             ip=get_remote_address(request),
             user_id=user.id if user else None,
             details={"email": body.email.lower()},
-        )
+        ))
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный email или пароль")
 
     return await _issue_login_response(user, response, db)

@@ -5,8 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from slowapi.errors import RateLimitExceeded
@@ -150,6 +149,37 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 
+class HealthCheckAwareHostMiddleware:
+    """Same Host-header check as Starlette's TrustedHostMiddleware, but always
+    lets GET /health through regardless of Host. Render's own health-checker
+    (and any other internal caller hitting /health) may not send exactly one
+    of the hostnames below — a blanket rejection there would look like the
+    service being down and could cycle-restart it. Every other route still
+    gets the full check."""
+
+    def __init__(self, app, allowed_hosts: list[str]):
+        self.app = app
+        self.allowed_hosts = allowed_hosts
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+
+        if scope["type"] == "http" and scope["path"] == "/health":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers") or [])
+        host = headers.get(b"host", b"").decode("latin-1").split(":")[0]
+        if host in self.allowed_hosts:
+            await self.app(scope, receive, send)
+            return
+
+        response = PlainTextResponse("Invalid host header", status_code=400)
+        await response(scope, receive, send)
+
+
 class SecurityHeadersMiddleware:
     """Raw ASGI middleware — not @app.middleware("http")/BaseHTTPMiddleware,
     for the same reason as CatchAllExceptionMiddleware below: that wraps
@@ -201,9 +231,10 @@ class CatchAllExceptionMiddleware:
 
 
 # Order matters: add_middleware prepends, so each subsequent call wraps
-# (runs before) the ones already added — TrustedHostMiddleware ends up
-# outermost (rejects a bad Host header before anything else runs), then
-# CORS, then SecurityHeaders, then CatchAll innermost around routing itself.
+# (runs before) the ones already added — HealthCheckAwareHostMiddleware ends
+# up outermost (rejects a bad Host header, except /health, before anything
+# else runs), then CORS, then SecurityHeaders, then CatchAll innermost
+# around routing itself.
 app.add_middleware(CatchAllExceptionMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -222,11 +253,12 @@ app.add_middleware(
 # subdomain plus localhost for local dev; add a custom domain here once one
 # is pointed at this backend.
 app.add_middleware(
-    TrustedHostMiddleware,
+    HealthCheckAwareHostMiddleware,
     allowed_hosts=[
         "vizora-backend-d6kv.onrender.com",
         "localhost",
         "127.0.0.1",
+        "::1",  # IPv6 loopback, for local dev
     ],
 )
 

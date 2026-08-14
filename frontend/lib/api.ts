@@ -21,6 +21,37 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Shared in-flight refresh promise — every 401 across the whole app (axios
+// interceptor below AND fetchWithAuth) funnels through this single call
+// instead of each firing its own /auth/refresh. Without this, a page that
+// fires several parallel authenticated requests on mount (dashboard loading
+// profile/roadmap/documents/referral at once) would independently 401 and
+// independently refresh N times for the exact same stale token — enough
+// concurrent tabs/requests trips /auth/refresh's own rate limit and forces
+// a spurious logout on an otherwise-valid session.
+let refreshPromise: Promise<string> | null = null;
+
+async function getRefreshedToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const { data } = await axios.post<{ access_token: string }>(
+        `${BASE_URL}/api/auth/refresh`,
+        {},
+        { withCredentials: true }
+      );
+      localStorage.setItem("access_token", data.access_token);
+      return data.access_token;
+    } finally {
+      // Clear regardless of outcome so the NEXT 401 (e.g. after this token
+      // itself expires later) starts a fresh refresh rather than reusing a
+      // resolved/rejected promise forever.
+      refreshPromise = null;
+    }
+  })();
+  return refreshPromise;
+}
+
 // On 401 try to refresh; on failure clear storage and redirect
 api.interceptors.response.use(
   (res) => res,
@@ -41,13 +72,8 @@ api.interceptors.response.use(
     ) {
       original._retry = true;
       try {
-        const { data } = await axios.post(
-          `${BASE_URL}/api/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-        localStorage.setItem("access_token", data.access_token);
-        original.headers.Authorization = `Bearer ${data.access_token}`;
+        const accessToken = await getRefreshedToken();
+        original.headers.Authorization = `Bearer ${accessToken}`;
         return api(original);
       } catch (refreshError) {
         localStorage.removeItem("access_token");
@@ -79,18 +105,13 @@ export async function fetchWithAuth(
 
   if (res.status !== 401) return res;
 
-  // Try to refresh
+  // Try to refresh — shares the same in-flight promise as the axios
+  // interceptor, so a page mixing fetchWithAuth and the api instance never
+  // fires two independent refresh calls for the same stale token.
   try {
-    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-    });
-    if (refreshRes.ok) {
-      const { access_token } = await refreshRes.json();
-      localStorage.setItem("access_token", access_token);
-      headers.set("Authorization", `Bearer ${access_token}`);
-      return fetch(url, { ...options, headers, credentials: "include" });
-    }
+    const accessToken = await getRefreshedToken();
+    headers.set("Authorization", `Bearer ${accessToken}`);
+    return fetch(url, { ...options, headers, credentials: "include" });
   } catch {
     // fall through to redirect
   }

@@ -4,6 +4,8 @@ import logging
 import random
 from typing import Any, AsyncGenerator
 
+import openai
+
 from app.services.ai_service import get_ai_client, get_chat_model, strip_unexpected_scripts
 
 # Full question bank sourced from official agency interview prep document (58 real questions).
@@ -723,16 +725,27 @@ async def generate_feedback(
 
     async def _attempt() -> dict[str, Any] | None:
         client = get_ai_client()
-        response = await client.chat.completions.create(
-            model=get_chat_model(),
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            max_tokens=4096,
-            # Forces valid JSON at the API level instead of hoping the model
-            # honors the "return ONLY JSON" prompt instruction — Groq/OpenAI/
-            # Gemini's OpenAI-compat endpoint all support this.
-            response_format={"type": "json_object"},
-        )
+        try:
+            response = await client.chat.completions.create(
+                model=get_chat_model(),
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+                max_tokens=4096,
+                # Forces valid JSON at the API level instead of hoping the model
+                # honors the "return ONLY JSON" prompt instruction — Groq/OpenAI/
+                # Gemini's OpenAI-compat endpoint all support this.
+                response_format={"type": "json_object"},
+            )
+        except openai.APIError as e:
+            # Covers APITimeoutError/APIConnectionError/etc — a long transcript
+            # pushing close to the 4096-token completion can legitimately take
+            # longer than the client's timeout. Falls into the same retry-then-
+            # fallback path as a malformed response, instead of propagating
+            # uncaught into an unhandled 500 on /simulator/end.
+            logging.getLogger(__name__).warning(
+                "generate_feedback: OpenAI call failed for session=%s: %s", session_id, e,
+            )
+            return None
 
         raw = ""
         try:

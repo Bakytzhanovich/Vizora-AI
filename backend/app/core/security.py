@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 import uuid
 
@@ -20,8 +21,12 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
-def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode(), hashed.encode())
+async def verify_password(password: str, hashed: str) -> bool:
+    # bcrypt is deliberately slow (that's its whole point) and fully
+    # synchronous/CPU-bound — running it inline on the event loop blocks
+    # every other in-flight request (including unrelated streaming
+    # endpoints) for its duration on every single login attempt.
+    return await asyncio.to_thread(bcrypt.checkpw, password.encode(), hashed.encode())
 
 
 def create_access_token(user_id: str) -> str:
@@ -74,11 +79,13 @@ async def get_current_user_id(
         # Expired tokens are routine (every user hits this eventually) — only
         # log genuinely malformed/tampered/wrong-type tokens as suspicious.
         if exc.detail != "Token expired":
-            await log_suspicious_activity(
+            # Fire-and-forget — must not add DB latency to a 401 the client
+            # is waiting on.
+            asyncio.create_task(log_suspicious_activity(
                 event_type="invalid_jwt",
                 ip=get_remote_address(request),
                 details={"reason": exc.detail, "path": request.url.path},
-            )
+            ))
         raise
 
 

@@ -4,6 +4,8 @@ limits are tracked against the same in-memory counters and the same
 default_limits fallback applies everywhere.
 """
 
+import asyncio
+import logging
 import time
 
 from fastapi import Request
@@ -13,6 +15,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
 from app.services.security_logger import log_suspicious_activity
+
+logger = logging.getLogger(__name__)
 
 # In-memory storage (slowapi's default) — fine for a single-process deploy
 # like Render's free tier. If the backend ever scales to multiple instances,
@@ -43,7 +47,13 @@ def _retry_after_seconds(request: Request) -> int:
         item, identifiers = current_limit
         reset_at = 1 + limiter.limiter.get_window_stats(item, *identifiers)[0]
         return max(1, int(reset_at - time.time()))
-    except Exception:
+    except (TypeError, ValueError, AttributeError, IndexError):
+        # Reaches into slowapi's private storage internals (limiter.limiter,
+        # get_window_stats) — narrowed to the specific ways that shape can
+        # legitimately fail, with a log line, so a future slowapi upgrade
+        # that changes it degrades LOUDLY (visible in logs) instead of
+        # silently reporting a plausible-but-wrong 60s forever.
+        logger.warning("Failed to compute Retry-After from slowapi internals", exc_info=True)
         return 60
 
 
@@ -52,11 +62,15 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
     limit window that was hit rather than a hardcoded guess."""
     retry_after = _retry_after_seconds(request)
 
-    await log_suspicious_activity(
+    # Fire-and-forget — logging must never add latency to the 429 the client
+    # is waiting on, especially since this is the exact response path a
+    # burst of traffic (the scenario the debounce/logging exists to survive)
+    # hits hardest.
+    asyncio.create_task(log_suspicious_activity(
         event_type="rate_limit_exceeded",
         ip=get_remote_address(request),
         details={"path": request.url.path, "method": request.method},
-    )
+    ))
 
     return JSONResponse(
         status_code=429,

@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Target, AlertTriangle, Moon } from "lucide-react";
+import { IconTile } from "@/components/ui/IconTile";
 
 interface ProblemItem {
   title: string;
@@ -72,10 +73,7 @@ export function Problem() {
 
               <div className="relative z-10">
                 <div className="mb-4">
-                  {(() => {
-                    const Icon = icons[i] ?? icons[0];
-                    return <Icon size={32} strokeWidth={1.75} className="text-[#FF6B6B]" />;
-                  })()}
+                  <IconTile icons={icons} index={i} size={32} className="text-[#FF6B6B]" />
                 </div>
 
                 <h3 className="text-[#F0F0FF] font-bold text-lg mb-3 leading-snug">

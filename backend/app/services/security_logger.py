@@ -6,6 +6,7 @@ import json
 import logging
 import time
 import uuid
+from collections import OrderedDict
 from datetime import datetime
 from typing import Any
 
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 # generate one INSERT+COMMIT per request with zero throttling. Caps writes to
 # at most one per window per (ip, event_type), independent of request volume.
 _DEBOUNCE_SECONDS = 5.0
-_last_logged: dict[tuple[str, str], float] = {}
+_last_logged: OrderedDict[tuple[str, str], float] = OrderedDict()
 _MAX_TRACKED_KEYS = 10_000  # bound memory if hit from many distinct IPs
 
 
@@ -33,7 +34,11 @@ def _should_log(ip: str | None, event_type: str) -> bool:
     if last is not None and now - last < _DEBOUNCE_SECONDS:
         return False
     if len(_last_logged) >= _MAX_TRACKED_KEYS:
-        _last_logged.clear()  # crude but bounded — a full reset is cheap and rare
+        # Evict only the single oldest entry, not everything — a full clear()
+        # would reset debounce state for every currently-tracked IP at once,
+        # causing a burst of renewed DB writes right when the map is full
+        # (i.e. likely already under the heaviest traffic).
+        _last_logged.popitem(last=False)
     _last_logged[key] = now
     return True
 

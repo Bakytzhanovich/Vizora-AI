@@ -34,6 +34,12 @@ def strip_unexpected_scripts(text: str) -> str:
 # a future edit only updates some of the constructors.
 _OPENAI_TIMEOUT_SECONDS = 30.0
 
+# STT (Whisper) gets a longer budget than chat/completions: /simulator/transcribe
+# allows up to 10MB of audio (routers/simulator.py), and a multi-minute spoken
+# answer near that cap can legitimately take longer than 30s to transcribe —
+# the shared timeout above would misreport that as "couldn't recognize speech".
+_STT_TIMEOUT_SECONDS = 60.0
+
 
 # Supported providers. All use the OpenAI SDK — only base_url and API key differ.
 _PROVIDER_CONFIGS: dict[str, dict] = {
@@ -145,7 +151,7 @@ def get_stt_client() -> tuple[AsyncOpenAI, str]:
             raise ValueError(
                 f"STT provider is '{provider}' but {cfg['key_attr']} is not set in .env"
             )
-        kwargs: dict = {"api_key": api_key, "timeout": _OPENAI_TIMEOUT_SECONDS}
+        kwargs: dict = {"api_key": api_key, "timeout": _STT_TIMEOUT_SECONDS}
         if cfg["base_url"]:
             kwargs["base_url"] = cfg["base_url"]
         _stt_client = AsyncOpenAI(**kwargs)

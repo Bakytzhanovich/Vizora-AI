@@ -3,14 +3,12 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.core.database import get_db
 from app.models.early_access import EarlyAccessEmail
+from middleware.rate_limit import limiter
 
 router = APIRouter()
-limiter = Limiter(key_func=get_remote_address)
 
 
 class EarlyAccessRequest(BaseModel):

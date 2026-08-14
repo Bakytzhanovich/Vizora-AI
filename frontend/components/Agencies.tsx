@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Clock, BarChart3, Trophy } from "lucide-react";
+import { IconTile } from "@/components/ui/IconTile";
 
 interface Benefit {
   title: string;
@@ -91,10 +92,7 @@ export function Agencies() {
 
               <div className="relative z-10">
                 <div className="mb-4">
-                  {(() => {
-                    const Icon = icons[i] ?? icons[0];
-                    return <Icon size={32} strokeWidth={1.75} className="text-[#00D4AA]" />;
-                  })()}
+                  <IconTile icons={icons} index={i} size={32} className="text-[#00D4AA]" />
                 </div>
                 <h3 className="text-[#F0F0FF] font-bold text-lg mb-3">{b.title}</h3>
                 <p className="text-[#8B8BA7] text-sm leading-relaxed mb-5">{b.description}</p>

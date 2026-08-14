@@ -8,7 +8,7 @@ from datetime import datetime
 
 import bcrypt
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -217,7 +217,10 @@ async def agency_register(body: AgencyRegisterBody, db: AsyncSession = Depends(g
 async def agency_login(request: Request, body: AgencyLoginBody, db: AsyncSession = Depends(get_db)):
     # Try Agency owner login first
     agency = await db.scalar(select(Agency).where(Agency.email == body.email))
-    if agency and bcrypt.checkpw(body.password.encode(), agency.password_hash.encode()):
+    # bcrypt is synchronous/CPU-bound — run off the event loop so it doesn't
+    # block unrelated concurrent requests (streaming endpoints included) for
+    # its duration on every login attempt.
+    if agency and await asyncio.to_thread(bcrypt.checkpw, body.password.encode(), agency.password_hash.encode()):
         member = await _get_or_create_admin_member(db, agency)
         member.last_login = datetime.utcnow()
         db.add(member)
@@ -240,7 +243,7 @@ async def agency_login(request: Request, body: AgencyLoginBody, db: AsyncSession
             AgencyMember.status == "active",
         )
     )
-    if member and member.password_hash and bcrypt.checkpw(body.password.encode(), member.password_hash.encode()):
+    if member and member.password_hash and await asyncio.to_thread(bcrypt.checkpw, body.password.encode(), member.password_hash.encode()):
         agency = await db.get(Agency, member.agency_id)
         member.last_login = datetime.utcnow()
         db.add(member)
@@ -916,7 +919,13 @@ def _open_and_verify_image(contents: bytes) -> str:
     requests, including unrelated in-flight streaming responses."""
     img = Image.open(io.BytesIO(contents))
     detected_format = img.format
+    # verify() only checks the file header/structure, not the actual pixel
+    # data — a file with a valid PNG signature but corrupted/truncated
+    # compressed data past the header still passes it. It also leaves the
+    # image object unusable for anything further, so reopen and force a
+    # full decode via load() to actually catch that case before saving.
     img.verify()
+    Image.open(io.BytesIO(contents)).load()
     return detected_format
 
 
@@ -930,7 +939,10 @@ async def upload_logo(
     if file.content_type not in _ALLOWED_TYPES:
         raise HTTPException(status_code=422, detail="Only PNG/JPG files allowed")
 
-    contents = await file.read()
+    # Read only up to the cap + 1 byte — rejecting oversized uploads without
+    # ever buffering the full body (which Starlette would otherwise roll to
+    # disk via SpooledTemporaryFile past ~1MB regardless of the eventual 422).
+    contents = await file.read(_MAX_SIZE + 1)
     if len(contents) > _MAX_SIZE:
         raise HTTPException(status_code=422, detail="File too large (max 2MB)")
 
@@ -938,7 +950,7 @@ async def upload_logo(
     # not just trusting the client-supplied Content-Type header.
     try:
         detected_format = await asyncio.to_thread(_open_and_verify_image, contents)
-    except Exception:
+    except (UnidentifiedImageError, OSError, ValueError):
         raise HTTPException(status_code=422, detail="Повреждённый файл изображения")
     if detected_format != _EXPECTED_PIL_FORMAT.get(file.content_type):
         raise HTTPException(status_code=422, detail="Файл не соответствует заявленному типу")
@@ -951,6 +963,17 @@ async def upload_logo(
     ext = _EXT_BY_PIL_FORMAT[detected_format]
     filename = f"{ctx.agency_id}.{ext}"
     path = os.path.join(_LOGO_DIR, filename)
+
+    # Clean up any logo saved under a DIFFERENT extension for this agency
+    # (e.g. a previous PNG upload before this WebP one) — otherwise the old
+    # file is never deleted and stays reachable at its old, now-stale URL.
+    for other_ext in _EXT_BY_PIL_FORMAT.values():
+        if other_ext == ext:
+            continue
+        other_path = os.path.join(_LOGO_DIR, f"{ctx.agency_id}.{other_ext}")
+        if os.path.exists(other_path):
+            os.remove(other_path)
+
     with open(path, "wb") as f:
         f.write(contents)
 

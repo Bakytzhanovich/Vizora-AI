@@ -305,7 +305,9 @@ async def transcribe(
 
 
 @router.post("/tts")
+@limiter.limit("20/minute")  # consistency with sibling AI endpoints; text_to_speech uses edge-tts (free), but still a third-party call worth throttling
 async def tts(
+    request: Request,
     body: TTSRequest,
     user_id: str = Depends(get_current_user_id),
 ):
