@@ -159,6 +159,68 @@ async def _compute_weekly_retention(db: AsyncSession) -> dict:
     return {"cohorts": cohort_list, "overall": overall, "eligible_users": overall_eligible[7]}
 
 
+async def _compute_entry_exit_pages(db: AsyncSession, days: int = 30) -> dict:
+    """Top landing (entry) and drop-off (exit) pages, grouped by browser session.
+
+    Relies on the frontend firing a `page_view` event (with `session_id`, a
+    per-tab id generated client-side) on every route change. A session's
+    entry page is its earliest page_view URL in the window; its exit page is
+    its latest — i.e. the last page a visitor was on before either leaving
+    or going quiet. Events without a session_id (older clients, or events
+    fired before this was added) can't be grouped into a visit and are
+    excluded rather than silently mis-attributed.
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+    rows = await db.execute(
+        select(AnalyticsEvent.session_id, AnalyticsEvent.url, AnalyticsEvent.created_at)
+        .where(
+            AnalyticsEvent.event == "page_view",
+            AnalyticsEvent.session_id.isnot(None),
+            AnalyticsEvent.url.isnot(None),
+            AnalyticsEvent.created_at >= since,
+        )
+        # id is a tiebreaker for rows with an identical created_at (coarse
+        # timestamp precision, or two route pushes in the same tick) so
+        # entry/exit attribution is deterministic instead of depending on
+        # unspecified SQL row order for tied keys.
+        .order_by(AnalyticsEvent.session_id, AnalyticsEvent.created_at, AnalyticsEvent.id)
+    )
+
+    sessions: dict[str, dict] = {}
+    for session_id, url, created_at in rows.all():
+        s = sessions.setdefault(session_id, {"entry_url": url, "entry_ts": created_at, "exit_url": url})
+        if created_at < s["entry_ts"]:
+            s["entry_url"] = url
+            s["entry_ts"] = created_at
+        if created_at >= s.get("exit_ts", created_at):
+            s["exit_url"] = url
+            s["exit_ts"] = created_at
+
+    total_sessions = len(sessions)
+    entry_counts: dict[str, int] = defaultdict(int)
+    exit_counts: dict[str, int] = defaultdict(int)
+    for s in sessions.values():
+        entry_counts[s["entry_url"]] += 1
+        exit_counts[s["exit_url"]] += 1
+
+    def _top(counts: dict[str, int], limit: int = 10) -> list[dict]:
+        ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:limit]
+        return [
+            {
+                "url": url,
+                "count": count,
+                "pct": round(count / total_sessions * 100, 1) if total_sessions else 0,
+            }
+            for url, count in ranked
+        ]
+
+    return {
+        "total_sessions": total_sessions,
+        "top_entry_pages": _top(entry_counts),
+        "top_exit_pages": _top(exit_counts),
+    }
+
+
 @router.get("/overview")
 async def admin_overview(
     request: Request,
@@ -551,6 +613,7 @@ async def admin_analytics(
             for row in top_event_rows
         ],
         "retention": await _compute_weekly_retention(db),
+        "entry_exit_pages": await _compute_entry_exit_pages(db),
     }
 
 

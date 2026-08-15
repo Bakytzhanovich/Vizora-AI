@@ -8,6 +8,7 @@ class AnalyticsEvent(Base):
 
     id = Column(String, primary_key=True)
     user_id = Column(String, nullable=True, index=True)
+    session_id = Column(String, nullable=True, index=True)
     event = Column(String, nullable=False, index=True)
     properties = Column(Text, nullable=True)  # JSON string
     url = Column(String, nullable=True)

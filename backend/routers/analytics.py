@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,6 +34,7 @@ class TrackPayload(BaseModel):
     event: str
     properties: dict[str, Any] | None = None
     url: str | None = None
+    session_id: str | None = Field(default=None, max_length=64)
 
 
 @router.post("/track", status_code=204)
@@ -47,6 +48,7 @@ async def track_event(
         AnalyticsEvent(
             id=str(uuid.uuid4()),
             user_id=user_id,
+            session_id=payload.session_id,
             event=payload.event,
             properties=json.dumps(payload.properties) if payload.properties else None,
             url=payload.url,

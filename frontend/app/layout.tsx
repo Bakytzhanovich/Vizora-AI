@@ -8,6 +8,7 @@ import { PwaServiceWorker } from "@/components/PwaServiceWorker";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { PaymentIssueBanner } from "@/components/PaymentIssueBanner";
 import { I18nInit } from "@/components/I18nInit";
+import { PageViewTracker } from "@/components/PageViewTracker";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -107,6 +108,7 @@ export default function RootLayout({
       <body className="bg-[#0A0A0F] text-[#F0F0FF] antialiased font-sans">
         <I18nInit />
         <PwaServiceWorker />
+        <PageViewTracker />
         <BrandingProvider>
           <TelegramAuthHandler />
           <PushNotificationPrompt />

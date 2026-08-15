@@ -278,6 +278,63 @@ function RetentionPanel({ retention }: { retention: AdminAnalytics["retention"] 
   );
 }
 
+function PageList({ pages, total }: { pages: Array<{ url: string; count: number; pct: number }>; total: number }) {
+  if (pages.length === 0) {
+    return <p className="py-6 text-center text-xs text-[#81889B]">Пока нет данных</p>;
+  }
+  const max = Math.max(...pages.map((p) => p.count));
+  return (
+    <div className="space-y-2">
+      {pages.map((p) => (
+        <div key={p.url} className="flex items-center gap-3">
+          <span className="w-32 shrink-0 truncate font-mono text-xs text-[#C7CAD9]" title={p.url}>
+            {p.url}
+          </span>
+          <div className="h-2 flex-1 rounded-full bg-[#0D0F16]">
+            <div
+              className="h-2 rounded-full bg-blue-400"
+              style={{ width: `${(p.count / max) * 100}%` }}
+            />
+          </div>
+          <span className="w-20 shrink-0 text-right text-xs text-white">
+            {p.count} <span className="text-[#81889B]">({p.pct}%)</span>
+          </span>
+        </div>
+      ))}
+      <p className="pt-1 text-[10px] text-[#81889B]">Всего визитов за 30 дней: {total}</p>
+    </div>
+  );
+}
+
+function EntryExitPanel({ data }: { data: AdminAnalytics["entry_exit_pages"] }) {
+  if (data.total_sessions === 0) {
+    return (
+      <Panel
+        title="Входные и выходные страницы"
+        subtitle="Каждый переход по сайту (за 30 дней) сгруппирован по вкладке браузера — это и есть «визит». Первая страница визита = вход, последняя = выход (либо ушёл с сайта, либо просто перестал переходить дальше)."
+      >
+        <EmptyState text="Пока нет данных о переходах — трекинг только что включили, данные появятся по мере visits" />
+      </Panel>
+    );
+  }
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Panel
+        title="Топ страниц входа"
+        subtitle="С какой страницы люди чаще всего начинают визит"
+      >
+        <PageList pages={data.top_entry_pages} total={data.total_sessions} />
+      </Panel>
+      <Panel
+        title="Топ страниц выхода"
+        subtitle="На какой странице визит чаще всего заканчивается — сюда стоит смотреть в первую очередь, если ищешь, где отваливаются люди"
+      >
+        <PageList pages={data.top_exit_pages} total={data.total_sessions} />
+      </Panel>
+    </div>
+  );
+}
+
 function OverviewSection({ overview }: { overview: AdminOverview }) {
   const m = overview.metrics;
   return (
@@ -500,6 +557,8 @@ function AnalyticsSection({ data }: { data: AdminAnalytics }) {
           </div>
         </Panel>
       </div>
+
+      <EntryExitPanel data={data.entry_exit_pages} />
 
       <RetentionPanel retention={data.retention} />
 

@@ -127,6 +127,11 @@ export interface AdminAnalytics {
     overall: Record<RetentionDay, RetentionPoint>;
     eligible_users: number;
   };
+  entry_exit_pages: {
+    total_sessions: number;
+    top_entry_pages: Array<{ url: string; count: number; pct: number }>;
+    top_exit_pages: Array<{ url: string; count: number; pct: number }>;
+  };
 }
 
 export interface AdminSystem {
