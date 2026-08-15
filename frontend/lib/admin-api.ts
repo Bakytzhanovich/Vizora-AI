@@ -99,6 +99,14 @@ export interface AdminManagersResponse {
   }>;
 }
 
+export type RetentionDay = "d1" | "d3" | "d7" | "d14" | "d30";
+
+export interface RetentionPoint {
+  eligible: number;
+  retained: number;
+  rate: number | null;
+}
+
 export interface AdminAnalytics {
   activity_14d: Array<{
     date: string;
@@ -114,11 +122,9 @@ export interface AdminAnalytics {
     cohorts: Array<{
       week_start: string;
       cohort_size: number;
-      eligible: number;
-      retained_d7: number;
-      retention_rate: number | null;
+      points: Record<RetentionDay, RetentionPoint>;
     }>;
-    overall_d7_rate: number | null;
+    overall: Record<RetentionDay, RetentionPoint>;
     eligible_users: number;
   };
 }

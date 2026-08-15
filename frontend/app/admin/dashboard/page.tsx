@@ -28,6 +28,7 @@ import {
   type AdminOverview,
   type AdminSystem,
   type AdminUsersResponse,
+  type RetentionDay,
 } from "@/lib/admin-api";
 
 type Section = "overview" | "users" | "agencies" | "managers" | "analytics" | "system";
@@ -118,11 +119,20 @@ function StatCard({
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
   return (
     <section className="rounded-xl border border-[#242837] bg-[#12141C]">
       <div className="border-b border-[#242837] px-4 py-3">
         <h2 className="text-sm font-semibold text-white">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-xs text-[#81889B]">{subtitle}</p>}
       </div>
       <div className="p-4">{children}</div>
     </section>
@@ -131,6 +141,141 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function EmptyState({ text }: { text: string }) {
   return <p className="py-8 text-center text-sm text-[#81889B]">{text}</p>;
+}
+
+const RETENTION_DAYS: RetentionDay[] = ["d1", "d3", "d7", "d14", "d30"];
+const RETENTION_LABELS: Record<RetentionDay, string> = {
+  d1: "D1",
+  d3: "D3",
+  d7: "D7",
+  d14: "D14",
+  d30: "D30",
+};
+
+// Rose (low) -> amber (mid) -> emerald (high), interpolated so the eye reads
+// the whole table as a heatmap without needing to read every number.
+function retentionCellStyle(rate: number): { backgroundColor: string; color: string } {
+  const clamped = Math.max(0, Math.min(100, rate));
+  const stops: [number, [number, number, number]][] = [
+    [0, [244, 63, 94]],
+    [50, [245, 158, 11]],
+    [100, [52, 211, 153]],
+  ];
+  let [lo, hi] = [stops[0], stops[1]];
+  if (clamped > 50) [lo, hi] = [stops[1], stops[2]];
+  const span = hi[0] - lo[0] || 1;
+  const t = (clamped - lo[0]) / span;
+  const rgb = lo[1].map((c, i) => Math.round(c + (hi[1][i] - c) * t));
+  return {
+    backgroundColor: `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.16)`,
+    color: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`,
+  };
+}
+
+function RetentionPanel({ retention }: { retention: AdminAnalytics["retention"] }) {
+  return (
+    <Panel
+      title="Retention-кривая по когортам"
+      subtitle="Возврат = пользователь хоть что-то сделал в приложении (чат, симулятор, документы, roadmap) в первые N дней после регистрации, включая день регистрации. Строка — неделя регистрации, чем правее колонка — тем дольше пользователь с нами."
+    >
+      {retention.eligible_users === 0 ? (
+        <EmptyState text="Пока нет пользователей старше 7 дней — рано считать retention" />
+      ) : (
+        <>
+          <div className="mb-5 flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-white">{retention.overall.d7.rate ?? 0}%</span>
+            <span className="text-sm text-[#81889B]">
+              в среднем вернулись хотя бы раз за первую неделю (D7) — из {retention.eligible_users} чел.,
+              у которых уже прошло 7 дней с регистрации
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-[#242837] text-[#81889B]">
+                  <th className="py-2 pr-3 text-left font-medium">Неделя регистрации</th>
+                  <th className="px-2 py-2 text-right font-medium">Зарег.</th>
+                  {RETENTION_DAYS.map((d) => (
+                    <th key={d} className="px-2 py-2 text-right font-medium">
+                      {RETENTION_LABELS[d]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {retention.cohorts.map((cohort) => {
+                  const start = new Date(cohort.week_start);
+                  const end = new Date(start);
+                  end.setDate(end.getDate() + 6);
+                  const fmt = (d: Date) => d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+                  return (
+                    <tr key={cohort.week_start} className="border-b border-[#1B1E29]">
+                      <td className="py-2 pr-3 text-[#81889B]" title="Неделя регистрации">
+                        {fmt(start)}–{fmt(end)}
+                      </td>
+                      <td className="px-2 py-2 text-right text-[#81889B]">{cohort.cohort_size}</td>
+                      {RETENTION_DAYS.map((d) => {
+                        const point = cohort.points[d];
+                        const lowSample = point.eligible > 0 && point.eligible < 10;
+                        return (
+                          <td key={d} className="px-2 py-2 text-right">
+                            {point.rate !== null ? (
+                              <span
+                                className="inline-block min-w-[3.25rem] rounded px-1.5 py-0.5 font-semibold"
+                                style={retentionCellStyle(point.rate)}
+                                title={`${point.retained} из ${point.eligible} вернулись`}
+                              >
+                                {point.rate}%{lowSample && "*"}
+                              </span>
+                            ) : (
+                              <span className="text-[#3A3F52]" title="Ещё не прошло нужное число дней">
+                                —
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-[#242837] font-semibold text-white">
+                  <td className="py-2 pr-3">Всего</td>
+                  <td className="px-2 py-2 text-right text-[#81889B] font-normal">
+                    {retention.cohorts.reduce((sum, c) => sum + c.cohort_size, 0)}
+                  </td>
+                  {RETENTION_DAYS.map((d) => {
+                    const point = retention.overall[d];
+                    return (
+                      <td key={d} className="px-2 py-2 text-right">
+                        {point.rate !== null ? (
+                          <span
+                            className="inline-block min-w-[3.25rem] rounded px-1.5 py-0.5"
+                            style={retentionCellStyle(point.rate)}
+                            title={`${point.retained} из ${point.eligible} вернулись`}
+                          >
+                            {point.rate}%
+                          </span>
+                        ) : (
+                          <span className="text-[#3A3F52]">—</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-[#81889B]">
+            * — в когорте меньше 10 человек прошли этот срок, процент считается по 1–9 людям и может сильно
+            скакать от недели к неделе. Ориентируйся на строку «Всего» и на общий цвет таблицы, а не на
+            отдельные проценты с «*».
+          </p>
+        </>
+      )}
+    </Panel>
+  );
 }
 
 function OverviewSection({ overview }: { overview: AdminOverview }) {
@@ -356,50 +501,7 @@ function AnalyticsSection({ data }: { data: AdminAnalytics }) {
         </Panel>
       </div>
 
-      <Panel title="Retention (D7 по когортам)">
-        {data.retention.eligible_users === 0 ? (
-          <EmptyState text="Пока нет пользователей старше 7 дней — рано считать retention" />
-        ) : (
-          <>
-            <div className="mb-4 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-white">
-                {data.retention.overall_d7_rate ?? 0}%
-              </span>
-              <span className="text-sm text-[#81889B]">
-                вернулись в первую неделю ({data.retention.eligible_users} пользователей старше 7 дней)
-              </span>
-            </div>
-            <div className="space-y-2">
-              {data.retention.cohorts.map((cohort) => (
-                <div key={cohort.week_start} className="flex items-center gap-3">
-                  <span className="w-20 shrink-0 text-xs text-[#81889B]">
-                    {new Date(cohort.week_start).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                  <div className="h-2 flex-1 rounded-full bg-[#0D0F16]">
-                    {cohort.retention_rate !== null && (
-                      <div
-                        className="h-2 rounded-full bg-emerald-400"
-                        style={{ width: `${Math.min(100, cohort.retention_rate)}%` }}
-                      />
-                    )}
-                  </div>
-                  <span className="w-28 shrink-0 text-right text-xs">
-                    {cohort.retention_rate !== null ? (
-                      <span className="font-semibold text-white">
-                        {cohort.retention_rate}% ({cohort.retained_d7}/{cohort.eligible})
-                      </span>
-                    ) : (
-                      <span className="text-[#81889B]">
-                        ждём 7 дней ({cohort.cohort_size})
-                      </span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </Panel>
+      <RetentionPanel retention={data.retention} />
 
       <Panel title="Активность за 14 дней">
         <div className="flex h-56 items-end gap-2 overflow-x-auto">
