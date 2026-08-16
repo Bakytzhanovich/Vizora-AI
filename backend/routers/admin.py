@@ -186,15 +186,17 @@ async def _compute_entry_exit_pages(db: AsyncSession, days: int = 30) -> dict:
         .order_by(AnalyticsEvent.session_id, AnalyticsEvent.created_at, AnalyticsEvent.id)
     )
 
+    # Rows arrive ordered by (session_id, created_at, id) ascending, so per
+    # session the first row seen is guaranteed to be the entry page, and
+    # every subsequent row — always >= the previous — becomes the new exit
+    # page as we go, leaving the last one seen as the final exit page.
     sessions: dict[str, dict] = {}
-    for session_id, url, created_at in rows.all():
-        s = sessions.setdefault(session_id, {"entry_url": url, "entry_ts": created_at, "exit_url": url})
-        if created_at < s["entry_ts"]:
-            s["entry_url"] = url
-            s["entry_ts"] = created_at
-        if created_at >= s.get("exit_ts", created_at):
+    for session_id, url, _created_at in rows.all():
+        s = sessions.get(session_id)
+        if s is None:
+            sessions[session_id] = {"entry_url": url, "exit_url": url}
+        else:
             s["exit_url"] = url
-            s["exit_ts"] = created_at
 
     total_sessions = len(sessions)
     entry_counts: dict[str, int] = defaultdict(int)
