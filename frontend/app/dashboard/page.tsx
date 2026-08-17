@@ -119,7 +119,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-4 py-6 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#0A0A0F] px-4 pt-6 pb-24 md:pb-6 max-w-5xl mx-auto">
       <PoweredByFooter />
       {/* Top nav */}
       <div className="flex items-center justify-between mb-8">

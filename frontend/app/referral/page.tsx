@@ -82,7 +82,7 @@ export default function ReferralPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-5">
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 md:pb-6 flex flex-col gap-5">
         {/* Hero */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

@@ -7,6 +7,7 @@ import { TelegramSdkScript } from "@/components/TelegramSdkScript";
 import { PwaServiceWorker } from "@/components/PwaServiceWorker";
 import { PushNotificationPrompt } from "@/components/PushNotificationPrompt";
 import { PaymentIssueBanner } from "@/components/PaymentIssueBanner";
+import { BottomNav } from "@/components/BottomNav";
 import { I18nInit } from "@/components/I18nInit";
 import { PageViewTracker } from "@/components/PageViewTracker";
 
@@ -114,6 +115,7 @@ export default function RootLayout({
           <PushNotificationPrompt />
           <PaymentIssueBanner />
           {children}
+          <BottomNav />
         </BrandingProvider>
       </body>
     </html>

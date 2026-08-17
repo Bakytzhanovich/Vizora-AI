@@ -151,7 +151,7 @@ export default function DocumentsPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 md:pb-6">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 8 }}
