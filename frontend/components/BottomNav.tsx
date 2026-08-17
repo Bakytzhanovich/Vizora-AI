@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Map, MessageCircle, Mic, FileText, type LucideIcon } from "lucide-react";
+import { Home, Map, MessageCircle, Mic, User, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const TABS: { href: string; icon: LucideIcon; key: string }[] = [
@@ -9,7 +9,7 @@ const TABS: { href: string; icon: LucideIcon; key: string }[] = [
   { href: "/roadmap", icon: Map, key: "roadmap" },
   { href: "/chat", icon: MessageCircle, key: "chat" },
   { href: "/simulator", icon: Mic, key: "simulator" },
-  { href: "/documents", icon: FileText, key: "documents" },
+  { href: "/profile", icon: User, key: "profile" },
 ];
 
 // Routes with their own full-screen/immersive layout (live chat thread with a
