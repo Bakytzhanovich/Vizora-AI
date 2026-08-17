@@ -50,8 +50,8 @@ export default function ReferralPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#6C63FF]/30 border-t-[#6C63FF] rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     );
   }
@@ -63,21 +63,21 @@ export default function ReferralPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className="min-h-screen bg-bg">
       <PoweredByFooter />
 
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1E1E2E]">
+      <div className="sticky top-0 z-20 bg-bg/95 backdrop-blur border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+            className="text-secondary hover:text-primary transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-[#F0F0FF] font-bold leading-tight">Пригласи друзей</h1>
-            <p className="text-[#8B8BA7] text-xs">Получи бонусы за каждого друга</p>
+            <h1 className="text-primary font-bold leading-tight">Пригласи друзей</h1>
+            <p className="text-secondary text-xs">Получи бонусы за каждого друга</p>
           </div>
         </div>
       </div>
@@ -87,13 +87,13 @@ export default function ReferralPage() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-[#6C63FF]/10 to-[#F59E0B]/5 border border-[#6C63FF]/20 rounded-2xl p-5"
+          className="bg-gradient-to-r from-accent/10 to-warning/5 border border-accent/20 rounded-2xl p-5"
         >
           <div className="text-3xl mb-2">🎁</div>
-          <h2 className="text-[#F0F0FF] font-bold text-lg mb-1">
+          <h2 className="text-primary font-bold text-lg mb-1">
             Пригласи друзей — получи бонусы
           </h2>
-          <p className="text-[#8B8BA7] text-sm leading-relaxed">
+          <p className="text-secondary text-sm leading-relaxed">
             За каждого друга, который пройдёт регистрацию и онбординг, ты получишь награду.
             Твой друг тоже получит бесплатную сессию симулятора!
           </p>
@@ -140,16 +140,16 @@ export default function ReferralPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
+          className="bg-card border border-border rounded-2xl p-5"
         >
-          <h3 className="text-[#F0F0FF] font-semibold text-sm mb-3">Как это работает</h3>
+          <h3 className="text-primary font-semibold text-sm mb-3">Как это работает</h3>
           <div className="flex flex-col gap-2.5">
             {HOW_IT_WORKS.map((step, i) => (
               <div key={i} className="flex items-start gap-3">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-[#6C63FF]/15 text-[#6C63FF] text-[11px] font-bold flex items-center justify-center mt-0.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-accent/15 text-accent text-[11px] font-bold flex items-center justify-center mt-0.5">
                   {i + 1}
                 </span>
-                <p className="text-[#C0C0D8] text-sm">{step}</p>
+                <p className="text-secondary text-sm">{step}</p>
               </div>
             ))}
           </div>

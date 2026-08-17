@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { BrandingProvider } from "@/context/BrandingContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { TelegramAuthHandler } from "@/components/TelegramAuthHandler";
 import { TelegramSdkScript } from "@/components/TelegramSdkScript";
 import { PwaServiceWorker } from "@/components/PwaServiceWorker";
@@ -95,10 +96,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={`dark ${inter.variable}`}>
+    <html lang="ru" className={inter.variable} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0A0A0F" />
+        {/* Sets data-theme from localStorage before first paint — without this,
+            a user who picked "light" would see a flash of the dark default
+            (CSS vars in :root) on every load, since ThemeProvider only runs
+            client-side after hydration. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("vizora_theme");if(t==="light"){document.documentElement.setAttribute("data-theme","light");var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#FFFFFF");}}catch(e){}`,
+          }}
+        />
         {/* Telegram Mini App SDK — loaded after hydration so a slow/throttled
             fetch of this script on mobile networks never blocks the initial
             page render for everyone else. TelegramAuthHandler listens for the
@@ -106,17 +116,19 @@ export default function RootLayout({
             this finishes loading. */}
         <TelegramSdkScript />
       </head>
-      <body className="bg-[#0A0A0F] text-[#F0F0FF] antialiased font-sans">
+      <body className="bg-bg text-primary antialiased font-sans">
         <I18nInit />
         <PwaServiceWorker />
         <PageViewTracker />
-        <BrandingProvider>
-          <TelegramAuthHandler />
-          <PushNotificationPrompt />
-          <PaymentIssueBanner />
-          {children}
-          <BottomNav />
-        </BrandingProvider>
+        <ThemeProvider>
+          <BrandingProvider>
+            <TelegramAuthHandler />
+            <PushNotificationPrompt />
+            <PaymentIssueBanner />
+            {children}
+            <BottomNav />
+          </BrandingProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

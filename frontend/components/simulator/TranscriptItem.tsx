@@ -31,14 +31,14 @@ export function TranscriptItem({ entry, index, mode }: Props) {
       </div>
 
       <div className={`max-w-[85%] ${isOfficer ? "" : "items-end flex flex-col"}`}>
-        <span className="text-[#8B8BA7] text-[10px] mb-1 px-1">
+        <span className="text-secondary text-[10px] mb-1 px-1">
           {isOfficer ? (mode === "consul" ? t("transcript.officer") : t("transcript.trainer")) : t("transcript.you")}
         </span>
         <div
           className={`px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
             isOfficer
-              ? "bg-[#13131A] border border-[#1E1E2E] text-[#F0F0FF]"
-              : "bg-[#6C63FF] text-white"
+              ? "bg-card border border-border text-primary"
+              : "bg-accent text-white"
           }`}
         >
           {entry.content}

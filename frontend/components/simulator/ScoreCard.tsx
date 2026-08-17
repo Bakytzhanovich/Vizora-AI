@@ -15,10 +15,10 @@ export function ScoreCard({ label, score, color = "#6C63FF", delay = 0 }: Props)
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[#8B8BA7] text-sm">{label}</span>
-        <span className="text-[#F0F0FF] text-sm font-bold">{score.toFixed(1)}</span>
+        <span className="text-secondary text-sm">{label}</span>
+        <span className="text-primary text-sm font-bold">{score.toFixed(1)}</span>
       </div>
-      <div className="h-2 bg-[#1E1E2E] rounded-full overflow-hidden">
+      <div className="h-2 bg-border rounded-full overflow-hidden">
         <motion.div
           className="h-full rounded-full"
           style={{ backgroundColor: color }}

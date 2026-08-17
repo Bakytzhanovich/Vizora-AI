@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogOut, ChevronDown, ChevronUp, Lock, Check, Sparkles, Map, MessageCircle, Mic, FileText, LifeBuoy } from "lucide-react";
+import { LogOut, ChevronDown, ChevronUp, Check, Sparkles, Map, MessageCircle, Mic, FileText, LifeBuoy, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
@@ -44,7 +44,6 @@ export default function DashboardPage() {
   const [standardSessionsPerMonth, setStandardSessionsPerMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAllRisks, setShowAllRisks] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
@@ -112,23 +111,31 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#6C63FF]/30 border-t-[#6C63FF] rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] px-4 pt-6 pb-24 md:pb-6 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-bg px-4 pt-6 pb-24 md:pb-6 max-w-5xl mx-auto">
       <PoweredByFooter />
-      {/* Top nav */}
+      {/* Top nav — language/logout live on the Profile tab now; keep them here
+          only on desktop, where the bottom nav (mobile-only) isn't reachable. */}
       <div className="flex items-center justify-between mb-8">
         <BrandedLogo />
-        <div className="flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2">
+          <button
+            onClick={() => router.push("/profile")}
+            className="flex items-center gap-1.5 text-secondary hover:text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg bg-border hover:bg-border-hover transition-colors"
+          >
+            <User size={14} />
+            {t("common:nav.profile")}
+          </button>
           <LanguageSwitcher />
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#1E1E2E] hover:bg-[#26263A] transition-colors"
+            className="flex items-center gap-1.5 text-secondary hover:text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg bg-border hover:bg-border-hover transition-colors"
           >
             <LogOut size={14} />
             {t("common:nav.logout")}
@@ -143,15 +150,15 @@ export default function DashboardPage() {
         transition={{ duration: 0.4 }}
         className="mb-6"
       >
-        <h1 className="text-2xl sm:text-3xl font-bold text-[#F0F0FF] mb-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-1">
           {t("dashboard:greeting", { name: profile?.name })}
         </h1>
         {daysUntilInterview !== null ? (
-          <p className="text-[#8B8BA7]">
+          <p className="text-secondary">
             {t("dashboard:interview_date", { days: daysUntilInterview })}
           </p>
         ) : (
-          <p className="text-[#8B8BA7]">{t("dashboard:no_interview_date")}</p>
+          <p className="text-secondary">{t("dashboard:no_interview_date")}</p>
         )}
       </motion.div>
 
@@ -160,26 +167,26 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5 mb-5"
+        className="bg-card border border-border rounded-2xl p-5 mb-5"
       >
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[#F0F0FF] text-sm font-semibold">{t("dashboard:progress")}</span>
-          <span className="text-[#6C63FF] text-sm font-bold">{journeyProgress}%</span>
+          <span className="text-primary text-sm font-semibold">{t("dashboard:progress")}</span>
+          <span className="text-accent text-sm font-bold">{journeyProgress}%</span>
         </div>
-        <div className="h-2 bg-[#1E1E2E] rounded-full overflow-hidden mb-3">
+        <div className="h-2 bg-border rounded-full overflow-hidden mb-3">
           <motion.div
-            className="h-full bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] rounded-full"
+            className="h-full bg-gradient-to-r from-accent to-accent-light rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${journeyProgress}%` }}
             transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
           />
         </div>
-        <div className="flex items-center gap-2 text-xs text-[#00D4AA]">
+        <div className="flex items-center gap-2 text-xs text-teal">
           <Check size={14} />
           <span>{t("dashboard:profile_complete")}</span>
         </div>
         {isFree && subscription && (
-          <div className="mt-3 pt-3 border-t border-[#1E1E2E] text-xs text-[#8B8BA7]">
+          <div className="mt-3 pt-3 border-t border-border text-xs text-secondary">
             {t("dashboard:free_plan_usage", {
               used: subscription.sessions_used ?? 0,
               total: subscription.sessions_limit ?? 1,
@@ -194,19 +201,19 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-gradient-to-r from-[#6C63FF]/10 to-[#6C63FF]/5 border border-[#6C63FF]/30 rounded-2xl p-5 mb-5"
+          className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/30 rounded-2xl p-5 mb-5"
         >
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={16} className="text-[#6C63FF]" />
-            <span className="text-[#F0F0FF] font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
+            <Sparkles size={16} className="text-accent" />
+            <span className="text-primary font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
           </div>
-          <p className="text-[#8B8BA7] text-sm">
+          <p className="text-secondary text-sm">
             {t("dashboard:upgrade_banner.line1", { count: standardSessionsPerMonth ?? 15 })}
           </p>
-          <p className="text-[#8B8BA7] text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
+          <p className="text-secondary text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
           <button
             onClick={() => router.push("/pricing")}
-            className="w-full sm:w-auto bg-[#6C63FF] hover:bg-[#7C75FF] text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+            className="w-full sm:w-auto bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
           >
             {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
           </button>
@@ -223,10 +230,10 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
+              className="bg-card border border-border rounded-2xl p-5"
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[#F0F0FF] font-semibold text-sm">{t("dashboard:risk_profile")}</h2>
+                <h2 className="text-primary font-semibold text-sm">{t("dashboard:risk_profile")}</h2>
                 <span
                   className="text-xs font-bold px-2.5 py-1 rounded-full"
                   style={{ color: riskColor, background: `${riskColor}18` }}
@@ -244,7 +251,7 @@ export default function DashboardPage() {
               {topRisks.length > 1 && (
                 <button
                   onClick={() => setShowAllRisks((v) => !v)}
-                  className="flex items-center gap-1 text-[#8B8BA7] hover:text-[#F0F0FF] text-xs mt-3 transition-colors"
+                  className="flex items-center gap-1 text-secondary hover:text-primary text-xs mt-3 transition-colors"
                 >
                   {showAllRisks ? (
                     <>
@@ -262,35 +269,49 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* Modules */}
+          {/* Modules — Roadmap/AI Помощник/Симулятор already have bottom-nav
+              tabs on mobile, so this grid (with Documents, which doesn't)
+              only needs to appear in full on desktop, where the bottom nav
+              is hidden. Mobile gets a single Documents entry. */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:modules")}</h2>
-            <div className="mb-3">
+            <div className="md:hidden">
               <ModuleCard
-                icon={Map}
-                title={t("dashboard:module_titles.roadmap")}
-                subtitle={t("dashboard:continue_hint")}
+                icon={FileText}
+                title={t("dashboard:module_titles.documents")}
                 locked={false}
-                href="/roadmap"
+                href="/documents"
                 index={0}
-                featured
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {restModuleKeys.map((key, i) => (
+            <div className="hidden md:block">
+              <h2 className="text-primary font-semibold text-sm mb-3">{t("dashboard:modules")}</h2>
+              <div className="mb-3">
                 <ModuleCard
-                  key={key}
-                  icon={restModuleIcons[i]}
-                  title={t(`dashboard:module_titles.${key}`)}
+                  icon={Map}
+                  title={t("dashboard:module_titles.roadmap")}
+                  subtitle={t("dashboard:continue_hint")}
                   locked={false}
-                  href={restModuleHrefs[i]}
-                  index={i}
+                  href="/roadmap"
+                  index={0}
+                  featured
                 />
-              ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {restModuleKeys.map((key, i) => (
+                  <ModuleCard
+                    key={key}
+                    icon={restModuleIcons[i]}
+                    title={t(`dashboard:module_titles.${key}`)}
+                    locked={false}
+                    href={restModuleHrefs[i]}
+                    index={i}
+                  />
+                ))}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -310,32 +331,6 @@ export default function DashboardPage() {
                 overallCompleted={afterVisa.completed}
                 overallTotal={afterVisa.total}
               />
-            </motion.div>
-          )}
-
-          {/* Locked features (FREE plan only) */}
-          {isFree && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.42 }}
-              className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
-            >
-              <h2 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("dashboard:locked_features.title")}</h2>
-              <div className="space-y-2.5 mb-4">
-                {(["consul_mode", "detailed_feedback", "after_visa"] as const).map((key) => (
-                  <div key={key} className="flex items-center gap-2 text-sm text-[#8B8BA7]">
-                    <Lock size={14} className="shrink-0" />
-                    <span>{t(`dashboard:locked_features.${key}`)}</span>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => router.push("/pricing")}
-                className="w-full text-xs font-semibold text-[#6C63FF] hover:text-[#9C8BFF] transition-colors text-left"
-              >
-                {t("dashboard:locked_features.cta")} →
-              </button>
             </motion.div>
           )}
 
@@ -359,67 +354,27 @@ export default function DashboardPage() {
           >
             <button
               onClick={() => router.push("/emergency")}
-              className="w-full text-left bg-[#13131A] border border-[#FF6B6B]/30 rounded-2xl p-5 hover:border-[#FF6B6B]/60 hover:bg-[#1A1010] transition-all active:scale-[0.98]"
+              className="w-full text-left bg-card border border-error/30 rounded-2xl p-5 hover:border-error/60 hover:bg-error/10 transition-all active:scale-[0.98]"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-[#FF6B6B]/15 flex items-center justify-center shrink-0">
-                  <LifeBuoy size={22} className="text-[#FF6B6B]" />
+                <div className="w-12 h-12 rounded-xl bg-error/15 flex items-center justify-center shrink-0">
+                  <LifeBuoy size={22} className="text-error" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[#FF6B6B] font-bold text-base">{t("dashboard:emergency_banner.title")}</span>
-                    <span className="text-[10px] font-bold bg-[#FF6B6B]/15 text-[#FF6B6B] px-2 py-0.5 rounded-full">
+                    <span className="text-error font-bold text-base">{t("dashboard:emergency_banner.title")}</span>
+                    <span className="text-[10px] font-bold bg-error/15 text-error px-2 py-0.5 rounded-full">
                       {t("dashboard:emergency_banner.badge")}
                     </span>
                   </div>
-                  <p className="text-[#8B8BA7] text-sm">
+                  <p className="text-secondary text-sm">
                     {t("dashboard:emergency_banner.desc")}
                   </p>
                 </div>
-                <span className="text-[#FF6B6B] shrink-0">›</span>
+                <span className="text-error shrink-0">›</span>
               </div>
             </button>
           </motion.div>
-
-          {/* Profile info (collapsed by default) */}
-          {profile && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-5"
-            >
-              <button
-                onClick={() => setShowProfile((v) => !v)}
-                className="flex items-center justify-between w-full"
-              >
-                <h2 className="text-[#F0F0FF] font-semibold text-sm">{t("dashboard:my_profile")}</h2>
-                {showProfile ? (
-                  <ChevronUp size={16} className="text-[#8B8BA7]" />
-                ) : (
-                  <ChevronDown size={16} className="text-[#8B8BA7]" />
-                )}
-              </button>
-              {showProfile && (
-                <div className="grid grid-cols-2 gap-3 text-xs mt-4">
-                  {[
-                    { label: t("dashboard:university"), value: profile.university },
-                    { label: t("dashboard:course"), value: `${profile.course_year} ${t("dashboard:course_suffix")}` },
-                    { label: t("dashboard:profession"), value: profile.profession },
-                    { label: t("dashboard:english"), value: t(`dashboard:english_levels.${profile.english_level}` as const, { defaultValue: profile.english_level }) },
-                    { label: t("dashboard:country"), value: profile.country },
-                    { label: t("dashboard:job_offer"), value: t(`dashboard:job_offer_status.${profile.job_offer}` as const, { defaultValue: profile.job_offer }) },
-                    { label: t("dashboard:financing"), value: t(`dashboard:financing_source.${profile.financial_source}` as const, { defaultValue: profile.financial_source }) },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="bg-[#0A0A0F] rounded-xl px-3 py-2.5">
-                      <div className="text-[#8B8BA7] mb-0.5">{label}</div>
-                      <div className="text-[#F0F0FF] font-medium">{value}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
         </div>
       </div>
 

@@ -34,9 +34,9 @@ export function GoogleAuthButton({ onSuccess, onError }: Props) {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID} locale="ru">
       <div className="flex items-center gap-3 my-6">
-        <div className="h-px flex-1 bg-[#1E1E2E]" />
-        <span className="text-[#8B8BA7] text-xs">или</span>
-        <div className="h-px flex-1 bg-[#1E1E2E]" />
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-secondary text-xs">или</span>
+        <div className="h-px flex-1 bg-border" />
       </div>
       <div className="flex justify-center">
         <GoogleLogin

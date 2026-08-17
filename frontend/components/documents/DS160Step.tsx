@@ -15,7 +15,7 @@ export function DS160Step({ step, isActive }: Props) {
   return (
     <div
       className={`border rounded-xl overflow-hidden transition-colors ${
-        open ? "border-[#6C63FF]/40 bg-[#6C63FF]/5" : "border-[#1E1E2E] bg-[#13131A]"
+        open ? "border-accent/40 bg-accent/5" : "border-border bg-card"
       }`}
     >
       <button
@@ -24,15 +24,15 @@ export function DS160Step({ step, isActive }: Props) {
       >
         <span
           className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-            open ? "bg-[#6C63FF] text-white" : "bg-[#1E1E2E] text-[#8B8BA7]"
+            open ? "bg-accent text-white" : "bg-border text-secondary"
           }`}
         >
           {step.step}
         </span>
-        <span className={`flex-1 text-sm font-medium ${open ? "text-[#F0F0FF]" : "text-[#C0C0D0]"}`}>
+        <span className={`flex-1 text-sm font-medium ${open ? "text-primary" : "text-secondary"}`}>
           {step.title}
         </span>
-        <span className={`text-[#8B8BA7] text-xs transition-transform ${open ? "rotate-180" : ""}`}>
+        <span className={`text-secondary text-xs transition-transform ${open ? "rotate-180" : ""}`}>
           ▼
         </span>
       </button>
@@ -47,19 +47,19 @@ export function DS160Step({ step, isActive }: Props) {
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-2.5">
-              <p className="text-[#C0C0D0] text-sm leading-relaxed">{step.description}</p>
+              <p className="text-secondary text-sm leading-relaxed">{step.description}</p>
 
               {step.important && (
-                <div className="flex gap-2 bg-[#6C63FF]/10 border border-[#6C63FF]/20 rounded-lg px-3 py-2">
-                  <span className="text-[#6C63FF] text-sm shrink-0">ℹ️</span>
-                  <p className="text-[#9C8BFF] text-xs leading-relaxed">{step.important}</p>
+                <div className="flex gap-2 bg-accent/10 border border-accent/20 rounded-lg px-3 py-2">
+                  <span className="text-accent text-sm shrink-0">ℹ️</span>
+                  <p className="text-accent-light text-xs leading-relaxed">{step.important}</p>
                 </div>
               )}
 
               {step.warning && (
-                <div className="flex gap-2 bg-[#FF6B6B]/10 border border-[#FF6B6B]/20 rounded-lg px-3 py-2">
-                  <span className="text-[#FF6B6B] text-sm shrink-0">⚠️</span>
-                  <p className="text-[#FF6B6B] text-xs leading-relaxed font-medium">{step.warning}</p>
+                <div className="flex gap-2 bg-error/10 border border-error/20 rounded-lg px-3 py-2">
+                  <span className="text-error text-sm shrink-0">⚠️</span>
+                  <p className="text-error text-xs leading-relaxed font-medium">{step.warning}</p>
                 </div>
               )}
             </div>

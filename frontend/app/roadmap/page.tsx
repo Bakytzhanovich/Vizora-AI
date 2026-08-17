@@ -133,17 +133,17 @@ export default function RoadmapPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#6C63FF]/30 border-t-[#6C63FF] rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-[#FF6B6B] text-sm">Не удалось загрузить roadmap</p>
-        <button onClick={() => router.push("/dashboard")} className="text-[#6C63FF] text-sm underline">
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-error text-sm">Не удалось загрузить roadmap</p>
+        <button onClick={() => router.push("/dashboard")} className="text-accent text-sm underline">
           Вернуться на главную
         </button>
       </div>
@@ -155,23 +155,23 @@ export default function RoadmapPage() {
   const totalSteps = steps.length;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className="min-h-screen bg-bg">
       <PoweredByFooter />
       <AnimatePresence>
         {showConfetti && <Confetti onDone={() => setShowConfetti(false)} />}
       </AnimatePresence>
 
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1E1E2E]">
+      <div className="sticky top-0 z-20 bg-bg/95 backdrop-blur border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+              className="text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
-            <span className="text-[#F0F0FF] font-bold">Roadmap</span>
+            <span className="text-primary font-bold">Roadmap</span>
           </div>
         </div>
       </div>
@@ -222,11 +222,11 @@ export default function RoadmapPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mt-8 bg-gradient-to-r from-[#6C63FF]/20 to-[#00D4AA]/20 border border-[#6C63FF]/30 rounded-2xl p-6 text-center"
+            className="mt-8 bg-gradient-to-r from-accent/20 to-teal/20 border border-accent/30 rounded-2xl p-6 text-center"
           >
             <div className="text-4xl mb-3">🏆</div>
-            <h2 className="text-[#F0F0FF] font-bold text-lg mb-1">Программа завершена!</h2>
-            <p className="text-[#8B8BA7] text-sm">
+            <h2 className="text-primary font-bold text-lg mb-1">Программа завершена!</h2>
+            <p className="text-secondary text-sm">
               Ты прошёл весь путь Work &amp; Travel USA. Поздравляем!
             </p>
           </motion.div>

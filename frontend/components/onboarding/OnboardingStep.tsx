@@ -37,7 +37,7 @@ export function OnboardingStep({ stepIndex, title, subtitle, children, onBack, c
           {canGoBack && (
             <button
               onClick={onBack}
-              className="flex items-center gap-1.5 text-[#8B8BA7] hover:text-[#F0F0FF] text-sm transition-colors duration-200"
+              className="flex items-center gap-1.5 text-secondary hover:text-primary text-sm transition-colors duration-200"
             >
               <ArrowLeft size={16} />
               {t("common.back")}
@@ -47,11 +47,11 @@ export function OnboardingStep({ stepIndex, title, subtitle, children, onBack, c
 
         {/* Question */}
         <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#F0F0FF] mb-3 leading-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold text-primary mb-3 leading-tight">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-[#8B8BA7] text-base">{subtitle}</p>
+            <p className="text-secondary text-base">{subtitle}</p>
           )}
         </div>
 

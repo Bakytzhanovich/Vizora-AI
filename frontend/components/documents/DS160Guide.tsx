@@ -14,15 +14,15 @@ export function DS160Guide({ steps }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-[#F0F0FF] font-bold text-lg">{t("ds160.title")}</h2>
-        <p className="text-[#8B8BA7] text-sm mt-1">{t("ds160.subtitle")}</p>
+        <h2 className="text-primary font-bold text-lg">{t("ds160.title")}</h2>
+        <p className="text-secondary text-sm mt-1">{t("ds160.subtitle")}</p>
       </div>
 
       <div className="flex gap-1.5 flex-wrap mb-6">
         {steps.map((s) => (
           <div
             key={s.step}
-            className="w-7 h-7 rounded-full bg-[#1E1E2E] flex items-center justify-center text-[10px] text-[#8B8BA7] font-medium"
+            className="w-7 h-7 rounded-full bg-border flex items-center justify-center text-[10px] text-secondary font-medium"
           >
             {s.step}
           </div>
@@ -42,9 +42,9 @@ export function DS160Guide({ steps }: Props) {
         ))}
       </div>
 
-      <div className="mt-6 bg-[#00D4AA]/5 border border-[#00D4AA]/20 rounded-2xl p-4">
-        <p className="text-[#00D4AA] text-xs font-semibold mb-1">{t("ds160.tip_title")}</p>
-        <p className="text-[#8B8BA7] text-xs leading-relaxed">
+      <div className="mt-6 bg-teal/5 border border-teal/20 rounded-2xl p-4">
+        <p className="text-teal text-xs font-semibold mb-1">{t("ds160.tip_title")}</p>
+        <p className="text-secondary text-xs leading-relaxed">
           {t("ds160.tip_text")}
         </p>
       </div>

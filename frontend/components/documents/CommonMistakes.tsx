@@ -13,8 +13,8 @@ export function CommonMistakes({ mistakes }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-[#F0F0FF] font-bold text-lg">{t("mistakes.title")}</h2>
-        <p className="text-[#8B8BA7] text-sm mt-1">{t("mistakes.subtitle")}</p>
+        <h2 className="text-primary font-bold text-lg">{t("mistakes.title")}</h2>
+        <p className="text-secondary text-sm mt-1">{t("mistakes.subtitle")}</p>
       </div>
 
       <div className="space-y-3">
@@ -23,9 +23,9 @@ export function CommonMistakes({ mistakes }: Props) {
         ))}
       </div>
 
-      <div className="mt-6 bg-[#FF6B6B]/5 border border-[#FF6B6B]/20 rounded-2xl p-4">
-        <p className="text-[#FF6B6B] text-xs font-semibold mb-1">{t("mistakes.important_title")}</p>
-        <p className="text-[#8B8BA7] text-xs leading-relaxed">
+      <div className="mt-6 bg-error/5 border border-error/20 rounded-2xl p-4">
+        <p className="text-error text-xs font-semibold mb-1">{t("mistakes.important_title")}</p>
+        <p className="text-secondary text-xs leading-relaxed">
           {t("mistakes.important_text")}
         </p>
       </div>

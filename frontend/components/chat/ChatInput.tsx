@@ -40,7 +40,7 @@ export function ChatInput({ onSend, disabled = false }: Props) {
 
   return (
     <div className="flex items-end gap-2">
-      <div className="flex-1 bg-[#13131A] border border-[#1E1E2E] rounded-2xl px-4 py-3 focus-within:border-[#6C63FF]/50 transition-colors">
+      <div className="flex-1 bg-card border border-border rounded-2xl px-4 py-3 focus-within:border-accent/50 transition-colors">
         <textarea
           ref={textareaRef}
           value={value}
@@ -50,7 +50,7 @@ export function ChatInput({ onSend, disabled = false }: Props) {
           placeholder={t("placeholder")}
           rows={1}
           disabled={disabled}
-          className="w-full bg-transparent text-[#F0F0FF] placeholder-[#8B8BA7] text-sm resize-none outline-none leading-relaxed disabled:opacity-50"
+          className="w-full bg-transparent text-primary placeholder-secondary text-sm resize-none outline-none leading-relaxed disabled:opacity-50"
           style={{ maxHeight: "120px" }}
         />
       </div>
@@ -59,11 +59,11 @@ export function ChatInput({ onSend, disabled = false }: Props) {
       <div className="relative group">
         <button
           disabled
-          className="w-11 h-11 rounded-xl bg-[#13131A] border border-[#1E1E2E] flex items-center justify-center text-[#8B8BA7] opacity-50 cursor-not-allowed"
+          className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-secondary opacity-50 cursor-not-allowed"
         >
           <Mic size={18} />
         </button>
-        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[#13131A] border border-[#1E1E2E] text-[#8B8BA7] text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-card border border-border text-secondary text-xs rounded-lg px-2.5 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           {t("voice_soon")}
         </div>
       </div>
@@ -71,7 +71,7 @@ export function ChatInput({ onSend, disabled = false }: Props) {
       <button
         onClick={handleSend}
         disabled={disabled || !value.trim()}
-        className="w-11 h-11 rounded-xl bg-[#6C63FF] hover:bg-[#7C75FF] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all duration-200 shrink-0"
+        className="w-11 h-11 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all duration-200 shrink-0"
       >
         <Send size={16} />
       </button>

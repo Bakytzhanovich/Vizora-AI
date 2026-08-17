@@ -28,7 +28,7 @@ export function GuidedStep({
   return (
     <div className="flex flex-col gap-6">
       {/* Scenario context */}
-      <div className="flex items-center gap-2 text-sm text-[#8B8BA7]">
+      <div className="flex items-center gap-2 text-sm text-secondary">
         <span>{scenarioIcon}</span>
         <span>{scenarioTitle}</span>
       </div>
@@ -43,7 +43,7 @@ export function GuidedStep({
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h2 className="text-[#F0F0FF] text-xl font-bold leading-snug mb-6">
+        <h2 className="text-primary text-xl font-bold leading-snug mb-6">
           {step.question}
         </h2>
 
@@ -59,8 +59,8 @@ export function GuidedStep({
               disabled={loading}
               className={`w-full text-left px-5 py-4 rounded-2xl border font-medium text-base transition-all duration-150 active:scale-[0.98] min-h-[56px] ${
                 selectedAnswer === option
-                  ? "bg-[#FF6B6B]/15 border-[#FF6B6B] text-[#FF6B6B]"
-                  : "bg-[#13131A] border-[#1E1E2E] text-[#F0F0FF] hover:border-[#F59E0B]/60 hover:bg-[#1A1A24]"
+                  ? "bg-error/15 border-error text-error"
+                  : "bg-card border-border text-primary hover:border-warning/60 hover:bg-border-hover"
               } disabled:opacity-60`}
             >
               {option}
@@ -71,7 +71,7 @@ export function GuidedStep({
 
       {loading && (
         <div className="flex items-center justify-center py-2">
-          <div className="w-5 h-5 border-2 border-[#FF6B6B]/30 border-t-[#FF6B6B] rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-error/30 border-t-error rounded-full animate-spin" />
         </div>
       )}
     </div>

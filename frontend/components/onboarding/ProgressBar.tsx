@@ -14,14 +14,14 @@ export function ProgressBar({ current, total }: Props) {
   return (
     <div className="w-full">
       <div className="flex justify-between items-center mb-2">
-        <span className="text-[#8B8BA7] text-xs font-medium">
+        <span className="text-secondary text-xs font-medium">
           {t("step", { current, total })}
         </span>
-        <span className="text-[#6C63FF] text-xs font-bold">{pct}%</span>
+        <span className="text-accent text-xs font-bold">{pct}%</span>
       </div>
-      <div className="h-1.5 bg-[#1E1E2E] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-border rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] rounded-full"
+          className="h-full bg-gradient-to-r from-accent to-accent-light rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.4, ease: "easeOut" }}

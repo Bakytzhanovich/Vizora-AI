@@ -91,19 +91,19 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#6C63FF]/30 border-t-[#6C63FF] rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-[#FF6B6B] text-sm">{t("load_error")}</p>
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-error text-sm">{t("load_error")}</p>
         <button
           onClick={() => router.push("/dashboard")}
-          className="text-[#6C63FF] text-sm underline"
+          className="text-accent text-sm underline"
         >
           {t("back_home")}
         </button>
@@ -112,34 +112,34 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className="min-h-screen bg-bg">
       <PoweredByFooter />
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1E1E2E]">
+      <div className="sticky top-0 z-20 bg-bg/95 backdrop-blur border-b border-border">
         <div className="max-w-2xl mx-auto px-4">
           <div className="flex items-center gap-3 py-4">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+              className="text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-[#F0F0FF] font-bold leading-tight">{t("title")}</h1>
-              <p className="text-[#8B8BA7] text-xs">{t("subtitle")}</p>
+              <h1 className="text-primary font-bold leading-tight">{t("title")}</h1>
+              <p className="text-secondary text-xs">{t("subtitle")}</p>
             </div>
           </div>
 
           {/* Tab bar */}
-          <div className="flex gap-0 border-b border-[#1E1E2E] -mb-px">
+          <div className="flex gap-0 border-b border-border -mb-px">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
                   activeTab === tab.id
-                    ? "border-[#6C63FF] text-[#F0F0FF]"
-                    : "border-transparent text-[#8B8BA7] hover:text-[#C0C0D0]"
+                    ? "border-accent text-primary"
+                    : "border-transparent text-secondary hover:text-primary"
                 }`}
               >
                 <span>{tab.icon}</span>
@@ -168,13 +168,13 @@ export default function DocumentsPage() {
           )}
           {activeTab === "ds160" && (
             ds160Locked ? (
-              <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-6 text-center">
+              <div className="bg-card border border-border rounded-2xl p-6 text-center">
                 <div className="text-3xl mb-3">🔒</div>
-                <p className="text-[#F0F0FF] font-semibold text-sm mb-1">{t("ds160_locked_title")}</p>
-                <p className="text-[#8B8BA7] text-xs mb-4">{t("ds160_locked_desc")}</p>
+                <p className="text-primary font-semibold text-sm mb-1">{t("ds160_locked_title")}</p>
+                <p className="text-secondary text-xs mb-4">{t("ds160_locked_desc")}</p>
                 <button
                   onClick={() => router.push("/pricing")}
-                  className="bg-[#6C63FF] hover:bg-[#7C75FF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                  className="bg-accent hover:bg-accent-hover text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
                 >
                   {t("ds160_locked_cta")} →
                 </button>

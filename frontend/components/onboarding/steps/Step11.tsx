@@ -35,8 +35,8 @@ export function Step11({ value, onChange, onNext }: Props) {
         >
           <span className="text-2xl shrink-0">{opt.icon}</span>
           <div>
-            <div className="font-bold text-[#F0F0FF]">{opt.label}</div>
-            <div className="text-[#8B8BA7] text-sm font-normal">{opt.desc}</div>
+            <div className="font-bold text-primary">{opt.label}</div>
+            <div className="text-secondary text-sm font-normal">{opt.desc}</div>
           </div>
         </OptionButton>
       ))}

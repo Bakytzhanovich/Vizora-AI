@@ -14,16 +14,16 @@ export function ProgressBadge({ completed, total, pct, size = "md" }: ProgressBa
     return (
       <div className="flex items-center gap-1.5">
         {isComplete ? (
-          <span className="text-[#00D4AA] text-xs font-bold">✓ Изучено</span>
+          <span className="text-teal text-xs font-bold">✓ Изучено</span>
         ) : (
           <>
-            <div className="w-16 h-1 bg-[#1E1E2E] rounded-full overflow-hidden">
+            <div className="w-16 h-1 bg-border rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#00D4AA] rounded-full transition-all"
+                className="h-full bg-teal rounded-full transition-all"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-[#8B8BA7] text-xs">
+            <span className="text-secondary text-xs">
               {completed}/{total}
             </span>
           </>
@@ -35,14 +35,14 @@ export function ProgressBadge({ completed, total, pct, size = "md" }: ProgressBa
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-[#8B8BA7]">
+        <span className="text-secondary">
           {completed} из {total} разделов
         </span>
         {isComplete && (
-          <span className="text-[#00D4AA] font-bold">✓ Завершено</span>
+          <span className="text-teal font-bold">✓ Завершено</span>
         )}
       </div>
-      <div className="h-1.5 bg-[#1E1E2E] rounded-full overflow-hidden">
+      <div className="h-1.5 bg-border rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{

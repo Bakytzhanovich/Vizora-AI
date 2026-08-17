@@ -23,14 +23,14 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-1 bg-[#1E1E2E] rounded-lg p-1">
+    <div className="flex items-center gap-1 bg-border rounded-lg p-1">
       {LANGUAGES.map((lang) => (
         <button
           key={lang.code}
           onClick={() => switchLanguage(lang.code)}
           className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
             i18n.language === lang.code
-              ? "bg-[#6C63FF] text-white"
+              ? "bg-accent text-white"
               : "text-gray-400 hover:text-white"
           }`}
         >

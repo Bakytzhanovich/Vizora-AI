@@ -109,8 +109,8 @@ export default function AfterVisaModulePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#00D4AA]/30 border-t-[#00D4AA] rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-teal/30 border-t-teal rounded-full animate-spin" />
       </div>
     );
   }
@@ -118,22 +118,22 @@ export default function AfterVisaModulePage() {
   if (!module) return null;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className="min-h-screen bg-bg">
       <PoweredByFooter />
 
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1E1E2E]">
+      <div className="sticky top-0 z-20 bg-bg/95 backdrop-blur border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3 mb-3">
             <button
               onClick={() => router.push("/after-visa")}
-              className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+              className="text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
             <div className="flex items-center gap-2">
               <span className="text-xl">{module.icon}</span>
-              <span className="text-[#F0F0FF] font-bold">{module.title}</span>
+              <span className="text-primary font-bold">{module.title}</span>
             </div>
           </div>
           <div className="px-1">
@@ -147,7 +147,7 @@ export default function AfterVisaModulePage() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-[#8B8BA7] text-sm mb-5"
+          className="text-secondary text-sm mb-5"
         >
           {module.description}
         </motion.p>
@@ -171,7 +171,7 @@ export default function AfterVisaModulePage() {
           <div className="mb-6">
             <button
               onClick={() => router.push("/chat")}
-              className="w-full py-3.5 rounded-xl border border-[#6C63FF]/30 text-[#6C63FF] text-sm font-semibold hover:bg-[#6C63FF]/10 transition-colors"
+              className="w-full py-3.5 rounded-xl border border-accent/30 text-accent text-sm font-semibold hover:bg-accent/10 transition-colors"
             >
               🤖 {CHAT_LINKS[moduleId]}
             </button>
@@ -183,7 +183,7 @@ export default function AfterVisaModulePage() {
           {prevId ? (
             <button
               onClick={() => router.push(`/after-visa/${prevId}`)}
-              className="flex-1 py-3.5 rounded-xl border border-[#1E1E2E] text-[#8B8BA7] text-sm font-medium hover:border-[#00D4AA]/30 hover:text-[#F0F0FF] transition-colors"
+              className="flex-1 py-3.5 rounded-xl border border-border text-secondary text-sm font-medium hover:border-teal/30 hover:text-primary transition-colors"
             >
               ← Предыдущий
             </button>
@@ -193,14 +193,14 @@ export default function AfterVisaModulePage() {
           {nextId ? (
             <button
               onClick={() => router.push(`/after-visa/${nextId}`)}
-              className="flex-1 py-3.5 rounded-xl bg-[#00D4AA]/10 border border-[#00D4AA]/30 text-[#00D4AA] text-sm font-semibold hover:bg-[#00D4AA]/20 transition-colors"
+              className="flex-1 py-3.5 rounded-xl bg-teal/10 border border-teal/30 text-teal text-sm font-semibold hover:bg-teal/20 transition-colors"
             >
               Следующий →
             </button>
           ) : (
             <button
               onClick={() => router.push("/after-visa")}
-              className="flex-1 py-3.5 rounded-xl bg-[#00D4AA] text-[#0A0A0F] text-sm font-bold hover:bg-[#00B894] transition-colors"
+              className="flex-1 py-3.5 rounded-xl bg-teal text-bg text-sm font-bold hover:bg-[#00B894] transition-colors"
             >
               Готово ✓
             </button>

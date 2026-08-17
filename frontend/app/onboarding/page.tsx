@@ -157,7 +157,7 @@ export default function OnboardingPage() {
   // Analyzing / loading overlay
   if (submitStatus === "analyzing" || submitStatus === "done") {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4 text-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -166,16 +166,16 @@ export default function OnboardingPage() {
           {submitStatus === "done" ? (
             <>
               <div className="text-6xl">🎯</div>
-              <h2 className="text-2xl font-bold text-[#F0F0FF]">{t("complete")}</h2>
-              <p className="text-[#8B8BA7]">{t("redirecting")}</p>
+              <h2 className="text-2xl font-bold text-primary">{t("complete")}</h2>
+              <p className="text-secondary">{t("redirecting")}</p>
             </>
           ) : (
             <>
-              <div className="w-16 h-16 rounded-full border-2 border-[#6C63FF]/30 border-t-[#6C63FF] animate-spin" />
-              <h2 className="text-xl font-bold text-[#F0F0FF]">
+              <div className="w-16 h-16 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+              <h2 className="text-xl font-bold text-primary">
                 {t("analyzing")}
               </h2>
-              <p className="text-[#8B8BA7] text-sm max-w-xs">
+              <p className="text-secondary text-sm max-w-xs">
                 {t("analyzing_desc")}
               </p>
             </>
@@ -200,10 +200,10 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] flex flex-col">
+    <div className="min-h-screen bg-bg flex flex-col">
       <PoweredByFooter />
       {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-[#0A0A0F]/90 backdrop-blur border-b border-[#1E1E2E] px-4 py-4">
+      <div className="sticky top-0 z-10 bg-bg/90 backdrop-blur border-b border-border px-4 py-4">
         <div className="max-w-lg mx-auto">
           <div className="mb-3">
             <BrandedLogo size="sm" />
@@ -307,7 +307,7 @@ export default function OnboardingPage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mt-4 bg-[#FF6B6B]/10 border border-[#FF6B6B]/20 text-[#FF6B6B] text-sm rounded-xl px-4 py-3 text-center"
+              className="mt-4 bg-error/10 border border-error/20 text-error text-sm rounded-xl px-4 py-3 text-center"
             >
               {t("save_error")}
               <button

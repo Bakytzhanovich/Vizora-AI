@@ -28,7 +28,7 @@ export function Step10({ value, onChange, onNext }: Props) {
           className="min-h-[60px]"
         >
           <span className="text-2xl shrink-0">{opt.icon}</span>
-          <span className="font-bold text-[#F0F0FF]">{opt.label}</span>
+          <span className="font-bold text-primary">{opt.label}</span>
         </OptionButton>
       ))}
     </div>

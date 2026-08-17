@@ -13,10 +13,10 @@ export function ProgressIndicator({ current, total }: ProgressIndicatorProps) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[#8B8BA7] text-xs shrink-0">
+      <span className="text-secondary text-xs shrink-0">
         {t("step_of", { current: current + 1, total })}
       </span>
-      <div className="flex-1 h-1.5 bg-[#1E1E2E] rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
@@ -25,7 +25,7 @@ export function ProgressIndicator({ current, total }: ProgressIndicatorProps) {
           }}
         />
       </div>
-      <span className="text-[#8B8BA7] text-xs shrink-0">{percent}%</span>
+      <span className="text-secondary text-xs shrink-0">{percent}%</span>
     </div>
   );
 }

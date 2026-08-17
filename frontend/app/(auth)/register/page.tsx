@@ -105,7 +105,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4 py-12">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -116,24 +116,24 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <VizoraMark className="h-9 w-9" priority />
-            <span className="text-[#F0F0FF] font-bold text-xl">
-              Vizora <span className="text-[#6C63FF]">AI</span>
+            <span className="text-primary font-bold text-xl">
+              Vizora <span className="text-accent">AI</span>
             </span>
           </Link>
-          <h1 className="text-2xl font-bold text-[#F0F0FF] mb-2">Создай аккаунт</h1>
-          <p className="text-[#8B8BA7] text-sm">
+          <h1 className="text-2xl font-bold text-primary mb-2">Создай аккаунт</h1>
+          <p className="text-secondary text-sm">
             Начни подготовку к интервью прямо сейчас
           </p>
         </div>
 
         {refName && <ReferralBanner referrerName={refName} />}
 
-        <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-6 sm:p-8">
+        <div className="bg-card border border-border rounded-2xl p-6 sm:p-8">
           {errors.general && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-5 bg-[#FF6B6B]/10 border border-[#FF6B6B]/20 text-[#FF6B6B] text-sm rounded-xl px-4 py-3"
+              className="mb-5 bg-error/10 border border-error/20 text-error text-sm rounded-xl px-4 py-3"
             >
               {errors.general}
             </motion.div>
@@ -142,7 +142,7 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Email */}
             <div>
-              <label className="block text-[#8B8BA7] text-xs font-semibold uppercase tracking-wide mb-2">
+              <label className="block text-secondary text-xs font-semibold uppercase tracking-wide mb-2">
                 Email
               </label>
               <input
@@ -150,15 +150,15 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors((p) => ({ ...p, email: undefined })); }}
                 placeholder="student@example.com"
-                className={`w-full bg-[#0A0A0F] border rounded-xl px-4 py-3.5 text-sm text-[#F0F0FF] placeholder-[#8B8BA7]/40 outline-none transition-colors duration-200 ${errors.email ? "border-[#FF6B6B]/60 focus:border-[#FF6B6B]" : "border-[#1E1E2E] focus:border-[#6C63FF]/50"}`}
+                className={`w-full bg-bg border rounded-xl px-4 py-3.5 text-sm text-primary placeholder-secondary/40 outline-none transition-colors duration-200 ${errors.email ? "border-error/60 focus:border-error" : "border-border focus:border-accent/50"}`}
                 autoComplete="email"
               />
-              {errors.email && <p className="text-[#FF6B6B] text-xs mt-1.5">{errors.email}</p>}
+              {errors.email && <p className="text-error text-xs mt-1.5">{errors.email}</p>}
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-[#8B8BA7] text-xs font-semibold uppercase tracking-wide mb-2">
+              <label className="block text-secondary text-xs font-semibold uppercase tracking-wide mb-2">
                 Пароль
               </label>
               <div className="relative">
@@ -167,23 +167,23 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors((p) => ({ ...p, password: undefined })); }}
                   placeholder="Минимум 8 символов"
-                  className={`w-full bg-[#0A0A0F] border rounded-xl px-4 py-3.5 pr-11 text-sm text-[#F0F0FF] placeholder-[#8B8BA7]/40 outline-none transition-colors duration-200 ${errors.password ? "border-[#FF6B6B]/60 focus:border-[#FF6B6B]" : "border-[#1E1E2E] focus:border-[#6C63FF]/50"}`}
+                  className={`w-full bg-bg border rounded-xl px-4 py-3.5 pr-11 text-sm text-primary placeholder-secondary/40 outline-none transition-colors duration-200 ${errors.password ? "border-error/60 focus:border-error" : "border-border focus:border-accent/50"}`}
                   autoComplete="new-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors"
                 >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && <p className="text-[#FF6B6B] text-xs mt-1.5">{errors.password}</p>}
+              {errors.password && <p className="text-error text-xs mt-1.5">{errors.password}</p>}
             </div>
 
             {/* Confirm password */}
             <div>
-              <label className="block text-[#8B8BA7] text-xs font-semibold uppercase tracking-wide mb-2">
+              <label className="block text-secondary text-xs font-semibold uppercase tracking-wide mb-2">
                 Повтори пароль
               </label>
               <input
@@ -191,10 +191,10 @@ export default function RegisterPage() {
                 value={confirm}
                 onChange={(e) => { setConfirm(e.target.value); if (errors.confirm) setErrors((p) => ({ ...p, confirm: undefined })); }}
                 placeholder="Повтори пароль"
-                className={`w-full bg-[#0A0A0F] border rounded-xl px-4 py-3.5 text-sm text-[#F0F0FF] placeholder-[#8B8BA7]/40 outline-none transition-colors duration-200 ${errors.confirm ? "border-[#FF6B6B]/60 focus:border-[#FF6B6B]" : "border-[#1E1E2E] focus:border-[#6C63FF]/50"}`}
+                className={`w-full bg-bg border rounded-xl px-4 py-3.5 text-sm text-primary placeholder-secondary/40 outline-none transition-colors duration-200 ${errors.confirm ? "border-error/60 focus:border-error" : "border-border focus:border-accent/50"}`}
                 autoComplete="new-password"
               />
-              {errors.confirm && <p className="text-[#FF6B6B] text-xs mt-1.5">{errors.confirm}</p>}
+              {errors.confirm && <p className="text-error text-xs mt-1.5">{errors.confirm}</p>}
             </div>
 
             <motion.button
@@ -202,7 +202,7 @@ export default function RegisterPage() {
               disabled={loading}
               whileHover={!loading ? { scale: 1.02 } : {}}
               whileTap={!loading ? { scale: 0.97 } : {}}
-              className="w-full bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#6C63FF]/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm transition-all duration-200 mt-2"
+              className="w-full bg-gradient-to-r from-accent to-accent-light text-white font-bold py-4 rounded-xl shadow-lg shadow-accent/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm transition-all duration-200 mt-2"
             >
               {loading ? (
                 <><Loader2 size={16} className="animate-spin" /> Создаём аккаунт...</>
@@ -215,7 +215,7 @@ export default function RegisterPage() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-[#8B8BA7] text-xs text-center"
+                className="text-secondary text-xs text-center"
               >
                 Сервер просыпается после простоя — это может занять до минуты. Спасибо за терпение 🙏
               </motion.p>
@@ -225,9 +225,9 @@ export default function RegisterPage() {
           <GoogleAuthButton onSuccess={handleGoogleSuccess} />
         </div>
 
-        <p className="text-center text-[#8B8BA7] text-sm mt-6">
+        <p className="text-center text-secondary text-sm mt-6">
           Уже есть аккаунт?{" "}
-          <Link href="/login" className="text-[#6C63FF] hover:text-[#9C8BFF] font-semibold transition-colors">
+          <Link href="/login" className="text-accent hover:text-accent-light font-semibold transition-colors">
             Войти
           </Link>
         </p>

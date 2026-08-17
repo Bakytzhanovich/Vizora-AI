@@ -8,7 +8,7 @@ export function PoweredByFooter() {
 
   return (
     <div className="fixed bottom-3 right-3 z-10 pointer-events-none">
-      <span className="text-[10px] text-[#8B8BA7]/50 select-none">
+      <span className="text-[10px] text-secondary/50 select-none">
         Powered by Vizora AI
       </span>
     </div>

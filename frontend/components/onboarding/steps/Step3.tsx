@@ -59,18 +59,18 @@ export function Step3({ value, onChange, onNext }: Props) {
             onChange={(e) => setCustomValue(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") confirmCustom(); }}
             placeholder={t("steps.course.custom_placeholder")}
-            className="flex-1 w-full bg-[#13131A] border border-[#1E1E2E] focus:border-[#6C63FF]/60 text-[#F0F0FF] placeholder-[#8B8BA7]/50 text-lg rounded-xl px-5 py-4 outline-none transition-colors duration-200"
+            className="flex-1 w-full bg-card border border-border focus:border-accent/60 text-primary placeholder-secondary/50 text-lg rounded-xl px-5 py-4 outline-none transition-colors duration-200"
           />
           <button
             onClick={confirmCustom}
             disabled={!(parseInt(customValue, 10) >= 5)}
-            className="shrink-0 bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-bold px-6 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed text-sm transition-all duration-200"
+            className="shrink-0 bg-gradient-to-r from-accent to-accent-light text-white font-bold px-6 rounded-xl disabled:opacity-30 disabled:cursor-not-allowed text-sm transition-all duration-200"
           >
             {t("continue")}
           </button>
         </div>
       )}
-      <div className="flex justify-between text-xs text-[#8B8BA7] px-1">
+      <div className="flex justify-between text-xs text-secondary px-1">
         <span>{options[0]}</span>
         <span>{t("steps.course.custom_label")}</span>
       </div>

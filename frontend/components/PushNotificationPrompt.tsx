@@ -52,19 +52,19 @@ export function PushNotificationPrompt() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm rounded-2xl border border-white/10 bg-[#14141F] p-4 shadow-xl sm:left-auto sm:right-4">
-      <p className="text-sm font-semibold text-[#F0F0FF]">{t("push.title")}</p>
-      <p className="mt-1 text-xs text-[#A0A0C0]">{t("push.body")}</p>
+    <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-sm rounded-2xl border border-white/10 bg-card p-4 shadow-xl sm:left-auto sm:right-4">
+      <p className="text-sm font-semibold text-primary">{t("push.title")}</p>
+      <p className="mt-1 text-xs text-secondary">{t("push.body")}</p>
       <div className="mt-3 flex gap-2">
         <button
           onClick={handleEnable}
-          className="rounded-lg bg-[#6C63FF] px-3 py-1.5 text-xs font-medium text-white"
+          className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white"
         >
           {t("push.enable")}
         </button>
         <button
           onClick={handleDismiss}
-          className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#A0A0C0]"
+          className="rounded-lg px-3 py-1.5 text-xs font-medium text-secondary"
         >
           {t("push.dismiss")}
         </button>

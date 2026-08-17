@@ -9,19 +9,19 @@ import { RoadmapLine } from "./RoadmapLine";
 const MILESTONE_CONFIG: Record<string, { accent: string; bg: string; ring: string; badge?: string }> = {
   visa: {
     accent: "#F59E0B",
-    bg: "bg-[#F59E0B]/10 border-[#F59E0B]/30",
-    ring: "ring-[#F59E0B]/25",
+    bg: "bg-warning/10 border-warning/30",
+    ring: "ring-warning/25",
     badge: "🏆 Главная цель!",
   },
   arrival: {
     accent: "#00D4AA",
-    bg: "bg-[#00D4AA]/10 border-[#00D4AA]/30",
-    ring: "ring-[#00D4AA]/25",
+    bg: "bg-teal/10 border-teal/30",
+    ring: "ring-teal/25",
   },
   return: {
     accent: "#9C8BFF",
-    bg: "bg-[#6C63FF]/10 border-[#6C63FF]/30",
-    ring: "ring-[#6C63FF]/25",
+    bg: "bg-accent/10 border-accent/30",
+    ring: "ring-accent/25",
   },
 };
 
@@ -40,15 +40,17 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
     const isPending = step.status === "pending";
 
     const circleStyle = {
-      backgroundColor: isCompleted || isCurrent ? cfg.accent : "#1E1E2E",
-      color: isCompleted || isCurrent ? "#0A0A0F" : "#8B8BA7",
+      // Completed/current: bright accent circle, near-black glyph — same in
+      // both themes. Pending: neutral circle, which does need to track theme.
+      backgroundColor: isCompleted || isCurrent ? cfg.accent : "rgb(var(--color-border))",
+      color: isCompleted || isCurrent ? "#0A0A0F" : "rgb(var(--color-secondary))",
     };
 
     const cardClass = isCompleted
-      ? `border-l-4 border-[#1E1E2E] bg-[#13131A] opacity-80`
+      ? `border-l-4 border-border bg-card opacity-80`
       : isCurrent
       ? `border-l-4 ${cfg.bg} shadow-lg`
-      : "border border-[#1E1E2E] bg-[#13131A]";
+      : "border border-border bg-card";
 
     const cardStyle = isCompleted
       ? { borderLeftColor: cfg.accent }
@@ -82,7 +84,7 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
             style={cardStyle}
           >
             <div className="flex items-start justify-between gap-2 flex-wrap">
-              <p className={`text-sm font-bold leading-snug ${isPending ? "text-[#8B8BA7]" : "text-[#F0F0FF]"}`}>
+              <p className={`text-sm font-bold leading-snug ${isPending ? "text-secondary" : "text-primary"}`}>
                 {step.title}
               </p>
               {cfg.badge && isCurrent && (
@@ -104,7 +106,7 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
             </div>
 
             {!isPending && (
-              <p className="text-[#8B8BA7] text-xs mt-1 leading-relaxed">{step.description}</p>
+              <p className="text-secondary text-xs mt-1 leading-relaxed">{step.description}</p>
             )}
 
             {isCompleted && step.completed_at && (
@@ -128,7 +130,7 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
                   <button
                     onClick={() => onMarkComplete(step.id)}
                     disabled={updating}
-                    className="mt-3 text-xs text-[#8B8BA7] hover:text-[#00D4AA] transition-colors disabled:opacity-50"
+                    className="mt-3 text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50"
                   >
                     {updating ? "Сохраняем..." : "Отметить выполненным ✓"}
                   </button>
@@ -137,7 +139,7 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
             )}
 
             {isPending && (
-              <p className="text-[#3E3E5E] text-xs mt-1">Ещё впереди</p>
+              <p className="text-secondary text-xs mt-1">Ещё впереди</p>
             )}
           </motion.div>
         </div>

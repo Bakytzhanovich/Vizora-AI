@@ -31,10 +31,10 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
       layout
       className={`rounded-xl border transition-all duration-200 overflow-hidden ${
         doc.completed
-          ? "border-[#1E1E2E] opacity-70"
+          ? "border-border opacity-70"
           : isRisk
-          ? "border-l-4 border-l-[#F59E0B] border-[#1E1E2E] bg-[#F59E0B]/5"
-          : "border-[#1E1E2E] bg-[#13131A]"
+          ? "border-l-4 border-l-warning border-border bg-warning/5"
+          : "border-border bg-card"
       }`}
     >
       <div className="px-4 py-3.5 flex items-start gap-3">
@@ -44,8 +44,8 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
           disabled={disabled}
           className={`shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-all ${
             doc.completed
-              ? "bg-[#00D4AA] border-[#00D4AA]"
-              : "border-[#3E3E5E] hover:border-[#6C63FF]"
+              ? "bg-teal border-teal"
+              : "border-secondary hover:border-accent"
           } disabled:opacity-50`}
           aria-label={doc.completed ? t("mark_undone_aria") : t("mark_done_aria")}
         >
@@ -59,26 +59,26 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-sm font-medium leading-snug ${doc.completed ? "line-through text-[#8B8BA7]" : "text-[#F0F0FF]"}`}>
+            <span className={`text-sm font-medium leading-snug ${doc.completed ? "line-through text-secondary" : "text-primary"}`}>
               {doc.name}
             </span>
             {isRisk && !doc.completed && (
-              <span className="text-[10px] font-bold text-[#F59E0B] bg-[#F59E0B]/10 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded">
                 {t("risk_badge")}
               </span>
             )}
           </div>
 
-          <p className="text-[#8B8BA7] text-xs mt-0.5 leading-relaxed">{doc.description}</p>
+          <p className="text-secondary text-xs mt-0.5 leading-relaxed">{doc.description}</p>
 
           {isRisk && doc.risk_note && !doc.completed && (
-            <p className="text-[#F59E0B] text-xs mt-1 leading-relaxed">{doc.risk_note}</p>
+            <p className="text-warning text-xs mt-1 leading-relaxed">{doc.risk_note}</p>
           )}
 
           {/* Tips toggle */}
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 mt-1.5 text-[#6C63FF] text-xs hover:text-[#9C8BFF] transition-colors"
+            className="flex items-center gap-1 mt-1.5 text-accent text-xs hover:text-accent-light transition-colors"
           >
             <span>💡</span>
             <span>{expanded ? t("hide_tip") : t("show_tip")}</span>
@@ -93,7 +93,7 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <p className="text-[#8B8BA7] text-xs mt-1.5 bg-[#6C63FF]/5 border border-[#6C63FF]/15 rounded-lg px-3 py-2 leading-relaxed">
+                <p className="text-secondary text-xs mt-1.5 bg-accent/5 border border-accent/15 rounded-lg px-3 py-2 leading-relaxed">
                   {doc.tips}
                 </p>
               </motion.div>

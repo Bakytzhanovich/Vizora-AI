@@ -168,27 +168,27 @@ export default function ChatPage() {
   const isEmpty = messages.length === 0 && historyLoaded;
 
   return (
-    <div className="flex flex-col h-screen bg-[#0A0A0F]">
+    <div className="flex flex-col h-screen bg-bg">
       <PoweredByFooter />
       {/* Header */}
-      <div className="shrink-0 bg-[#0A0A0F]/90 backdrop-blur border-b border-[#1E1E2E] px-4 py-3.5">
+      <div className="shrink-0 bg-bg/90 backdrop-blur border-b border-border px-4 py-3.5">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+              className="text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#6C63FF]/20 border border-[#6C63FF]/30 flex items-center justify-center text-sm">
+              <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center text-sm">
                 🤖
               </div>
               <div>
-                <div className="text-[#F0F0FF] font-semibold text-sm leading-none">
+                <div className="text-primary font-semibold text-sm leading-none">
                   {t("title")}
                 </div>
-                <div className="text-[#00D4AA] text-xs mt-0.5">{t("online")}</div>
+                <div className="text-teal text-xs mt-0.5">{t("online")}</div>
               </div>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function ChatPage() {
           {messages.length > 0 && (
             <button
               onClick={clearHistory}
-              className="text-[#8B8BA7] hover:text-[#FF6B6B] transition-colors p-1.5"
+              className="text-secondary hover:text-error transition-colors p-1.5"
               title={t("clear")}
             >
               <Trash2 size={16} />
@@ -219,12 +219,12 @@ export default function ChatPage() {
               >
                 <div>
                   <div className="text-5xl mb-4">🤖</div>
-                  <h2 className="text-xl font-bold text-[#F0F0FF] mb-2">
+                  <h2 className="text-xl font-bold text-primary mb-2">
                     {userName
                       ? t("empty_state.title_named", { name: userName, brand: branding.name })
                       : t("empty_state.title", { brand: branding.name })}
                   </h2>
-                  <p className="text-[#8B8BA7] text-sm max-w-xs">
+                  <p className="text-secondary text-sm max-w-xs">
                     {t("empty_state.subtitle")}
                   </p>
                 </div>
@@ -260,7 +260,7 @@ export default function ChatPage() {
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="shrink-0 text-xs text-[#8B8BA7] border border-[#1E1E2E] rounded-full px-3 py-1.5 hover:border-[#6C63FF] hover:text-[#F0F0FF] transition-all"
+                  className="shrink-0 text-xs text-secondary border border-border rounded-full px-3 py-1.5 hover:border-accent hover:text-primary transition-all"
                 >
                   {q}
                 </button>
@@ -271,7 +271,7 @@ export default function ChatPage() {
       )}
 
       {/* Input */}
-      <div className="shrink-0 border-t border-[#1E1E2E] bg-[#0A0A0F] px-4 py-3 pb-safe">
+      <div className="shrink-0 border-t border-border bg-bg px-4 py-3 pb-safe">
         <div className="max-w-2xl mx-auto">
           <ChatInput onSend={sendMessage} disabled={isStreaming || faqLimitHit} />
         </div>

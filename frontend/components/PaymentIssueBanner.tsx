@@ -5,15 +5,15 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 const COLOR_STYLES: Record<string, string> = {
-  yellow: "bg-[#F59E0B]/15 border-[#F59E0B]/30 text-[#F59E0B]",
+  yellow: "bg-warning/15 border-warning/30 text-warning",
   orange: "bg-[#F97316]/15 border-[#F97316]/30 text-[#F97316]",
-  red: "bg-[#FF6B6B]/15 border-[#FF6B6B]/30 text-[#FF6B6B]",
+  red: "bg-error/15 border-error/30 text-error",
 };
 
 const BUTTON_STYLES: Record<string, string> = {
-  yellow: "bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30",
+  yellow: "bg-warning/20 hover:bg-warning/30",
   orange: "bg-[#F97316]/20 hover:bg-[#F97316]/30",
-  red: "bg-[#FF6B6B]/20 hover:bg-[#FF6B6B]/30",
+  red: "bg-error/20 hover:bg-error/30",
 };
 
 const ICONS: Record<string, string> = {

@@ -27,7 +27,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-[#13131A]/95 backdrop-blur-xl border-t border-[#1E1E2E]"
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-card/95 backdrop-blur-xl border-t border-border"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="flex items-stretch max-w-5xl mx-auto">
@@ -39,8 +39,8 @@ export function BottomNav() {
               onClick={() => router.push(href)}
               className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-w-0"
             >
-              <Icon size={22} className={active ? "text-[#6C63FF]" : "text-[#8B8BA7]"} strokeWidth={active ? 2.5 : 2} />
-              <span className={`text-[10px] font-medium truncate max-w-full px-1 ${active ? "text-[#6C63FF]" : "text-[#8B8BA7]"}`}>
+              <Icon size={22} className={active ? "text-accent" : "text-secondary"} strokeWidth={active ? 2.5 : 2} />
+              <span className={`text-[10px] font-medium truncate max-w-full px-1 ${active ? "text-accent" : "text-secondary"}`}>
                 {t(`nav.${key}`)}
               </span>
             </button>

@@ -1,5 +1,16 @@
 import type { Config } from "tailwindcss";
 
+// Reads a "R G B" CSS variable (see globals.css) so each named color still
+// composes with Tailwind's opacity modifier, e.g. bg-accent/10. Swapping
+// html[data-theme] flips the variables; class names never need dark:/light:
+// variants.
+function withOpacity(variable: string) {
+  return ({ opacityValue }: { opacityValue?: string }) =>
+    opacityValue === undefined
+      ? `rgb(var(${variable}))`
+      : `rgb(var(${variable}) / ${opacityValue})`;
+}
+
 const config: Config = {
   darkMode: "class",
   content: [
@@ -9,16 +20,25 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Cast: Tailwind has supported function-form colors (for opacity-modifier
+      // composability) since v3.0, but @types/tailwindcss's Config type only
+      // declares string/nested-object values — this is a type-defs gap, not a
+      // runtime issue, since Tailwind's PostCSS plugin reads the plain JS
+      // object and doesn't go through this type at all.
       colors: {
-        bg: "#0A0A0F",
-        card: "#13131A",
-        border: "#1E1E2E",
-        accent: "#6C63FF",
-        teal: "#00D4AA",
-        primary: "#F0F0FF",
-        secondary: "#8B8BA7",
-        error: "#FF6B6B",
-      },
+        bg: withOpacity("--color-bg"),
+        card: withOpacity("--color-card"),
+        border: withOpacity("--color-border"),
+        "border-hover": withOpacity("--color-border-hover"),
+        accent: withOpacity("--color-accent"),
+        "accent-hover": withOpacity("--color-accent-hover"),
+        "accent-light": withOpacity("--color-accent-light"),
+        teal: withOpacity("--color-teal"),
+        primary: withOpacity("--color-primary"),
+        secondary: withOpacity("--color-secondary"),
+        error: withOpacity("--color-error"),
+        warning: withOpacity("--color-warning"),
+      } as unknown as Record<string, string>,
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
       },

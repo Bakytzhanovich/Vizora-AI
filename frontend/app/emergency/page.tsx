@@ -132,21 +132,21 @@ export default function EmergencyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className="min-h-screen bg-bg">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-[#0A0A0F]/95 backdrop-blur border-b border-[#1E1E2E]">
+      <div className="sticky top-0 z-20 bg-bg/95 backdrop-blur border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+            className="text-secondary hover:text-primary transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-[#F0F0FF] font-bold leading-tight">
+            <h1 className="text-primary font-bold leading-tight">
               🆘 {t("title")}
             </h1>
-            <p className="text-[#8B8BA7] text-xs">{t("subtitle")}</p>
+            <p className="text-secondary text-xs">{t("subtitle")}</p>
           </div>
         </div>
       </div>
@@ -164,10 +164,10 @@ export default function EmergencyPage() {
               transition={{ duration: 0.2 }}
             >
               {/* Banner */}
-              <div className="bg-gradient-to-r from-[#FF6B6B]/10 to-[#F59E0B]/10 border border-[#FF6B6B]/20 rounded-2xl p-5 mb-6">
+              <div className="bg-gradient-to-r from-error/10 to-warning/10 border border-error/20 rounded-2xl p-5 mb-6">
                 <div className="text-3xl mb-2">🆘</div>
-                <h2 className="text-[#F0F0FF] font-bold text-lg mb-1">{t("header")}</h2>
-                <p className="text-[#8B8BA7] text-sm leading-relaxed">
+                <h2 className="text-primary font-bold text-lg mb-1">{t("header")}</h2>
+                <p className="text-secondary text-sm leading-relaxed">
                   {t("desc")}
                 </p>
               </div>
@@ -175,7 +175,7 @@ export default function EmergencyPage() {
               {/* Scenario list */}
               {loadingScenarios ? (
                 <div className="flex justify-center py-12">
-                  <div className="w-8 h-8 border-2 border-[#FF6B6B]/30 border-t-[#FF6B6B] rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-error/30 border-t-error rounded-full animate-spin" />
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
@@ -245,16 +245,16 @@ export default function EmergencyPage() {
             >
               <div className="text-6xl">✅</div>
               <div>
-                <h2 className="text-[#F0F0FF] font-bold text-xl mb-2">
+                <h2 className="text-primary font-bold text-xl mb-2">
                   {t("resolved_state.title")}
                 </h2>
-                <p className="text-[#8B8BA7] text-sm max-w-xs">
+                <p className="text-secondary text-sm max-w-xs">
                   {t("resolved_state.desc")}
                 </p>
               </div>
               <button
                 onClick={() => router.push("/dashboard")}
-                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] text-white font-bold text-sm"
+                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-accent to-accent-light text-white font-bold text-sm"
               >
                 {t("common:common.home")}
               </button>

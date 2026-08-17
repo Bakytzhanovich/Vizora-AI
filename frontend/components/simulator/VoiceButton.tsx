@@ -15,10 +15,10 @@ interface Props {
 export function VoiceButton({ state, onClick, disabled = false }: Props) {
   const { t } = useTranslation("simulator");
   const config = {
-    idle: { bg: "bg-[#6C63FF]", ring: "ring-[#6C63FF]/30", label: t("voice.idle"), pulse: false },
-    recording: { bg: "bg-[#FF6B6B]", ring: "ring-[#FF6B6B]/40", label: t("voice.recording"), pulse: true },
-    processing: { bg: "bg-[#F59E0B]", ring: "ring-[#F59E0B]/30", label: t("voice.processing"), pulse: false },
-    playing: { bg: "bg-[#00D4AA]", ring: "ring-[#00D4AA]/30", label: t("voice.playing"), pulse: true },
+    idle: { bg: "bg-accent", ring: "ring-accent/30", label: t("voice.idle"), pulse: false },
+    recording: { bg: "bg-error", ring: "ring-error/40", label: t("voice.recording"), pulse: true },
+    processing: { bg: "bg-warning", ring: "ring-warning/30", label: t("voice.processing"), pulse: false },
+    playing: { bg: "bg-teal", ring: "ring-teal/30", label: t("voice.playing"), pulse: true },
   };
   const cfg = config[state];
 
@@ -48,7 +48,7 @@ export function VoiceButton({ state, onClick, disabled = false }: Props) {
         )}
       </motion.button>
 
-      <p className="text-[#8B8BA7] text-xs text-center">{cfg.label}</p>
+      <p className="text-secondary text-xs text-center">{cfg.label}</p>
     </div>
   );
 }

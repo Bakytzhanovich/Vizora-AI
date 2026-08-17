@@ -255,33 +255,33 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#0A0A0F]">
+    <div className="flex flex-col h-screen bg-bg">
       {/* Header */}
-      <div className="shrink-0 bg-[#0A0A0F]/90 backdrop-blur border-b border-[#1E1E2E] px-4 py-3">
+      <div className="shrink-0 bg-bg/90 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors">
+            <button onClick={onBack} className="text-secondary hover:text-primary transition-colors">
               <ArrowLeft size={20} />
             </button>
-            <span className="text-[#F0F0FF] font-semibold text-sm">
+            <span className="text-primary font-semibold text-sm">
               {mode === "consul" ? `🏛️ ${t("consul.title")}` : `🎓 ${t("trainer.title")}`}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[#6C63FF] text-sm font-bold tabular-nums">
+            <span className="font-mono text-accent text-sm font-bold tabular-nums">
               {formatTimer(timer)}
             </span>
             <button
               onClick={() => setAudioEnabled((v) => !v)}
-              className="text-[#8B8BA7] hover:text-[#F0F0FF] transition-colors"
+              className="text-secondary hover:text-primary transition-colors"
             >
               {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
             <button
               onClick={handleEnd}
               disabled={isEnding}
-              className="text-xs text-[#FF6B6B] border border-[#FF6B6B]/30 px-3 py-1.5 rounded-lg hover:bg-[#FF6B6B]/10 transition-all disabled:opacity-50"
+              className="text-xs text-error border border-error/30 px-3 py-1.5 rounded-lg hover:bg-error/10 transition-all disabled:opacity-50"
             >
               {isEnding ? t("interview.analyzing") : t("interview.finish")}
             </button>
@@ -312,7 +312,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
       </div>
 
       {/* Input area */}
-      <div className="shrink-0 border-t border-[#1E1E2E] bg-[#0A0A0F] px-4 py-4">
+      <div className="shrink-0 border-t border-border bg-bg px-4 py-4">
         <div className="max-w-2xl mx-auto">
           {hasMic ? (
             <div className="flex flex-col items-center gap-2">
@@ -323,7 +323,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
               />
               <button
                 onClick={() => setHasMic(false)}
-                className="text-[#8B8BA7] text-xs hover:text-[#F0F0FF] transition-colors"
+                className="text-secondary text-xs hover:text-primary transition-colors"
               >
                 {t("interview.no_mic")}
               </button>
@@ -337,12 +337,12 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
                 onKeyDown={(e) => e.key === "Enter" && !isBusy && handleTextSubmit()}
                 placeholder={t("interview.type_placeholder")}
                 disabled={isBusy}
-                className="flex-1 bg-[#13131A] border border-[#1E1E2E] focus:border-[#6C63FF]/50 rounded-xl px-4 py-3 text-[#F0F0FF] placeholder-[#8B8BA7] text-sm outline-none transition-colors disabled:opacity-50"
+                className="flex-1 bg-card border border-border focus:border-accent/50 rounded-xl px-4 py-3 text-primary placeholder-secondary text-sm outline-none transition-colors disabled:opacity-50"
               />
               <button
                 onClick={handleTextSubmit}
                 disabled={isBusy || !textInput.trim()}
-                className="bg-[#6C63FF] hover:bg-[#7C75FF] disabled:opacity-40 text-white px-4 rounded-xl font-semibold text-sm transition-all"
+                className="bg-accent hover:bg-accent-hover disabled:opacity-40 text-white px-4 rounded-xl font-semibold text-sm transition-all"
               >
                 →
               </button>

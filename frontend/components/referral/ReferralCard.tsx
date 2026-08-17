@@ -19,28 +19,28 @@ export function ReferralCard({ totalActive = 0, nextTierNeeded }: ReferralCardPr
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={() => router.push("/referral")}
-      className="w-full text-left bg-gradient-to-r from-[#6C63FF]/10 to-[#F59E0B]/5 border border-[#6C63FF]/20 rounded-2xl p-4 hover:border-[#6C63FF]/40 transition-all active:scale-[0.98]"
+      className="w-full text-left bg-gradient-to-r from-accent/10 to-warning/5 border border-accent/20 rounded-2xl p-4 hover:border-accent/40 transition-all active:scale-[0.98]"
     >
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-[#6C63FF]/15 flex items-center justify-center shrink-0">
-          <Gift size={18} className="text-[#6C63FF]" />
+        <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+          <Gift size={18} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-[#F0F0FF] font-semibold text-sm">{t("referral_card.title")}</span>
+            <span className="text-primary font-semibold text-sm">{t("referral_card.title")}</span>
             {totalActive > 0 && (
-              <span className="text-[10px] font-bold bg-[#F59E0B]/15 text-[#F59E0B] px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
                 {totalActive} {totalActive > 1 ? t("referral_card.friend_plural") : t("referral_card.friend_singular")}
               </span>
             )}
           </div>
-          <p className="text-[#8B8BA7] text-xs">
+          <p className="text-secondary text-xs">
             {nextTierNeeded != null && nextTierNeeded > 0
               ? t("referral_card.next_tier", { count: nextTierNeeded })
               : t("referral_card.default_hint")}
           </p>
         </div>
-        <span className="text-[#6C63FF] shrink-0">›</span>
+        <span className="text-accent shrink-0">›</span>
       </div>
     </motion.button>
   );

@@ -16,9 +16,9 @@ interface ActionPlanProps {
 }
 
 const urgencyBannerStyle: Record<string, { bg: string; text: string }> = {
-  critical: { bg: "bg-[#FF6B6B]/10 border-[#FF6B6B]/40", text: "text-[#FF6B6B]" },
-  high: { bg: "bg-[#F59E0B]/10 border-[#F59E0B]/40", text: "text-[#F59E0B]" },
-  medium: { bg: "bg-[#6C63FF]/10 border-[#6C63FF]/40", text: "text-[#6C63FF]" },
+  critical: { bg: "bg-error/10 border-error/40", text: "text-error" },
+  high: { bg: "bg-warning/10 border-warning/40", text: "text-warning" },
+  medium: { bg: "bg-accent/10 border-accent/40", text: "text-accent" },
 };
 
 export function ActionPlan({
@@ -43,11 +43,11 @@ export function ActionPlan({
     >
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-[#8B8BA7] mb-2">
+        <div className="flex items-center gap-2 text-sm text-secondary mb-2">
           <span>{scenarioIcon}</span>
           <span>{scenarioTitle}</span>
         </div>
-        <h2 className="text-[#F0F0FF] text-2xl font-bold">{t("action_plan")}</h2>
+        <h2 className="text-primary text-2xl font-bold">{t("action_plan")}</h2>
       </div>
 
       {/* Urgency banner */}
@@ -56,8 +56,8 @@ export function ActionPlan({
       </div>
 
       {/* Steps */}
-      <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-4">
-        <h3 className="text-[#F0F0FF] font-semibold text-sm mb-3">{t("steps_order")}</h3>
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <h3 className="text-primary font-semibold text-sm mb-3">{t("steps_order")}</h3>
         <ol className="flex flex-col gap-3">
           {plan.steps.map((step, i) => (
             <motion.li
@@ -65,9 +65,9 @@ export function ActionPlan({
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.06 }}
-              className="flex gap-3 text-sm text-[#E0E0F0] leading-relaxed"
+              className="flex gap-3 text-sm text-secondary leading-relaxed"
             >
-              <span className="shrink-0 w-5 h-5 rounded-full bg-[#FF6B6B]/15 text-[#FF6B6B] text-[10px] font-bold flex items-center justify-center mt-0.5">
+              <span className="shrink-0 w-5 h-5 rounded-full bg-error/15 text-error text-[10px] font-bold flex items-center justify-center mt-0.5">
                 {i + 1}
               </span>
               <span>{step}</span>
@@ -80,31 +80,31 @@ export function ActionPlan({
       <div>
         <button
           onClick={() => setShowContacts((v) => !v)}
-          className="flex items-center gap-2 text-[#F0F0FF] font-semibold text-sm mb-3"
+          className="flex items-center gap-2 text-primary font-semibold text-sm mb-3"
         >
           <span>📞 {t("contacts")}</span>
-          <span className="text-[#8B8BA7]">{showContacts ? "▲" : "▼"}</span>
+          <span className="text-secondary">{showContacts ? "▲" : "▼"}</span>
         </button>
         {showContacts && <ContactsList contacts={plan.contacts} />}
       </div>
 
       {/* Disclaimer */}
-      <div className="bg-[#13131A] border border-[#1E1E2E] rounded-xl px-4 py-3">
-        <p className="text-[#8B8BA7] text-xs leading-relaxed">{plan.disclaimer}</p>
+      <div className="bg-card border border-border rounded-xl px-4 py-3">
+        <p className="text-secondary text-xs leading-relaxed">{plan.disclaimer}</p>
       </div>
 
       {/* Actions */}
       <div className="flex flex-col gap-3 pb-2">
         <button
           onClick={() => router.push("/chat")}
-          className="w-full py-4 rounded-2xl border border-[#6C63FF]/40 text-[#6C63FF] font-semibold text-sm hover:bg-[#6C63FF]/10 transition-colors"
+          className="w-full py-4 rounded-2xl border border-accent/40 text-accent font-semibold text-sm hover:bg-accent/10 transition-colors"
         >
           {t("ask_ai")}
         </button>
         <button
           onClick={onResolve}
           disabled={resolving}
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#00D4AA] to-[#00B894] text-[#0A0A0F] font-bold text-sm transition-opacity disabled:opacity-60"
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-teal to-[#00B894] text-bg font-bold text-sm transition-opacity disabled:opacity-60"
         >
           {resolving ? t("resolving") : t("resolved")}
         </button>

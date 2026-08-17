@@ -30,32 +30,32 @@ export function LogoutConfirmModal({ onConfirm, onCancel }: Props) {
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 320 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full sm:max-w-sm bg-[#13131A] border border-[#1E1E2E] rounded-t-3xl sm:rounded-3xl px-6 pt-3 pb-6"
+          className="w-full sm:max-w-sm bg-card border border-border rounded-t-3xl sm:rounded-3xl px-6 pt-3 pb-6"
         >
           {/* Drag-handle affordance — mobile bottom-sheet only */}
-          <div className="w-9 h-1 bg-[#2A2A3A] rounded-full mx-auto mb-5 sm:hidden" />
+          <div className="w-9 h-1 bg-border-hover rounded-full mx-auto mb-5 sm:hidden" />
 
-          <div className="w-14 h-14 rounded-full bg-[#FF6B6B]/12 flex items-center justify-center mx-auto mb-4">
-            <LogOut size={24} className="text-[#FF6B6B]" />
+          <div className="w-14 h-14 rounded-full bg-error/12 flex items-center justify-center mx-auto mb-4">
+            <LogOut size={24} className="text-error" />
           </div>
 
-          <h2 className="text-[#F0F0FF] text-lg font-bold text-center mb-1.5">
+          <h2 className="text-primary text-lg font-bold text-center mb-1.5">
             {t("nav.logout_confirm_title")}
           </h2>
-          <p className="text-[#8B8BA7] text-sm text-center mb-6 leading-relaxed">
+          <p className="text-secondary text-sm text-center mb-6 leading-relaxed">
             {t("nav.logout_confirm")}
           </p>
 
           <div className="flex flex-col gap-2.5">
             <button
               onClick={onConfirm}
-              className="w-full bg-[#FF6B6B] text-white font-semibold py-3.5 rounded-xl text-sm transition-transform active:scale-[0.98]"
+              className="w-full bg-error text-white font-semibold py-3.5 rounded-xl text-sm transition-transform active:scale-[0.98]"
             >
               {t("nav.logout")}
             </button>
             <button
               onClick={onCancel}
-              className="w-full bg-[#1E1E2E] text-[#8B8BA7] hover:text-[#F0F0FF] font-medium py-3.5 rounded-xl text-sm transition-colors active:scale-[0.98]"
+              className="w-full bg-border text-secondary hover:text-primary font-medium py-3.5 rounded-xl text-sm transition-colors active:scale-[0.98]"
             >
               {t("common.cancel")}
             </button>

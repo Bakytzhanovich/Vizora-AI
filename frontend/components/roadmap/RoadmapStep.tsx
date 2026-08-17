@@ -20,16 +20,16 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
     const isPending = step.status === "pending";
 
     const circleClass = isCompleted
-      ? "bg-[#00D4AA] text-white"
+      ? "bg-teal text-white"
       : isCurrent
-      ? "bg-[#6C63FF] text-white ring-4 ring-[#6C63FF]/25"
-      : "bg-[#1E1E2E] text-[#8B8BA7]";
+      ? "bg-accent text-white ring-4 ring-accent/25"
+      : "bg-border text-secondary";
 
     const cardClass = isCompleted
-      ? "border-l-4 border-l-[#00D4AA] border-[#1E1E2E] bg-[#13131A] opacity-80"
+      ? "border-l-4 border-l-teal border-border bg-card opacity-80"
       : isCurrent
-      ? "border-l-4 border-l-[#6C63FF] border-[#6C63FF]/30 bg-[#6C63FF]/5 shadow-lg shadow-[#6C63FF]/10"
-      : "border border-[#1E1E2E] bg-[#13131A]";
+      ? "border-l-4 border-l-accent border-accent/30 bg-accent/5 shadow-lg shadow-accent/10"
+      : "border border-border bg-card";
 
     return (
       <div ref={ref}>
@@ -55,37 +55,37 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
             className={`flex-1 rounded-xl p-4 mb-1 transition-all ${cardClass}`}
           >
             <div className="flex items-start justify-between gap-2">
-              <p className={`text-sm font-semibold leading-snug ${isPending ? "text-[#8B8BA7]" : "text-[#F0F0FF]"}`}>
+              <p className={`text-sm font-semibold leading-snug ${isPending ? "text-secondary" : "text-primary"}`}>
                 {step.title}
               </p>
               {isCurrent && (
-                <span className="shrink-0 text-[10px] font-bold text-[#6C63FF] bg-[#6C63FF]/15 px-1.5 py-0.5 rounded-full">
+                <span className="shrink-0 text-[10px] font-bold text-accent bg-accent/15 px-1.5 py-0.5 rounded-full">
                   СЕЙЧАС
                 </span>
               )}
             </div>
 
             {!isPending && (
-              <p className="text-[#8B8BA7] text-xs mt-1 leading-relaxed">{step.description}</p>
+              <p className="text-secondary text-xs mt-1 leading-relaxed">{step.description}</p>
             )}
 
             {isCompleted && step.completed_at && (
-              <p className="text-[#00D4AA] text-[11px] mt-1.5">
+              <p className="text-teal text-[11px] mt-1.5">
                 ✓ Выполнено {new Date(step.completed_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
               </p>
             )}
 
             {isCurrent && (
               <>
-                <div className="mt-2 bg-[#6C63FF]/10 rounded-lg px-3 py-2">
-                  <p className="text-[#9C8BFF] text-xs leading-relaxed">💡 {step.tips}</p>
+                <div className="mt-2 bg-accent/10 rounded-lg px-3 py-2">
+                  <p className="text-accent-light text-xs leading-relaxed">💡 {step.tips}</p>
                 </div>
                 <ActionButton stepId={step.id} />
                 {!step.auto_complete && (
                   <button
                     onClick={() => onMarkComplete(step.id)}
                     disabled={updating}
-                    className="mt-3 text-xs text-[#8B8BA7] hover:text-[#00D4AA] transition-colors disabled:opacity-50 flex items-center gap-1"
+                    className="mt-3 text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50 flex items-center gap-1"
                   >
                     {updating ? "Сохраняем..." : "Отметить выполненным ✓"}
                   </button>
@@ -94,7 +94,7 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
             )}
 
             {isPending && !step.auto_complete && (
-              <p className="text-[#3E3E5E] text-xs mt-1">Ещё впереди</p>
+              <p className="text-secondary text-xs mt-1">Ещё впереди</p>
             )}
           </motion.div>
         </div>

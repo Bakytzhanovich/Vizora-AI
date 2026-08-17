@@ -30,10 +30,33 @@ const BrandingContext = createContext<BrandingContextValue>({
   refreshBranding: () => {},
 });
 
+// globals.css defines --color-accent as a "R G B" triplet (not a hex string)
+// so Tailwind's accent/NN opacity modifier can compose it via rgb(var(..)/NN)
+// — convert the agency's hex brand color to that same format before writing it.
+function hexToRgb(hex: string): [number, number, number] | null {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return null;
+  const int = parseInt(match[1], 16);
+  return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
+}
+
+// Mixes the brand color toward white so hover/light variants stay legible
+// instead of freezing at the default purple's #7C75FF/#9C8BFF — see finding:
+// only --color-accent was overridden, so any hover:bg-accent-hover or
+// text-accent-light element silently reverted to the default purple.
+function lighten([r, g, b]: [number, number, number], amount: number): string {
+  const mix = (c: number) => Math.round(c + (255 - c) * amount);
+  return `${mix(r)} ${mix(g)} ${mix(b)}`;
+}
+
 function applyColor(color: string) {
-  if (typeof document !== "undefined") {
-    document.documentElement.style.setProperty("--color-accent", color);
-  }
+  if (typeof document === "undefined") return;
+  const rgb = hexToRgb(color);
+  if (!rgb) return;
+  const style = document.documentElement.style;
+  style.setProperty("--color-accent", rgb.join(" "));
+  style.setProperty("--color-accent-hover", lighten(rgb, 0.15));
+  style.setProperty("--color-accent-light", lighten(rgb, 0.35));
 }
 
 export function BrandingProvider({ children }: { children: React.ReactNode }) {

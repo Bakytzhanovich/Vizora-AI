@@ -47,7 +47,7 @@ export function DocumentChecklist({ checklist, progress, onToggle, updating }: P
             transition={{ duration: 0.3 }}
             className="mb-6"
           >
-            <h3 className="text-[#8B8BA7] text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+            <h3 className="text-secondary text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
               <span>{cat.icon}</span>
               {cat.label}
             </h3>
@@ -66,13 +66,13 @@ export function DocumentChecklist({ checklist, progress, onToggle, updating }: P
       })}
 
       {/* Sticky CTA */}
-      <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-[#0A0A0F] to-transparent mt-4">
+      <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-bg to-transparent mt-4">
         <button
           disabled={!allRequiredDone}
           className={`w-full py-4 rounded-2xl font-bold text-sm transition-all shadow-lg ${
             allRequiredDone
-              ? "bg-[#00D4AA] text-[#0A0A0F] shadow-[#00D4AA]/20 hover:bg-[#00E5B8]"
-              : "bg-[#13131A] border border-[#1E1E2E] text-[#8B8BA7] cursor-not-allowed"
+              ? "bg-teal text-bg shadow-teal/20 hover:bg-[#00E5B8]"
+              : "bg-card border border-border text-secondary cursor-not-allowed"
           }`}
         >
           {allRequiredDone

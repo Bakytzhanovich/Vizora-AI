@@ -19,7 +19,7 @@ export function QuickQuestions({ onSelect }: Props) {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 + i * 0.05 }}
           onClick={() => onSelect(q)}
-          className="text-sm text-[#8B8BA7] border border-[#1E1E2E] rounded-full px-4 py-2 hover:border-[#6C63FF] hover:text-[#F0F0FF] hover:bg-[#6C63FF]/5 transition-all duration-200 cursor-pointer"
+          className="text-sm text-secondary border border-border rounded-full px-4 py-2 hover:border-accent hover:text-primary hover:bg-accent/5 transition-all duration-200 cursor-pointer"
         >
           {q}
         </motion.button>

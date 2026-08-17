@@ -10,8 +10,8 @@ export function RoadmapLine({ status }: Props) {
       <div
         className={`w-0.5 h-4 ${
           status === "completed"
-            ? "bg-[#00D4AA]"
-            : "border-l-2 border-dashed border-[#2E2E4E]"
+            ? "bg-teal"
+            : "border-l-2 border-dashed border-border"
         }`}
       />
     </div>
