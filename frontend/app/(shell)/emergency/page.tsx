@@ -152,7 +152,7 @@ export default function EmergencyPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 md:pb-6">
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 lg:pb-6">
         <AnimatePresence mode="wait">
           {/* ── Landing ── */}
           {flowStep === "landing" && (

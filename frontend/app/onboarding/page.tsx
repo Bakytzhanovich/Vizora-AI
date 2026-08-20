@@ -212,8 +212,11 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      {/* Step content */}
-      <div className="flex-1 flex items-start justify-center px-4 py-8">
+      {/* Step content — vertically centered so each short question reads as
+          a focused wizard step instead of floating at the top of a mostly
+          empty viewport; taller steps still scroll normally since this flex
+          container isn't overflow-clipped. */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-lg">
           <OnboardingStep
             stepIndex={step}

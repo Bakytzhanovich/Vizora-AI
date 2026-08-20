@@ -19,11 +19,11 @@ export function ReferralCard({ totalActive = 0, nextTierNeeded }: ReferralCardPr
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={() => router.push("/referral")}
-      className="w-full text-left bg-gradient-to-r from-accent/10 to-warning/5 border border-accent/20 rounded-2xl p-4 hover:border-accent/40 transition-all active:scale-[0.98]"
+      className="w-full text-left bg-card border border-border rounded-2xl p-4 hover:border-accent/40 transition-all active:scale-[0.98]"
     >
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
-          <Gift size={18} className="text-accent" />
+        <div className="w-9 h-9 flex items-center justify-center shrink-0">
+          <Gift size={20} strokeWidth={1.75} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">

@@ -1,15 +1,12 @@
 import Link from "next/link";
 import type { AgencyBilling } from "@/lib/agency-api";
+import { formatDate } from "@/lib/format";
 
 const PLAN_NAMES: Record<string, string> = {
   agency_starter: "Agency Starter",
   agency_business: "Agency Business",
   agency_partner: "Agency Partner",
 };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
-}
 
 export function BillingBadge({ billing }: { billing: AgencyBilling }) {
   if (billing.status === "paid" && billing.period_end) {

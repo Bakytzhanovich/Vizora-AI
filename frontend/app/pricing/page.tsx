@@ -7,9 +7,9 @@ import { ArrowLeft, Check, Lock, GraduationCap, Star, Lightbulb } from "lucide-r
 
 import { useAuth } from "@/hooks/useAuth";
 import { apiGetPlans, apiGetSocialProof, type Plan } from "@/lib/api";
+import { CheckoutModal } from "@/components/pricing/CheckoutModal";
 
 const CONSUMER_PLAN_IDS = ["free", "standard", "premium"];
-const TELEGRAM_SUPPORT_URL = "https://t.me/vizora_support";
 
 function formatKzt(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount) + " ₸";
@@ -30,6 +30,7 @@ function PricingContent() {
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([apiGetPlans(), apiGetSocialProof()])
@@ -46,15 +47,18 @@ function PricingContent() {
       router.push(isAuthenticated ? "/dashboard" : "/register");
       return;
     }
-    // Standard/Premium are activated manually by email after the student
-    // pays via Telegram (see routers/internal.py) — an account has to exist
-    // first or that lookup 404s, so an anonymous visitor registers before
-    // being sent to Telegram.
+    // Standard/Premium checkout needs an account to attach the payment to —
+    // an anonymous visitor registers first, then lands back here to pay.
     if (!isAuthenticated) {
       router.push("/register");
       return;
     }
-    window.open(TELEGRAM_SUPPORT_URL, "_blank", "noopener,noreferrer");
+    setCheckoutPlan(planId);
+  };
+
+  const handleActivated = () => {
+    setCheckoutPlan(null);
+    router.push("/profile");
   };
 
   const featureRows = (plan: Plan): FeatureRow[] => {
@@ -222,9 +226,6 @@ function PricingContent() {
                   >
                     {isCurrent ? t("cta_current") : isFree ? t("cta_free") : t("cta_start")}
                   </button>
-                  {!isFree && !isCurrent && (
-                    <p className="text-secondary text-[11px] text-center mt-2">{t("telegram_cta_notice")}</p>
-                  )}
                 </div>
               );
             })}
@@ -281,6 +282,21 @@ function PricingContent() {
           </div>
         </div>
       </div>
+
+      {checkoutPlan && (() => {
+        const plan = plans.find((p) => p.id === checkoutPlan);
+        if (!plan) return null;
+        return (
+          <CheckoutModal
+            plan={plan.id}
+            planLabel={t(`plan_names.${plan.id}`)}
+            billingPeriod={billingPeriod}
+            amountLabel={formatKzt(plan.prices_kzt[billingPeriod]) + (billingPeriod === "monthly" ? t("per_month") : t("per_year"))}
+            onClose={() => setCheckoutPlan(null)}
+            onActivated={handleActivated}
+          />
+        );
+      })()}
     </div>
   );
 }

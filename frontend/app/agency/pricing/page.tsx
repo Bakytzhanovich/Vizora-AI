@@ -3,14 +3,9 @@
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { AgencyLayout } from "@/components/agency/AgencyLayout";
+import { AgencyCheckoutModal } from "@/components/agency/AgencyCheckoutModal";
 import { apiGetPlans, type Plan } from "@/lib/api";
-import {
-  agencyGetMe,
-  agencyCreatePayment,
-  agencyMockCompletePayment,
-  type AgencyMe,
-  type CreateAgencyPaymentResponse,
-} from "@/lib/agency-api";
+import { agencyGetMe, type AgencyMe } from "@/lib/agency-api";
 
 const AGENCY_PLAN_IDS = ["agency_starter", "agency_business", "agency_partner"];
 
@@ -23,10 +18,7 @@ export default function AgencyPricingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
-  const [startingPlan, setStartingPlan] = useState<string | null>(null);
-  const [pendingPayment, setPendingPayment] = useState<
-    (CreateAgencyPaymentResponse & { plan: string }) | null
-  >(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,36 +31,9 @@ export default function AgencyPricingPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleStart = async (planId: string) => {
-    setError(null);
-    setStartingPlan(planId);
-    try {
-      const result = await agencyCreatePayment(planId, billingPeriod);
-      if (result.mock_mode) {
-        setPendingPayment({ ...result, plan: planId });
-      } else {
-        window.location.href = result.pay_url;
-      }
-    } catch {
-      setError("Не удалось создать платёж. Попробуйте ещё раз.");
-    } finally {
-      setStartingPlan(null);
-    }
-  };
-
-  const handleMockComplete = async () => {
-    if (!pendingPayment) return;
-    setStartingPlan(pendingPayment.plan);
-    try {
-      await agencyMockCompletePayment(pendingPayment.payment_id);
-      const meData = await agencyGetMe();
-      setMe(meData);
-      setPendingPayment(null);
-    } catch {
-      setError("Не удалось подтвердить тестовый платёж.");
-    } finally {
-      setStartingPlan(null);
-    }
+  const handleActivated = () => {
+    setCheckoutPlan(null);
+    agencyGetMe().then(setMe).catch(() => {});
   };
 
   return (
@@ -164,34 +129,36 @@ export default function AgencyPricingPage() {
                     )}
                   </ul>
                   <button
-                    onClick={() => handleStart(plan.id)}
-                    disabled={startingPlan === plan.id || isCurrent}
+                    onClick={() => setCheckoutPlan(plan.id)}
+                    disabled={isCurrent}
                     className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
                       isPopular ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-900"
                     }`}
                   >
-                    {isCurrent ? "Текущий план" : startingPlan === plan.id ? "Обработка..." : "Подключить"}
+                    {isCurrent ? "Текущий план" : "Подключить"}
                   </button>
                 </div>
               );
             })}
           </div>
         )}
-
-        {pendingPayment && (
-          <div className="max-w-md mx-auto rounded-2xl border border-blue-200 bg-white p-5 text-center shadow-sm">
-            <p className="text-xs text-gray-400 mb-3">Тестовый режим (Kaspi mock) — реальное списание не произойдёт</p>
-            <p className="text-gray-900 font-semibold mb-4">{formatKzt(pendingPayment.amount)}</p>
-            <button
-              onClick={handleMockComplete}
-              disabled={startingPlan === pendingPayment.plan}
-              className="w-full py-3 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-60"
-            >
-              {startingPlan === pendingPayment.plan ? "Обработка..." : "Подтвердить тестовый платёж"}
-            </button>
-          </div>
-        )}
       </div>
+
+      {checkoutPlan && (() => {
+        const plan = plans.find((p) => p.id === checkoutPlan);
+        if (!plan) return null;
+        const price = plan.prices_kzt[billingPeriod];
+        return (
+          <AgencyCheckoutModal
+            plan={plan.id}
+            planLabel={plan.name}
+            billingPeriod={billingPeriod}
+            amountLabel={formatKzt(price) + (billingPeriod === "monthly" ? " / мес" : " / год")}
+            onClose={() => setCheckoutPlan(null)}
+            onActivated={handleActivated}
+          />
+        );
+      })()}
     </AgencyLayout>
   );
 }

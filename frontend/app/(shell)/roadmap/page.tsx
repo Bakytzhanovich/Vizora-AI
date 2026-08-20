@@ -177,7 +177,7 @@ export default function RoadmapPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 md:pb-6">
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 lg:pb-6">
         <RoadmapProgress
           currentStepNumber={currentStepNumber}
           totalSteps={totalSteps}

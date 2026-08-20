@@ -4,8 +4,13 @@
   "account": "Аккаунт",
   "email": "Email",
   "subscription": "Подписка",
+  "current_plan": "Текущий план",
+  "status_active": "Активна",
   "language": "Язык интерфейса",
   "theme": "Тема",
   "about_me": "Обо мне",
-  "manage_subscription": "Управлять подпиской →"
+  "manage_subscription": "Управлять подпиской →",
+  "renews_on": "Продление {{date}}",
+  "sessions_usage": "Симулятор: {{used}}/{{total}} сессий использовано",
+  "sessions_unlimited": "Симулятор: без лимита сессий"
 }

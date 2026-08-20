@@ -29,10 +29,10 @@ export function ModuleCard({ icon: Icon, title, locked = true, href, index, feat
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         onClick={handleClick}
-        className="relative bg-gradient-to-r from-accent/15 to-accent/5 border border-accent/40 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:border-accent transition-all duration-200 active:scale-[0.99] shadow-lg shadow-accent/5"
+        className="relative bg-card border border-accent/30 rounded-2xl p-5 flex items-center gap-4 cursor-pointer hover:border-accent/60 transition-all duration-200 active:scale-[0.99]"
       >
-        <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
-          <Icon size={22} className="text-accent" />
+        <div className="w-9 h-9 flex items-center justify-center shrink-0">
+          <Icon size={24} strokeWidth={1.75} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -54,18 +54,12 @@ export function ModuleCard({ icon: Icon, title, locked = true, href, index, feat
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 * index }}
       onClick={handleClick}
-      className={`relative bg-card border rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-all duration-200 ${
-        locked
-          ? "border-border opacity-60"
-          : "border-accent/30 hover:border-accent hover:bg-accent/5 cursor-pointer shadow-lg shadow-accent/5"
+      className={`relative bg-card border border-border rounded-2xl p-5 flex flex-col gap-3 overflow-hidden transition-all duration-200 ${
+        locked ? "opacity-60" : "hover:border-accent/50 hover:bg-accent/5 cursor-pointer"
       }`}
     >
-      <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-          locked ? "bg-secondary/10" : "bg-accent/15"
-        }`}
-      >
-        <Icon size={20} className={locked ? "text-secondary" : "text-accent"} />
+      <div className="w-9 h-9 flex items-center justify-center">
+        <Icon size={22} strokeWidth={1.75} className={locked ? "text-secondary" : "text-accent"} />
       </div>
       <div>
         <div className="text-primary font-semibold text-sm">{title}</div>

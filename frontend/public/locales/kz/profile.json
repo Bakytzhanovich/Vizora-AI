@@ -4,8 +4,13 @@
   "account": "Аккаунт",
   "email": "Email",
   "subscription": "Жазылым",
+  "current_plan": "Ағымдағы жоспар",
+  "status_active": "Белсенді",
   "language": "Интерфейс тілі",
   "theme": "Тема",
   "about_me": "Ол туралы",
-  "manage_subscription": "Жазылымды басқару →"
+  "manage_subscription": "Жазылымды басқару →",
+  "renews_on": "Ұзарту {{date}}",
+  "sessions_usage": "Симулятор: {{used}}/{{total}} сеанс қолданылды",
+  "sessions_unlimited": "Симулятор: лимитсіз"
 }

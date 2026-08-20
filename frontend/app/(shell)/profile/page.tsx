@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, LogOut, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, LogOut, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LogoutConfirmModal } from "@/components/ui/LogoutConfirmModal";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { apiGetPlans } from "@/lib/api";
+import { formatDate } from "@/lib/format";
 
 function formatKzt(amount: number): string {
   return new Intl.NumberFormat("ru-RU").format(amount) + " ₸/мес";
@@ -19,10 +20,12 @@ function formatKzt(amount: number): string {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { t } = useTranslation(["profile", "common", "dashboard", "pricing"]);
+  const { t, i18n } = useTranslation(["profile", "common", "dashboard", "pricing"]);
+  const dateLocale = i18n.language === "kz" ? "kk-KZ" : "ru-RU";
   const { user, profile, subscription, isAuthenticated, isLoading, logout } = useAuth();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [standardPriceKzt, setStandardPriceKzt] = useState<number | null>(null);
+  const [standardSessionsPerMonth, setStandardSessionsPerMonth] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -35,7 +38,10 @@ export default function ProfilePage() {
       apiGetPlans()
         .then((res) => {
           const standard = res.plans.find((p) => p.id === "standard");
-          if (standard) setStandardPriceKzt(standard.prices_kzt.monthly);
+          if (standard) {
+            setStandardPriceKzt(standard.prices_kzt.monthly);
+            setStandardSessionsPerMonth(standard.limits.simulator_sessions_per_month);
+          }
         })
         .catch(() => {});
     }
@@ -93,7 +99,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 md:pb-6 flex flex-col gap-5">
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-24 lg:pb-6 flex flex-col gap-5">
         {/* Account card */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -109,44 +115,78 @@ export default function ProfilePage() {
           </div>
         </motion.div>
 
-        {/* Subscription */}
+        {/* Subscription — plan name leads as the card's main heading (not a
+            small corner badge) so it's unmistakable at a glance; paid plans
+            get an accent-tinted card to visually read as "you have something". */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-card border border-border rounded-2xl p-5"
+          className={`rounded-2xl p-5 border ${
+            isFree ? "bg-card border-border" : "bg-gradient-to-r from-accent/10 to-accent/5 border-accent/30"
+          }`}
         >
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-primary font-semibold text-sm">{t("profile:subscription")}</h2>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-accent/15 text-accent-light">
-              {t(`pricing:plan_names.${subscription?.plan ?? "free"}` as const, { defaultValue: subscription?.plan })}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-secondary text-xs font-semibold uppercase tracking-wide">
+              {t("profile:current_plan")}
             </span>
+            {!isFree && (
+              <span className="flex items-center gap-1 text-xs font-semibold text-teal">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal" />
+                {t("profile:status_active")}
+              </span>
+            )}
           </div>
+          <h2 className={`text-2xl font-bold mb-3 ${isFree ? "text-primary" : "text-accent-light"}`}>
+            {t(`pricing:plan_names.${subscription?.plan ?? "free"}` as const, { defaultValue: subscription?.plan })}
+          </h2>
           {isFree ? (
             <>
-              <p className="text-secondary text-sm mt-2">
+              <p className="text-secondary text-sm">
                 {t("dashboard:free_plan_usage", {
                   used: subscription?.sessions_used ?? 0,
                   total: subscription?.sessions_limit ?? 1,
                 })}
               </p>
               {standardPriceKzt !== null && (
-                <button
-                  onClick={() => router.push("/pricing")}
-                  className="w-full mt-4 bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
-                >
-                  <Sparkles size={15} />
-                  {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
-                </button>
+                <>
+                  <ul className="mt-3 space-y-1">
+                    {(["line1", "line2"] as const).map((key) => (
+                      <li key={key} className="flex items-start gap-1.5 text-secondary text-xs">
+                        <Check size={13} className="text-teal shrink-0 mt-0.5" />
+                        {t(`dashboard:upgrade_banner.${key}`, { count: standardSessionsPerMonth ?? 15 })}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="w-full mt-4 bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Sparkles size={15} />
+                    {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
+                  </button>
+                </>
               )}
             </>
           ) : (
-            <button
-              onClick={() => router.push("/pricing")}
-              className="text-accent hover:text-accent-light text-sm font-semibold mt-2 transition-colors"
-            >
-              {t("profile:manage_subscription")}
-            </button>
+            <>
+              <p className="text-secondary text-sm">
+                {subscription?.sessions_limit != null
+                  ? t("profile:sessions_usage", { used: subscription.sessions_used ?? 0, total: subscription.sessions_limit })
+                  : t("profile:sessions_unlimited")}
+              </p>
+              {subscription?.period_end && (
+                <p className="text-secondary text-sm">
+                  {t("profile:renews_on", { date: formatDate(subscription.period_end, dateLocale) })}
+                </p>
+              )}
+              <button
+                onClick={() => router.push("/pricing")}
+                className="text-accent hover:text-accent-light text-sm font-semibold mt-3 transition-colors"
+              >
+                {t("profile:manage_subscription")}
+              </button>
+            </>
           )}
         </motion.div>
 

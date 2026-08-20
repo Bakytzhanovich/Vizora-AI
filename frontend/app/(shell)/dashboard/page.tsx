@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogOut, ChevronDown, ChevronUp, Check, Sparkles, Map, MessageCircle, Mic, FileText, LifeBuoy, User } from "lucide-react";
+import { LogOut, ChevronDown, ChevronUp, Sparkles, Map, MessageCircle, Mic, FileText, Gift, LifeBuoy, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
@@ -13,6 +13,7 @@ import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
 import { ReferralCard } from "@/components/referral/ReferralCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LogoutConfirmModal } from "@/components/ui/LogoutConfirmModal";
 import { apiGetMe, apiGetRoadmap, apiGetAfterVisaModules, apiGetReferralCode, apiGetPlans } from "@/lib/api";
 import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
@@ -118,27 +119,41 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg px-4 pt-6 pb-24 md:pb-6 max-w-5xl mx-auto">
+    <div className="min-h-screen bg-bg px-4 pt-6 pb-24 lg:pb-6 max-w-5xl mx-auto">
       <PoweredByFooter />
-      {/* Top nav — language/logout live on the Profile tab now; keep them here
-          only on desktop, where the bottom nav (mobile-only) isn't reachable. */}
-      <div className="flex items-center justify-between mb-8">
+      {/* Top nav — hidden at lg+, where the sidebar (logo, profile, language,
+          logout) takes over; kept for mobile/tablet, where the sidebar is hidden.
+          The controls group carries its own ml-auto, so it hugs the right edge
+          whether it sits next to the logo (most widths) or wraps to its own
+          line (narrow phones like iPhone SE) — no hardcoded breakpoint to get
+          wrong, flexbox just does the right thing at every width. */}
+      <div className="flex items-center flex-wrap gap-y-2 mb-8 lg:hidden">
         <BrandedLogo />
-        <div className="hidden md:flex items-center gap-2">
-          <button
-            onClick={() => router.push("/profile")}
-            className="flex items-center gap-1.5 text-secondary hover:text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg bg-border hover:bg-border-hover transition-colors"
-          >
-            <User size={14} />
-            {t("common:nav.profile")}
-          </button>
+        <div className="flex items-center flex-wrap justify-end gap-2 ml-auto">
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex items-center gap-1.5 text-secondary hover:text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg bg-border hover:bg-border-hover transition-colors"
+            >
+              <User size={14} />
+              {t("common:nav.profile")}
+            </button>
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="flex items-center gap-1.5 text-secondary hover:text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg bg-border hover:bg-border-hover transition-colors"
+            >
+              <LogOut size={14} />
+              {t("common:nav.logout")}
+            </button>
+          </div>
           <LanguageSwitcher />
+          <ThemeSwitcher />
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="flex items-center gap-1.5 text-secondary hover:text-primary text-xs font-medium px-2.5 py-1.5 rounded-lg bg-border hover:bg-border-hover transition-colors"
+            aria-label={t("common:nav.logout")}
+            className="md:hidden p-2 rounded-lg bg-border hover:bg-border-hover text-secondary hover:text-primary transition-colors"
           >
-            <LogOut size={14} />
-            {t("common:nav.logout")}
+            <LogOut size={16} />
           </button>
         </div>
       </div>
@@ -173,17 +188,13 @@ export default function DashboardPage() {
           <span className="text-primary text-sm font-semibold">{t("dashboard:progress")}</span>
           <span className="text-accent text-sm font-bold">{journeyProgress}%</span>
         </div>
-        <div className="h-2 bg-border rounded-full overflow-hidden mb-3">
+        <div className="h-2 bg-border rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-gradient-to-r from-accent to-accent-light rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${journeyProgress}%` }}
             transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
           />
-        </div>
-        <div className="flex items-center gap-2 text-xs text-teal">
-          <Check size={14} />
-          <span>{t("dashboard:profile_complete")}</span>
         </div>
         {isFree && subscription && (
           <div className="mt-3 pt-3 border-t border-border text-xs text-secondary">
@@ -195,35 +206,29 @@ export default function DashboardPage() {
         )}
       </motion.div>
 
-      {/* Upgrade banner (FREE plan only) — visible but not aggressive */}
-      {isFree && standardPriceKzt !== null && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/30 rounded-2xl p-5 mb-5"
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={16} className="text-accent" />
-            <span className="text-primary font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
-          </div>
-          <p className="text-secondary text-sm">
-            {t("dashboard:upgrade_banner.line1", { count: standardSessionsPerMonth ?? 15 })}
-          </p>
-          <p className="text-secondary text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
-          <button
-            onClick={() => router.push("/pricing")}
-            className="w-full sm:w-auto bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
-          >
-            {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
-          </button>
-        </motion.div>
-      )}
-
       {/* Main content (mobile: stacks in order below; desktop: 2/3 + 1/3 sidebar) */}
       <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-5">
+          {/* Continue roadmap — the clearest "what do I do next" action, so
+              it leads on every width instead of only showing up buried in
+              the desktop-only modules grid further down. */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+          >
+            <ModuleCard
+              icon={Map}
+              title={t("dashboard:module_titles.roadmap")}
+              subtitle={t("dashboard:continue_hint")}
+              locked={false}
+              href="/roadmap"
+              index={0}
+              featured
+            />
+          </motion.div>
+
           {/* Risk profile */}
           {riskProfile && topRisks.length > 0 && (
             <motion.div
@@ -269,38 +274,79 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* Modules — Roadmap/AI Помощник/Симулятор already have bottom-nav
-              tabs on mobile, so this grid (with Documents, which doesn't)
-              only needs to appear in full on desktop, where the bottom nav
-              is hidden. Mobile gets a single Documents entry. */}
+          {/* Upgrade banner (FREE plan only) — after the free value content
+              above (roadmap nudge, risk profile), not ahead of it. */}
+          {isFree && standardPriceKzt !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/30 rounded-2xl p-5"
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles size={16} className="text-accent" />
+                <span className="text-primary font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
+              </div>
+              <p className="text-secondary text-sm">
+                {t("dashboard:upgrade_banner.line1", { count: standardSessionsPerMonth ?? 15 })}
+              </p>
+              <p className="text-secondary text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
+              <button
+                onClick={() => router.push("/pricing")}
+                className="w-full sm:w-auto bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
+              >
+                {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
+              </button>
+            </motion.div>
+          )}
+
+          {/* Modules — Roadmap now leads the page above, and AI Помощник/
+              Симулятор already have bottom-nav tabs on mobile, so this grid
+              (with Documents, which doesn't) only needs to appear in full on
+              desktop, where the bottom nav is hidden. Mobile gets Documents
+              grouped with Referral below as a lighter, borderless-row list —
+              full bordered cards for every secondary/utility link reads as
+              one long wall of same-weight boxes; only genuinely actionable
+              cards (Roadmap, Risk, Upgrade, Emergency) keep the heavier
+              treatment. */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="md:hidden bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden"
           >
-            <div className="md:hidden">
-              <ModuleCard
-                icon={FileText}
-                title={t("dashboard:module_titles.documents")}
-                locked={false}
-                href="/documents"
-                index={0}
-              />
-            </div>
+            <button
+              onClick={() => router.push("/documents")}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-border/40 transition-colors"
+            >
+              <FileText size={18} className="text-secondary shrink-0" />
+              <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:module_titles.documents")}</span>
+              <span className="text-secondary shrink-0">›</span>
+            </button>
+            <button
+              onClick={() => router.push("/referral")}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-border/40 transition-colors"
+            >
+              <Gift size={18} className="text-secondary shrink-0" />
+              <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:referral_card.title")}</span>
+              {(referralStats?.totalActive ?? 0) > 0 && (
+                <span className="text-[10px] font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
+                  {referralStats!.totalActive}{" "}
+                  {referralStats!.totalActive > 1 ? t("dashboard:referral_card.friend_plural") : t("dashboard:referral_card.friend_singular")}
+                </span>
+              )}
+              <span className="text-secondary shrink-0">›</span>
+            </button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+          >
             <div className="hidden md:block">
               <h2 className="text-primary font-semibold text-sm mb-3">{t("dashboard:modules")}</h2>
-              <div className="mb-3">
-                <ModuleCard
-                  icon={Map}
-                  title={t("dashboard:module_titles.roadmap")}
-                  subtitle={t("dashboard:continue_hint")}
-                  locked={false}
-                  href="/roadmap"
-                  index={0}
-                  featured
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {restModuleKeys.map((key, i) => (
                   <ModuleCard
                     key={key}
@@ -334,11 +380,13 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          {/* Referral card */}
+          {/* Referral card — hidden below md, where it's already covered by
+              the lighter Documents+Referral list above the sidebar. */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.48 }}
+            className="hidden md:block"
           >
             <ReferralCard
               totalActive={referralStats?.totalActive ?? 0}
@@ -357,8 +405,8 @@ export default function DashboardPage() {
               className="w-full text-left bg-card border border-error/30 rounded-2xl p-5 hover:border-error/60 hover:bg-error/10 transition-all active:scale-[0.98]"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-error/15 flex items-center justify-center shrink-0">
-                  <LifeBuoy size={22} className="text-error" />
+                <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                  <LifeBuoy size={24} strokeWidth={1.75} className="text-error" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">

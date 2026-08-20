@@ -65,7 +65,10 @@ if (!i18n.isInitialized) {
         profile: kzProfile,
       },
     },
-    lng: getStoredLanguage(),
+    // Always "ru" here, matching what the server renders (it has no access
+    // to localStorage) — switching to the stored language happens after
+    // mount in I18nInit, to avoid a hydration text mismatch.
+    lng: "ru",
     fallbackLng: "ru",
     defaultNS: "common",
     ns: [
