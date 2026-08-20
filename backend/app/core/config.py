@@ -49,13 +49,32 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = "http://localhost:3000"  # Set to the real domain in production .env
 
-    # Kaspi Pay (subscriptions). No real self-serve API exists — see
-    # app/services/kaspi_pay_client.py docstring. Mock mode is derived solely
-    # from whether KASPI_API_KEY is set (no separate on/off flag — see that
-    # module's docstring for why) so the flow is testable without credentials.
-    KASPI_API_KEY: str = ""
-    KASPI_MERCHANT_ID: str = ""
-    KASPI_API_BASE_URL: str = "https://api.kaspi.kz/pay/v1"
+    # Kaspi Pay (subscriptions), via kaspi-service (../kaspi-service — a clone
+    # of tapter-dev/kaspi-pos-automation) — automates the merchant's own
+    # Kaspi Pay for Business app session; no official Kaspi API exists. Mode
+    # is derived solely from whether KASPI_SERVICE_URL is set (no separate
+    # on/off flag) so the flow is testable without a running kaspi-service.
+    #
+    # kaspi-service is stateless after login — the caller (us) must hold the
+    # session and send it as headers on every request. KASPI_TOKEN_SN/
+    # KASPI_VTOKEN_SECRET/KASPI_PROFILE_ID come from the one-time SMS login
+    # (see kaspi-service/README.md's "Быстрый старт" + docs/API.md) — paste
+    # the /api/auth/verify-otp response's tokenSN/vtokenSecret/profileId here
+    # verbatim. KASPI_VTOKEN_SECRET stays AES-256-GCM-encrypted (by
+    # kaspi-service's own TOKEN_SECRET_KEY) — we never decrypt it ourselves,
+    # just pass it through.
+    KASPI_SERVICE_URL: str = ""
+    KASPI_TOKEN_SN: str = ""
+    KASPI_VTOKEN_SECRET: str = ""
+    KASPI_PROFILE_ID: str = ""
+    # Sent as X-Internal-Key on every kaspi-service call — must match its own
+    # KASPI_SERVICE_KEY. kaspi-service ships with no auth of its own (see
+    # kaspi-service/src/internalAuth.js), so this is the only thing stopping
+    # it from being an anonymous open proxy for Kaspi's signing protocol
+    # once deployed on a public URL.
+    KASPI_SERVICE_KEY: str = ""
+    # Must match a webhooks.json entry's "secret" in kaspi-service — verifies
+    # the payment.success/failed/expired/lost POSTs it sends back here.
     KASPI_WEBHOOK_SECRET: str = ""
 
     @property

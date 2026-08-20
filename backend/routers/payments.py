@@ -1,6 +1,7 @@
-"""Kaspi Pay checkout + webhook. See app/services/kaspi_pay_client.py for the
-mock-mode caveat — this is fully testable end-to-end without real credentials,
-but the actual HTTP calls to Kaspi are placeholders pending merchant docs."""
+"""Kaspi Pay checkout + webhook. See app/services/kaspi_pay_client.py for what
+this actually talks to (kaspi-service, not an official Kaspi API) and the
+mock-mode caveat — fully testable end-to-end without real credentials or a
+running kaspi-service."""
 
 import json
 import logging
@@ -314,10 +315,21 @@ async def _apply_successful_agency_payment(
     return {"status": "activated", "plan": agency.subscription_plan, "period_end": agency.subscription_period_end}
 
 
+#: kaspi-service/src/polling.js's buildPayload — the "event" field is what we
+#: actually branch on ("status" is Kaspi's own raw status string, e.g.
+#: "Processed", not the paid/failed we care about here).
+_WEBHOOK_EVENT_TO_STATUS = {
+    "payment.success": "paid",
+    "payment.failed": "failed",
+    "payment.expired": "failed",
+    "payment.lost": "failed",
+}
+
+
 @router.post("/webhook")
 async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     raw_body = await request.body()
-    signature = request.headers.get("X-Kaspi-Signature")
+    signature = request.headers.get("X-Webhook-Signature")
     if not kaspi_pay_client.verify_webhook_signature(raw_body, signature):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
 
@@ -326,10 +338,21 @@ async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    payment_id = payload.get("paymentId")
-    payment_status = payload.get("status")
-    if not payment_id or not payment_status:
-        raise HTTPException(status_code=400, detail="Missing paymentId/status")
+    # kaspi-service's QrOperationId is a raw Kaspi number, so this arrives as
+    # a JSON number (not a string) — coerce it to match kaspi_payment_id's
+    # String(64) column, which was populated via str(qr_operation_id) at
+    # checkout time. Comparing an int to a varchar silently never matches
+    # (or errors) on Postgres, so every real webhook would 404 without this.
+    raw_payment_id = payload.get("paymentId")
+    payment_id = str(raw_payment_id) if raw_payment_id is not None else None
+    event = payload.get("event")
+    if not payment_id or not event:
+        raise HTTPException(status_code=400, detail="Missing paymentId/event")
+
+    payment_status = _WEBHOOK_EVENT_TO_STATUS.get(event)
+    if payment_status is None:
+        logger.warning("Unhandled Kaspi webhook event=%s payment_id=%s", event, payment_id)
+        return {"received": True, "status": "ignored"}
 
     if payment_status == "paid":
         result = await _apply_successful_payment(payment_id, db)
@@ -385,11 +408,18 @@ async def kaspi_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                         kaspi_payment_id=f"{payment_id}:failed",
                     )
                 )
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError:
+                # Same race as _apply_successful_payment's "paid" path — a
+                # concurrent redelivery of this "failed" event (kaspi-service
+                # retries on any non-2xx, see polling.js's sendWebhook) beat
+                # us to the commit. The unique kaspi_payment_id constraint is
+                # what actually enforces idempotency; treat the race as a
+                # no-op instead of surfacing a raw 500 to the webhook caller.
+                await db.rollback()
+                return {"received": True, "status": "already_applied"}
         return {"received": True, "status": "payment_failed_recorded"}
-
-    logger.warning("Unhandled Kaspi webhook status=%s payment_id=%s", payment_status, payment_id)
-    return {"received": True, "status": "ignored"}
 
 
 @router.post("/mock-complete/{payment_id}")

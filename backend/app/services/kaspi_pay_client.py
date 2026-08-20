@@ -1,34 +1,39 @@
 """Kaspi Pay client.
 
-IMPORTANT — read before wiring this to production:
+IMPORTANT — read before touching this:
 
-Unlike Stripe, Kaspi Pay has no public, self-serve API/SDK. Integration
-requires a signed merchant agreement with Kaspi Bank, who then provide
-merchant-specific credentials and endpoint documentation. The exact request/
-response shape below (`_create_payment_request`, `_parse_payment_response`,
-webhook signature scheme) is a best-effort placeholder matching the general
-shape of Kaspi Pay for Business integrations (create a payment → get back a
-pay/QR link → merchant is notified on completion) — it is NOT verified
-against Kaspi's real API and WILL need adjusting once you have the actual
-docs from your Kaspi merchant onboarding.
+Kaspi Pay has no public, self-serve API/SDK — a signed merchant agreement
+with Kaspi Bank would be the officially supported route. Instead, this talks
+to `kaspi-service` (../kaspi-service — a clone of the open-source
+tapter-dev/kaspi-pos-automation), which automates QR payments through the
+merchant's own Kaspi Pay for Business app session (device-fingerprint +
+request-signing that mimics the real app). See that service's README for
+the one-time SMS login procedure and the ToS/reliability caveats — this is
+NOT an officially supported integration and can break on a Kaspi app update.
 
-Until then, mock mode (active whenever KASPI_API_KEY is unset) simulates the
-flow entirely in-process so the rest of the monetization system (trial,
-access control, webhooks, DB updates) can be built and tested end to end
-without real credentials.
+kaspi-service is stateless after login: it expects the merchant session
+(X-Token-SN / X-Vtoken-Secret / X-Profile-Id) as headers on every request,
+rather than holding it itself — so *we* are the one holding it, in
+settings.KASPI_TOKEN_SN / KASPI_VTOKEN_SECRET / KASPI_PROFILE_ID (populated
+once from the login response, then left untouched — see config.py).
 
-Mode is derived solely from whether KASPI_API_KEY is configured — there is
-deliberately no separate on/off flag for this. A previous version had a
-KASPI_MOCK_MODE setting that defaulted to true and was OR'd with the missing-
-key check, so setting a real API key in production without also remembering
-to flip that flag left webhook signature verification silently disabled
-(verify_webhook_signature() short-circuits to True in mock mode) — any
-logged-in user could create a payment for themselves and then hit the
-unauthenticated webhook directly to mark it paid for free. Deriving mode from
-the API key alone removes that misconfiguration entirely: real credentials
-always mean real (signature-verified) mode, with no second switch to forget.
+Mode is derived solely from whether KASPI_SERVICE_URL is configured — there
+is deliberately no separate on/off flag for this (a prior version of this
+file had a KASPI_MOCK_MODE setting that could drift from the credentials and
+silently disable webhook signature verification; see git history). Mock mode
+simulates the flow entirely in-process so the rest of the monetization system
+(access control, webhooks, DB updates) can be built and tested end to end
+without a running kaspi-service.
+
+payment_id is always Kaspi's own QrOperationId (never something we invent) —
+it's what SubscriptionEvent.kaspi_payment_id is keyed on, and it's exactly
+the `paymentId` kaspi-service's webhook echoes back (see
+kaspi-service/src/polling.js's buildPayload), so the two line up without
+this client needing to track a separate id mapping.
 """
 
+import hashlib
+import hmac
 import logging
 import uuid
 
@@ -46,14 +51,34 @@ class KaspiPaymentResult:
 
 
 def is_mock_mode() -> bool:
-    return not settings.KASPI_API_KEY
+    return not settings.KASPI_SERVICE_URL
+
+
+def _session_headers() -> dict[str, str]:
+    return {
+        "X-Token-SN": settings.KASPI_TOKEN_SN,
+        "X-Vtoken-Secret": settings.KASPI_VTOKEN_SECRET,
+        "X-Profile-Id": settings.KASPI_PROFILE_ID,
+        # kaspi-service rejects every route without this — see its
+        # src/internalAuth.js and the KASPI_SERVICE_KEY docstring above.
+        "X-Internal-Key": settings.KASPI_SERVICE_KEY,
+    }
 
 
 async def create_payment(order_id: str, amount_kzt: int, description: str) -> KaspiPaymentResult:
-    """Create a Kaspi Pay payment (QR / pay-by-link) for a one-time charge.
+    """Create a Kaspi Pay QR payment for a one-time charge.
 
     Kaspi has no subscription object — each billing period is its own
     payment; renewal is emulated by the caller extending subscription_period_end.
+
+    `order_id`/`description` are accepted for interface parity with the
+    caller (payments.py generates order_id per checkout) but otherwise
+    unused — see module docstring for why payment_id is Kaspi's
+    QrOperationId instead, and Kaspi's QR flow has no free-text field for a
+    description (unlike its invoice/phone-number flow, which this doesn't
+    use). order_id is still logged below (real and mock mode alike) so a
+    checkout can be traced from order_id to the QrOperationId that actually
+    owns the SubscriptionEvent row.
     """
     if is_mock_mode():
         payment_id = f"mock_{uuid.uuid4().hex[:16]}"
@@ -65,48 +90,81 @@ async def create_payment(order_id: str, amount_kzt: int, description: str) -> Ka
         # dev-only "mock-complete" button hits POST /payments/mock-complete instead.
         return KaspiPaymentResult(payment_id=payment_id, pay_url=f"/payments/mock-complete/{payment_id}")
 
-    # --- Real Kaspi Pay call (placeholder shape, see module docstring) ---
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.post(
-            f"{settings.KASPI_API_BASE_URL}/payments",
-            headers={"Authorization": f"Bearer {settings.KASPI_API_KEY}"},
-            json={
-                "merchantId": settings.KASPI_MERCHANT_ID,
-                "orderId": order_id,
-                "amount": amount_kzt,
-                "currency": "KZT",
-                "description": description,
-            },
+            f"{settings.KASPI_SERVICE_URL}/api/qr/create",
+            headers=_session_headers(),
+            json={"amount": amount_kzt},
         )
         resp.raise_for_status()
-        data = resp.json()
-        return KaspiPaymentResult(payment_id=data["paymentId"], pay_url=data["payUrl"])
+        data = resp.json().get("Data") or {}
+        qr_operation_id = data.get("QrOperationId")
+        qr_token = data.get("QrToken")
+        if not qr_operation_id or not qr_token:
+            raise RuntimeError(f"kaspi-service response missing QrOperationId/QrToken: {resp.text}")
+        logger.info(
+            "Kaspi payment created order=%s amount=%s KZT qrOperationId=%s",
+            order_id, amount_kzt, qr_operation_id,
+        )
+        return KaspiPaymentResult(payment_id=str(qr_operation_id), pay_url=qr_token)
+
+
+# Mirrors kaspi-service/src/polling.js's QR_FINAL_STATUSES — any status not
+# listed here (QrTokenCreated, Wait, ...) is a genuine in-progress state.
+_KASPI_FAILED_STATUSES = {
+    "CancelledByUser",
+    "NotConfirmedByUser",
+    "CancelledByExternalSource",
+    "ProcessingFailed",
+    "Rejected",
+    "InsufficientFunds",
+    "InsufficientFundsError",
+    "Error",
+    "IrisSrcBlockCode1",
+    "IrisSrcBlockCode3",
+    "IrisSrcBlockCode9",
+    "IrisDestBlockCode3",
+    "IrisDestBlockCode5",
+    "IrisDestBlockCode7",
+    "IrisDestBlockCode10",
+    "QrTokenDiscarded",
+    "Expired",
+}
 
 
 async def get_payment_status(payment_id: str) -> str:
     """Returns 'pending' | 'paid' | 'failed'. Only meaningful in real mode —
-    mock payments are marked paid synchronously by /payments/mock-complete."""
+    mock payments are marked paid synchronously by /payments/mock-complete.
+    Not on the hot path: kaspi-service pushes the outcome via webhook as soon
+    as it knows it, so callers rarely need to ask."""
     if is_mock_mode():
         return "pending"
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.get(
-            f"{settings.KASPI_API_BASE_URL}/payments/{payment_id}",
-            headers={"Authorization": f"Bearer {settings.KASPI_API_KEY}"},
+            f"{settings.KASPI_SERVICE_URL}/api/qr/status",
+            params={"qrOperationId": payment_id},
+            headers=_session_headers(),
         )
         resp.raise_for_status()
-        return resp.json()["status"]
+        kaspi_status = (resp.json().get("Data") or {}).get("Status")
+        if kaspi_status == "Processed":
+            return "paid"
+        if kaspi_status in _KASPI_FAILED_STATUSES:
+            return "failed"
+        return "pending"
 
 
 def verify_webhook_signature(raw_body: bytes, signature: str | None) -> bool:
-    """Placeholder — real signature scheme (HMAC header name, digest algo)
-    comes from Kaspi's merchant docs. Mock mode always accepts."""
+    """Verifies the webhook kaspi-service sends (kaspi-service/src/polling.js
+    sendWebhook — HMAC-SHA256 over the raw body, header `sha256=<hex>`,
+    secret from a webhooks.json entry that must equal KASPI_WEBHOOK_SECRET).
+    Mock mode always accepts."""
     if is_mock_mode():
         return True
     if not settings.KASPI_WEBHOOK_SECRET or not signature:
         return False
-    import hashlib
-    import hmac
-
+    if not signature.startswith("sha256="):
+        return False
     expected = hmac.new(settings.KASPI_WEBHOOK_SECRET.encode(), raw_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
+    return hmac.compare_digest(expected, signature.removeprefix("sha256="))

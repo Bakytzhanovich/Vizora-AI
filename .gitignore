@@ -21,3 +21,9 @@ backend/static/agency-logos/
 
 # Claude Code local worktrees
 .claude/worktrees/
+
+# kaspi-service is a standalone clone of tapter-dev/kaspi-pos-automation with
+# its own .git — not a submodule. Ignored so it can never be accidentally
+# `git add`-ed as a dangling gitlink (empty dir for anyone else who clones
+# this repo, since there's no .gitmodules entry for it).
+kaspi-service/
