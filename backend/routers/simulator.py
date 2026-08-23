@@ -17,6 +17,7 @@ from app.models.simulator import SimulatorSession
 from app.models.user import User
 from app.services.simulator_service import (
     INTERVIEW_QUESTION_BANK,
+    compute_verdict,
     generate_feedback,
     generate_simulator_response,
 )
@@ -269,6 +270,7 @@ async def end_session(
     profile, risks = await _load_profile(db, user_id)
 
     feedback = await generate_feedback(transcript, session.mode, session.id, profile, risks)
+    feedback["verdict"] = compute_verdict(feedback.get("scores", {}).get("overall", 5.0))
 
     session.feedback = json.dumps(feedback, ensure_ascii=False)
     session.scores = json.dumps(feedback.get("scores", {}), ensure_ascii=False)
@@ -290,11 +292,14 @@ async def transcribe(
     audio: UploadFile = File(...),
     user_id: str = Depends(get_current_user_id),
 ):
-    audio_bytes = await audio.read()
-    if len(audio_bytes) < 100:
-        raise HTTPException(status_code=400, detail="Audio too short")
+    # Read only up to the cap + 1 byte — rejecting oversized uploads without
+    # ever buffering the full body in memory first (same pattern as the
+    # agency logo upload in routers/agency.py).
+    audio_bytes = await audio.read(_MAX_AUDIO_SIZE + 1)
     if len(audio_bytes) > _MAX_AUDIO_SIZE:
         raise HTTPException(status_code=400, detail="Audio too large (max 10MB)")
+    if len(audio_bytes) < 100:
+        raise HTTPException(status_code=400, detail="Audio too short")
 
     try:
         text = await speech_to_text(audio_bytes, audio.filename or "audio.webm")
@@ -354,6 +359,11 @@ async def get_session(
     db: AsyncSession = Depends(get_db),
 ):
     session = await _load_session(db, session_id, user_id)
+    feedback = json.loads(session.feedback) if session.feedback else None
+    if feedback is not None and "verdict" not in feedback:
+        # Backfill for sessions completed before the verdict field existed —
+        # derived from the same stored scores, nothing to migrate.
+        feedback["verdict"] = compute_verdict(feedback.get("scores", {}).get("overall", 5.0))
     return {
         "session": {
             "id": session.id,
@@ -364,7 +374,7 @@ async def get_session(
             "created_at": session.created_at.isoformat(),
         },
         "transcript": json.loads(session.transcript),
-        "feedback": json.loads(session.feedback) if session.feedback else None,
+        "feedback": feedback,
     }
 
 

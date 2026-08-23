@@ -589,6 +589,24 @@ async def generate_simulator_response(
                 yield cleaned
 
 
+def compute_verdict(overall_score_0_to_10: float) -> dict[str, Any]:
+    """Readiness verdict shown at the top of the results screen.
+
+    Deliberately never says "Approved"/"Denied" — Vizora cannot predict a
+    real consular officer's decision, only reflect practice-session
+    readiness. `overall_score_0_to_10` is `scores.overall` from
+    generate_feedback (0-10 scale); normalized here to 0-100.
+    """
+    score = max(0, min(100, round(overall_score_0_to_10 * 10)))
+    if score >= 75:
+        label, color = "Готов", "green"
+    elif score >= 50:
+        label, color = "Почти готов", "yellow"
+    else:
+        label, color = "Нужна ещё практика", "red"
+    return {"score": score, "label": label, "color": color}
+
+
 _FEEDBACK_FALLBACK: dict[str, Any] = {
     "scores": {"confidence": 5.0, "language": 5.0, "content": 5.0, "overall": 5.0},
     "answer_analysis": [],

@@ -238,6 +238,11 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
         phrases_to_use: [],
         risk_flags: [],
         recommendation: t("interview.retry_session"),
+        // Matches compute_verdict(5.0) in simulator_service.py — this is a
+        // fixed literal (not a recomputed formula) because the fallback
+        // score itself is always exactly 5.0, not a duplicate of the
+        // general threshold rule.
+        verdict: { score: 50, label: "Почти готов", color: "yellow" },
       });
     }
   };

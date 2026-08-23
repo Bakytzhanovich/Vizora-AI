@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Dumbbell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ScoreCard } from "./ScoreCard";
 
@@ -36,6 +36,12 @@ interface PhraseToMemorize {
   correct: string;
 }
 
+interface Verdict {
+  score: number; // 0-100
+  label: "Готов" | "Почти готов" | "Нужна ещё практика";
+  color: "green" | "yellow" | "red";
+}
+
 export interface FeedbackData {
   scores: Scores;
   // New detailed fields
@@ -48,10 +54,84 @@ export interface FeedbackData {
   // Revealed only for consul-mode sessions, after the session ends
   officer_personality?: "neutral" | "friendly" | "strict";
   officer_reveal?: string;
+  // Readiness verdict shown at the top of the results screen. The backend
+  // always sends it (POST /simulator/end computes it; GET /session/{id}
+  // backfills it for sessions predating the field) — but frontend and
+  // backend deploy independently (Vercel vs a separate API host), so a
+  // frontend build can briefly ship ahead of a backend that doesn't send
+  // this field yet. Optional here on purpose: the render site skips the
+  // verdict card entirely rather than guessing a score client-side (which
+  // would duplicate the 75/50 threshold rule in two languages).
+  verdict?: Verdict;
   // Legacy fields (kept for backward compat)
   weak_points?: string[];
   phrases_to_use?: string[];
   risk_flags?: string[];
+}
+
+const VERDICT_STYLES = {
+  green: {
+    ring: "rgb(var(--color-teal))",
+    bg: "bg-teal/10",
+    border: "border-teal/30",
+    text: "text-teal",
+    Icon: CheckCircle2,
+  },
+  yellow: {
+    ring: "rgb(var(--color-warning))",
+    bg: "bg-warning/10",
+    border: "border-warning/30",
+    text: "text-warning",
+    Icon: AlertTriangle,
+  },
+  red: {
+    ring: "rgb(var(--color-error))",
+    bg: "bg-error/10",
+    border: "border-error/30",
+    text: "text-error",
+    Icon: Dumbbell,
+  },
+} as const;
+
+function VerdictCard({ verdict }: { verdict: Verdict }) {
+  const style = VERDICT_STYLES[verdict.color];
+  const Icon = style.Icon;
+
+  return (
+    <div className="mb-6">
+      <div
+        className={`border rounded-2xl px-6 py-8 flex flex-col items-center text-center ${style.bg} ${style.border}`}
+      >
+        <div
+          className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${style.bg} border ${style.border}`}
+        >
+          <Icon size={32} className={style.text} strokeWidth={2.5} />
+        </div>
+        <h2 className={`text-2xl font-bold mb-6 ${style.text}`}>{verdict.label}</h2>
+
+        <p className="text-secondary text-xs font-semibold uppercase tracking-wide mb-1">
+          Confidence Score
+        </p>
+        <p className="text-primary text-3xl font-bold mb-3">
+          {verdict.score} <span className="text-secondary text-base font-normal">/ 100</span>
+        </p>
+
+        <div className="w-full max-w-xs h-2.5 rounded-full bg-border overflow-hidden">
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: style.ring }}
+            initial={{ width: 0 }}
+            animate={{ width: `${verdict.score}%` }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+          />
+        </div>
+      </div>
+
+      <p className="text-secondary/60 text-[11px] text-center mt-2 px-4 leading-relaxed">
+        Это оценка твоей готовности к практике, а не прогноз решения консула
+      </p>
+    </div>
+  );
 }
 
 interface HistoryItem {
@@ -201,6 +281,7 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
   const pct = Math.round((overall / 10) * 100);
 
   const hasNewFormat = !!(feedback.answer_analysis?.length || feedback.key_mistakes?.length);
+  const { verdict } = feedback;
 
   // Sort: critical first, then warning, then good
   const sortedAnswers = [...(feedback.answer_analysis ?? [])].sort((a, b) => {
@@ -215,6 +296,12 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
   return (
     <div className="min-h-screen bg-bg px-4 py-6 max-w-2xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+        {/* Verdict — the first thing the student sees, above all detailed feedback below.
+            Guarded: a frontend deploy can briefly ship ahead of a backend that doesn't
+            send `verdict` yet (or an unrecognized color), so this degrades to just not
+            showing the card rather than crashing the whole results screen. */}
+        {verdict && verdict.color in VERDICT_STYLES && <VerdictCard verdict={verdict} />}
+
         {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold text-primary">{t("results.title")}</h1>
