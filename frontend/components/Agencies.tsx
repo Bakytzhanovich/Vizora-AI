@@ -16,14 +16,25 @@ interface Benefit {
 const icons = [Clock, BarChart3, Trophy];
 
 interface Plan {
+  id: string;
   name: string;
   period: string;
   students: string;
   features: string[];
 }
 
-const planPrices = ["$299", "$599", "$999"];
-const planHighlight = [false, true, false];
+// Kept in USD per product decision — Kaspi Pay checkout itself converts to
+// KZT at payment time (see backend PLAN_PRICES_KZT in routers/payments.py).
+// Keyed by plan id, not array position, so a reordered/edited i18n plans
+// array can't silently pair the wrong price with the wrong tier.
+const AGENCY_PLAN_PRICES_USD: Record<string, string> = {
+  agency_starter: "$299",
+  agency_business: "$599",
+  agency_partner: "$999",
+};
+const AGENCY_PLAN_HIGHLIGHT: Record<string, boolean> = {
+  agency_business: true,
+};
 
 export function Agencies() {
   const { t } = useTranslation("landing");
@@ -31,7 +42,11 @@ export function Agencies() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const benefits = t("agencies.benefits", { returnObjects: true }) as Benefit[];
   const plansData = t("agencies.plans", { returnObjects: true }) as Plan[];
-  const plans = plansData.map((p, i) => ({ ...p, price: planPrices[i], highlight: planHighlight[i] }));
+  const plans = plansData.map((p) => ({
+    ...p,
+    price: AGENCY_PLAN_PRICES_USD[p.id] ?? "—",
+    highlight: AGENCY_PLAN_HIGHLIGHT[p.id] ?? false,
+  }));
 
   const handleScroll = () => {
     const el = document.querySelector("#early-access");
@@ -113,9 +128,9 @@ export function Agencies() {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10"
         >
-          {plans.map((plan, i) => (
+          {plans.map((plan) => (
             <div
-              key={i}
+              key={plan.id}
               className={`rounded-2xl p-6 border transition-all duration-200 ${
                 plan.highlight
                   ? "bg-gradient-to-br from-[#6C63FF]/10 to-[#00D4AA]/5 border-[#6C63FF]/30 shadow-lg shadow-[#6C63FF]/10"

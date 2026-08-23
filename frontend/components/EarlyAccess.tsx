@@ -114,14 +114,6 @@ export function EarlyAccess() {
               <p className="text-[#8B8BA7] text-sm">
                 {t("early_access.success_desc")}
               </p>
-              <a
-                href="https://t.me/vizora_ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-2 bg-[#6C63FF]/10 hover:bg-[#6C63FF]/20 border border-[#6C63FF]/20 text-[#9C8BFF] text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200"
-              >
-                {t("early_access.success_telegram")}
-              </a>
             </motion.div>
           ) : (
             <motion.form

@@ -19,6 +19,7 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+// TODO: update to real domain once purchased (ТЗ-030)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
 
 export const metadata: Metadata = {

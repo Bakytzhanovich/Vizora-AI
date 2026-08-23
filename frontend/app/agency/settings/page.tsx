@@ -253,18 +253,19 @@ export default function AgencySettingsPage() {
           <h2 className="font-semibold text-gray-900 mb-4">Информация об аккаунте</h2>
           <div className="space-y-3">
             {[
-              { label: "Email", value: me?.email },
-              { label: "Страна", value: me?.country },
+              { label: "Email", value: me?.email, capitalize: false },
+              { label: "Страна", value: me?.country, capitalize: true },
               {
                 label: "Дата регистрации",
                 value: me?.created_at
                   ? new Date(me.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
                   : "—",
+                capitalize: false,
               },
-            ].map(({ label, value }) => (
+            ].map(({ label, value, capitalize }) => (
               <div key={label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <span className="text-sm text-gray-500">{label}</span>
-                <span className="text-sm font-medium text-gray-900 capitalize">{value}</span>
+                <span className={`text-sm font-medium text-gray-900 ${capitalize ? "capitalize" : ""}`}>{value}</span>
               </div>
             ))}
             {me?.billing && (

@@ -14,10 +14,11 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navLinks = [
+  const navLinks: { href: string; label: string; isRoute?: boolean }[] = [
     { href: "#students", label: t("nav.students") },
     { href: "#agencies", label: t("nav.agencies") },
     { href: "#how-it-works", label: t("nav.how_it_works") },
+    { href: "/blog", label: "Блог", isRoute: true },
   ];
 
   useEffect(() => {
@@ -26,10 +27,22 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleNavClick = (href: string) => {
+  const handleNavClick = (href: string, isRoute?: boolean) => {
     setMobileOpen(false);
+    if (isRoute) {
+      router.push(href);
+      return;
+    }
+    // These ids (#students, #agencies, #how-it-works) only exist on the
+    // homepage — from /blog, /privacy, /terms etc. querySelector finds
+    // nothing and scrollIntoView would silently no-op, so navigate to the
+    // homepage with the hash instead of leaving the click dead.
     const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    } else {
+      router.push(`/${href}`);
+    }
   };
 
   return (
@@ -68,7 +81,7 @@ export function Navbar() {
               {navLinks.map((link) => (
                 <button
                   key={link.href}
-                  onClick={() => handleNavClick(link.href)}
+                  onClick={() => handleNavClick(link.href, link.isRoute)}
                   className="text-[#8B8BA7] hover:text-[#F0F0FF] text-sm font-medium transition-colors duration-200"
                 >
                   {link.label}
@@ -123,7 +136,7 @@ export function Navbar() {
               {navLinks.map((link) => (
                 <button
                   key={link.href}
-                  onClick={() => handleNavClick(link.href)}
+                  onClick={() => handleNavClick(link.href, link.isRoute)}
                   className="text-[#8B8BA7] hover:text-[#F0F0FF] text-base font-medium py-3 text-left transition-colors border-b border-[#1E1E2E] last:border-0"
                 >
                   {link.label}

@@ -1,20 +1,24 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { VizoraMark } from "@/components/VizoraMark";
 
 type FooterLink = { label: string; href: string; external?: boolean };
 
-const studentsHrefs = ["#students", "#solution", "#solution", "#how-it-works"];
+// TODO: Telegram link removed — t.me/vizora_ai resolves to an unrelated
+// third-party channel, not ours. Restore once the real channel exists.
+const studentsHrefs = ["#students", "#solution", "#solution", "#how-it-works", "/blog"];
 const agenciesHrefs = ["#agencies", "#agencies", "#agencies", "#early-access"];
 const contactLinks: FooterLink[] = [
-  { label: "Telegram", href: "https://t.me/vizora_ai", external: true },
   { label: "Instagram", href: "https://instagram.com/vizora_ai", external: true },
   { label: "Email", href: "mailto:hello@vizora.ai", external: true },
 ];
 
 export function Footer() {
+  const router = useRouter();
   const { t } = useTranslation("landing");
 
   const studentsLabels = t("footer.students_links", { returnObjects: true }) as string[];
@@ -28,8 +32,15 @@ export function Footer() {
 
   const handleNavClick = (href: string, external?: boolean) => {
     if (external) return;
+    // These ids only exist on the homepage — from /blog, /privacy, /terms
+    // etc. querySelector finds nothing and scrollIntoView silently no-ops,
+    // so fall back to navigating to the homepage with the hash.
     const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    } else {
+      router.push(`/${href}`);
+    }
   };
 
   return (
@@ -48,20 +59,10 @@ export function Footer() {
               {t("footer.tagline")}
             </p>
             {/* Social links */}
+            {/* TODO: Telegram icon removed — t.me/vizora_ai resolves to an
+                unrelated third-party channel, not ours. Restore once the
+                real channel exists. */}
             <div className="flex items-center gap-3">
-              <motion.a
-                href="https://t.me/vizora_ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-9 h-9 rounded-xl bg-[#13131A] border border-[#1E1E2E] hover:border-[#6C63FF]/40 flex items-center justify-center text-[#8B8BA7] hover:text-[#F0F0FF] transition-all duration-200"
-                aria-label="Telegram"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.024 9.538c-.143.678-.529.843-.993.525l-2.837-2.091-1.37 1.317c-.152.151-.278.278-.569.278l.202-2.875 5.23-4.724c.228-.201-.049-.314-.353-.113L7.403 14.64l-2.775-.869c-.604-.189-.615-.604.126-.895l10.844-4.182c.504-.182.944.112.964.554z" />
-                </svg>
-              </motion.a>
               <motion.a
                 href="https://instagram.com/vizora_ai"
                 target="_blank"
@@ -96,6 +97,13 @@ export function Footer() {
                       >
                         {link.label}
                       </a>
+                    ) : link.href.startsWith("/") ? (
+                      <Link
+                        href={link.href}
+                        className="text-[#8B8BA7] hover:text-[#F0F0FF] text-sm transition-colors duration-200"
+                      >
+                        {link.label}
+                      </Link>
                     ) : (
                       <button
                         onClick={() => handleNavClick(link.href)}
@@ -117,9 +125,13 @@ export function Footer() {
             {t("footer.copyright")}
           </p>
           <div className="flex items-center gap-4 text-[#8B8BA7]/60 text-xs">
-            <span>{t("footer.privacy")}</span>
+            <Link href="/privacy" className="hover:text-[#F0F0FF] transition-colors duration-200">
+              {t("footer.privacy")}
+            </Link>
             <span>·</span>
-            <span>{t("footer.terms")}</span>
+            <Link href="/terms" className="hover:text-[#F0F0FF] transition-colors duration-200">
+              {t("footer.terms")}
+            </Link>
           </div>
         </div>
 

@@ -7,6 +7,7 @@ import { Agencies } from "@/components/Agencies";
 import { EarlyAccess } from "@/components/EarlyAccess";
 import { Footer } from "@/components/Footer";
 
+// TODO: update to real domain once purchased (ТЗ-030)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
 
 const jsonLd = {
@@ -57,6 +58,30 @@ const jsonLd = {
           acceptedAnswer: {
             "@type": "Answer",
             text: "AI тренер Vizora позволяет практиковаться в ответах на вопросы консульства в любое время, получать персональный анализ рисков и пошаговый план подготовки — без дорогостоящих агентств.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Что такое Vizora AI?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Vizora AI — это AI-помощник для подготовки к визовому интервью Work and Travel USA (виза J-1): симулятор интервью с AI-офицером, ответы на вопросы 24/7, персональный анализ риска отказа и чек-лист документов.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Сколько стоит Vizora AI?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Базовый доступ к Vizora AI бесплатный (тариф FREE). Платные тарифы — СТАНДАРТ (3 900 ₸/мес) и ПРЕМИУМ (6 900 ₸/мес) — открывают неограниченные симуляции интервью, детальный разбор рисков и режим реального консула.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Подходит ли Vizora AI для студентов из Казахстана?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Да, Vizora AI разработан специально для студентов Work & Travel USA из Казахстана и СНГ — с учётом типичных причин отказа по J-1 визе именно для заявителей из этого региона.",
           },
         },
       ],
