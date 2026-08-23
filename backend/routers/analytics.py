@@ -10,8 +10,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import decode_token, get_current_user_id
+from app.core.security import decode_token
 from app.models.analytics import AnalyticsEvent
+from app.models.user import User
+from routers.admin import require_admin
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -62,7 +64,7 @@ async def track_event(
 async def analytics_summary(
     days: int = Query(default=7, ge=1, le=90),
     db: AsyncSession = Depends(get_db),
-    _user_id: str = Depends(get_current_user_id),
+    _admin: User = Depends(require_admin),
 ):
     """Admin: event counts for the last N days."""
     since = datetime.utcnow() - timedelta(days=days)

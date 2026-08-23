@@ -50,8 +50,30 @@ class KaspiPaymentResult:
         self.pay_url = pay_url
 
 
+class KaspiServiceError(Exception):
+    """kaspi-service is unreachable or returned an error — always caught by
+    callers and turned into a clean 502, instead of surfacing to the client
+    as an opaque 500 (see routers/payments.py and routers/agency_billing.py)."""
+
+
 def is_mock_mode() -> bool:
     return not settings.KASPI_SERVICE_URL
+
+
+def _extract_data(resp: httpx.Response) -> dict:
+    """Parses response JSON and returns its "Data" field, raising ValueError
+    (caught alongside httpx.HTTPError by callers) for any shape that isn't
+    the expected {"Data": {...}} — not just invalid JSON. kaspi-service is
+    an unofficial, self-hosted clone (see module docstring) that can return
+    a 200 with an unexpected body (HTML, null, a bare list, {"Data": null},
+    ...) instead of raising an HTTP error status."""
+    payload = resp.json()
+    if not isinstance(payload, dict):
+        raise ValueError(f"unexpected response shape: {type(payload).__name__}")
+    data = payload.get("Data") or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"unexpected Data field shape: {type(data).__name__}")
+    return data
 
 
 def _session_headers() -> dict[str, str]:
@@ -90,23 +112,29 @@ async def create_payment(order_id: str, amount_kzt: int, description: str) -> Ka
         # dev-only "mock-complete" button hits POST /payments/mock-complete instead.
         return KaspiPaymentResult(payment_id=payment_id, pay_url=f"/payments/mock-complete/{payment_id}")
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(
-            f"{settings.KASPI_SERVICE_URL}/api/qr/create",
-            headers=_session_headers(),
-            json={"amount": amount_kzt},
-        )
-        resp.raise_for_status()
-        data = resp.json().get("Data") or {}
-        qr_operation_id = data.get("QrOperationId")
-        qr_token = data.get("QrToken")
-        if not qr_operation_id or not qr_token:
-            raise RuntimeError(f"kaspi-service response missing QrOperationId/QrToken: {resp.text}")
-        logger.info(
-            "Kaspi payment created order=%s amount=%s KZT qrOperationId=%s",
-            order_id, amount_kzt, qr_operation_id,
-        )
-        return KaspiPaymentResult(payment_id=str(qr_operation_id), pay_url=qr_token)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"{settings.KASPI_SERVICE_URL}/api/qr/create",
+                headers=_session_headers(),
+                json={"amount": amount_kzt},
+            )
+            resp.raise_for_status()
+            data = _extract_data(resp)
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.error("kaspi-service create-payment failed order=%s: %s", order_id, exc)
+        raise KaspiServiceError("kaspi-service unreachable or returned an error") from exc
+
+    qr_operation_id = data.get("QrOperationId")
+    qr_token = data.get("QrToken")
+    if not qr_operation_id or not qr_token:
+        logger.error("kaspi-service response missing QrOperationId/QrToken order=%s", order_id)
+        raise KaspiServiceError("kaspi-service response missing QrOperationId/QrToken")
+    logger.info(
+        "Kaspi payment created order=%s amount=%s KZT qrOperationId=%s",
+        order_id, amount_kzt, qr_operation_id,
+    )
+    return KaspiPaymentResult(payment_id=str(qr_operation_id), pay_url=qr_token)
 
 
 # Mirrors kaspi-service/src/polling.js's QR_FINAL_STATUSES — any status not
@@ -140,19 +168,24 @@ async def get_payment_status(payment_id: str) -> str:
     if is_mock_mode():
         return "pending"
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.get(
-            f"{settings.KASPI_SERVICE_URL}/api/qr/status",
-            params={"qrOperationId": payment_id},
-            headers=_session_headers(),
-        )
-        resp.raise_for_status()
-        kaspi_status = (resp.json().get("Data") or {}).get("Status")
-        if kaspi_status == "Processed":
-            return "paid"
-        if kaspi_status in _KASPI_FAILED_STATUSES:
-            return "failed"
-        return "pending"
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                f"{settings.KASPI_SERVICE_URL}/api/qr/status",
+                params={"qrOperationId": payment_id},
+                headers=_session_headers(),
+            )
+            resp.raise_for_status()
+            kaspi_status = _extract_data(resp).get("Status")
+    except (httpx.HTTPError, ValueError) as exc:
+        logger.error("kaspi-service status check failed payment_id=%s: %s", payment_id, exc)
+        raise KaspiServiceError("kaspi-service unreachable or returned an error") from exc
+
+    if kaspi_status == "Processed":
+        return "paid"
+    if kaspi_status in _KASPI_FAILED_STATUSES:
+        return "failed"
+    return "pending"
 
 
 def verify_webhook_signature(raw_body: bytes, signature: str | None) -> bool:

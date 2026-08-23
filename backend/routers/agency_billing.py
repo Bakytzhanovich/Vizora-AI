@@ -13,7 +13,12 @@ from app.core.database import get_db
 from app.models.subscription_event import SubscriptionEvent
 from app.services import kaspi_pay_client
 from app.services.subscription_service import AGENCY_PLANS
-from routers.payments import PLAN_NAMES_RU, PLAN_PRICES_KZT, _apply_successful_payment
+from routers.payments import (
+    PLAN_NAMES_RU,
+    PLAN_PRICES_KZT,
+    _apply_successful_payment,
+    _create_kaspi_payment_or_502,
+)
 
 router = APIRouter(prefix="/agency/billing", tags=["agency-billing"])
 
@@ -37,7 +42,7 @@ async def create_agency_payment(
     amount = PLAN_PRICES_KZT[body.plan][body.billing_period]
 
     order_id = str(uuid.uuid4())
-    result = await kaspi_pay_client.create_payment(
+    result = await _create_kaspi_payment_or_502(
         order_id=order_id,
         amount_kzt=amount,
         description=f"Vizora AI Agency — {PLAN_NAMES_RU.get(body.plan, body.plan)} ({body.billing_period})",

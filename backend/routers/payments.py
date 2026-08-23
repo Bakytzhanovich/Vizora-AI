@@ -116,6 +116,22 @@ class CreatePaymentRequest(BaseModel):
     discount_code: str | None = None
 
 
+async def _create_kaspi_payment_or_502(
+    *, order_id: str, amount_kzt: int, description: str
+) -> kaspi_pay_client.KaspiPaymentResult:
+    """Shared by this router and routers/agency_billing.py — one place to
+    keep the "kaspi-service is unreachable" → 502 translation in sync."""
+    try:
+        return await kaspi_pay_client.create_payment(
+            order_id=order_id, amount_kzt=amount_kzt, description=description,
+        )
+    except kaspi_pay_client.KaspiServiceError:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Не удалось связаться с платёжным сервисом. Попробуйте ещё раз через пару минут.",
+        )
+
+
 @router.post("/create-payment", status_code=status.HTTP_201_CREATED)
 async def create_payment(
     body: CreatePaymentRequest,
@@ -140,7 +156,7 @@ async def create_payment(
         discount_applied = True
 
     order_id = str(uuid.uuid4())
-    result = await kaspi_pay_client.create_payment(
+    result = await _create_kaspi_payment_or_502(
         order_id=order_id,
         amount_kzt=amount,
         description=f"Vizora AI — {PLAN_NAMES_RU.get(body.plan, body.plan)} ({body.billing_period})",

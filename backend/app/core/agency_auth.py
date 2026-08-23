@@ -73,8 +73,11 @@ async def get_current_member(
         role=role,
     )
 
-    # For managers: verify the account is still active on every request.
-    if ctx.role == "manager" and ctx.member_id:
+    # Verify the account is still active on every request — admin-role
+    # tokens are backed by an AgencyMember row too (see routers/agency.py's
+    # registration flow), so a compromised/offboarded owner's 30-day token
+    # can be revoked the same way a manager's can, not just managers'.
+    if ctx.member_id:
         from app.models.agency import AgencyMember  # local import avoids circular dep
         member = await db.get(AgencyMember, ctx.member_id)
         if not member or member.status != "active":

@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 from datetime import datetime
 
@@ -108,7 +109,8 @@ async def send_message(
             ):
                 full_response += chunk
                 yield chunk
-        except Exception as e:
+        except Exception:
+            logging.getLogger(__name__).exception("Chat response generation failed for user=%s", user_id)
             error_msg = (
                 "Что-то пошло не так. Попробуй ещё раз."
                 if language != "kz"

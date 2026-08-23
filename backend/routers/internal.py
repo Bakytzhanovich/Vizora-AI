@@ -1,10 +1,11 @@
 """Internal endpoints for the Telegram notification bot."""
 
+import hmac
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -14,19 +15,20 @@ from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
 
 def _check_secret(request: Request) -> None:
     secret = request.headers.get("X-Notification-Secret", "")
-    if not settings.NOTIFICATION_SECRET or secret != settings.NOTIFICATION_SECRET:
+    if not settings.NOTIFICATION_SECRET or not hmac.compare_digest(secret, settings.NOTIFICATION_SECRET):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
 def _check_admin_secret(request: Request) -> None:
     secret = request.headers.get("X-Admin-Secret", "")
-    if not settings.ADMIN_SECRET or secret != settings.ADMIN_SECRET:
+    if not settings.ADMIN_SECRET or not hmac.compare_digest(secret, settings.ADMIN_SECRET):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
@@ -52,6 +54,7 @@ NOTIFICATION_TYPES = {
 
 
 @router.post("/bootstrap-admin")
+@limiter.limit("5/hour")
 async def bootstrap_admin(
     request: Request,
     body: BootstrapAdminRequest,
@@ -61,6 +64,25 @@ async def bootstrap_admin(
 
     email = body.email.lower()
     user = await db.scalar(select(User).where(User.email == email))
+
+    # Bootstrap means first-time setup, not a standing "mint an admin
+    # whenever I hold the secret" endpoint — once an admin exists, further
+    # admin *promotions* go through the real admin panel (per-admin JWT via
+    # POST /admin/users/{user_id}/role) instead of this route. Password
+    # resets on an *already-admin* account are still allowed here via
+    # reset_password=true (see below) — that's intentional, not a gap: it's
+    # the only recovery path for a locked-out/forgotten-password admin,
+    # since there's no admin "forgot password" flow elsewhere in the app.
+    existing_admin_count = await db.scalar(select(func.count()).select_from(User).where(User.role == "admin"))
+    if existing_admin_count and not (user and user.role == "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "An admin account already exists — log in as that admin and use "
+                "POST /admin/users/{user_id}/role to promote further admins from here on."
+            ),
+        )
+
     created = False
     password_changed = False
 

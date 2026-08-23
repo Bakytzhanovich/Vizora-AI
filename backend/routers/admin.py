@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -394,6 +395,40 @@ async def admin_users(
             for row in rows
         ],
     }
+
+
+class UpdateUserRoleRequest(BaseModel):
+    role: str  # "admin" | "student"
+
+
+@router.post("/users/{user_id}/role")
+async def admin_set_user_role(
+    user_id: str,
+    body: UpdateUserRoleRequest,
+    acting_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Promote/demote a user via real per-admin JWT auth — the actual "real
+    admin panel" path for minting additional admins, so /internal/bootstrap-
+    admin's shared-secret route can stay a true one-time bootstrap tool
+    (see routers/internal.py) instead of a standing admin-minting endpoint."""
+    if body.role not in ("admin", "student"):
+        raise HTTPException(status_code=400, detail="role must be 'admin' or 'student'")
+    if user_id == acting_admin.id and body.role != "admin":
+        raise HTTPException(status_code=400, detail="Нельзя снять права администратора с самого себя")
+
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    old_role = user.role
+    user.role = body.role
+    await db.commit()
+    _audit_admin_action(
+        "user.role-change", acting_admin,
+        target_user_id=user.id, target_email=user.email, old_role=old_role, new_role=body.role,
+    )
+    return {"id": user.id, "email": user.email, "role": user.role}
 
 
 @router.get("/agencies")

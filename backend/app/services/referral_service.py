@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.referral import Referral, ReferralCode, ReferralReward
@@ -56,6 +57,22 @@ def generate_code_string(name: str = "") -> str:
     return f"{prefix}{suffix}"
 
 
+async def _insert_new_code(user_id: str, name: str, db: AsyncSession) -> str:
+    """Generates a free code and inserts it. Raises IntegrityError (caller's
+    problem to handle) if the insert itself fails — e.g. a FK violation."""
+    for _ in range(10):
+        code = generate_code_string(name)
+        clash = await db.scalar(select(ReferralCode).where(ReferralCode.code == code))
+        if not clash:
+            break
+    else:
+        code = f"VZ{_random_suffix(6)}"  # very unlikely fallback
+
+    db.add(ReferralCode(user_id=user_id, code=code))
+    await db.commit()
+    return code
+
+
 async def get_or_create_code(user_id: str, name: str, db: AsyncSession) -> str:
     existing = await db.scalar(
         select(ReferralCode).where(ReferralCode.user_id == user_id)
@@ -63,21 +80,25 @@ async def get_or_create_code(user_id: str, name: str, db: AsyncSession) -> str:
     if existing:
         return existing.code
 
-    for _ in range(10):
-        code = generate_code_string(name)
-        clash = await db.scalar(
-            select(ReferralCode).where(ReferralCode.code == code)
-        )
-        if not clash:
-            db.add(ReferralCode(user_id=user_id, code=code))
-            await db.commit()
-            return code
+    # Observed intermittently in practice: this runs moments after a fresh
+    # registration and the INSERT can hit a ForeignKeyViolation as if the
+    # just-committed users row isn't visible yet. Retries have always
+    # succeeded within 1-2 attempts in testing — cheaper than root-causing
+    # the exact visibility gap. Also covers the FK's own uniqueness
+    # constraint racing against a concurrent request for the same user.
+    for _ in range(2):  # up to 3 attempts total: these 2 catch IntegrityError and retry,
+                        # the final unguarded attempt below lets it propagate
+        try:
+            return await _insert_new_code(user_id, name, db)
+        except IntegrityError:
+            await db.rollback()
+            existing = await db.scalar(
+                select(ReferralCode).where(ReferralCode.user_id == user_id)
+            )
+            if existing:
+                return existing.code
 
-    # Very unlikely fallback
-    code = f"VZ{_random_suffix(6)}"
-    db.add(ReferralCode(user_id=user_id, code=code))
-    await db.commit()
-    return code
+    return await _insert_new_code(user_id, name, db)
 
 
 async def count_completed_referrals(referrer_id: str, db: AsyncSession) -> int:
