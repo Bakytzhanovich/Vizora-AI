@@ -1,8 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { isTelegramWebApp } from "@/lib/telegram";
+
+const GoogleAuthContent = dynamic(() => import("./GoogleAuthContent"), {
+  ssr: false,
+});
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
@@ -12,6 +16,14 @@ interface Props {
 }
 
 export function GoogleAuthButton({ onSuccess, onError }: Props) {
+  const [googleReady, setGoogleReady] = useState(false);
+
+  useEffect(() => {
+    // Keep the third-party GSI script out of the critical render path.
+    const timer = window.setTimeout(() => setGoogleReady(true), 1000);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   // The Telegram SDK script loads asynchronously (see app/layout.tsx), so
   // isTelegramWebApp() can still read false on first render even inside
   // Telegram — recheck once the script announces it has loaded.
@@ -25,31 +37,12 @@ export function GoogleAuthButton({ onSuccess, onError }: Props) {
   }, [inTelegram]);
 
   if (!GOOGLE_CLIENT_ID) return null;
+  if (!googleReady) return null;
   // Google blocks its OAuth/GSI flow inside embedded WebViews (Telegram Mini
   // App included) — the button silently fails to initialize there instead of
   // erroring, which looks like a frozen page. Hide it rather than show
   // something that can never work.
   if (inTelegram) return null;
 
-  return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID} locale="ru">
-      <div className="flex items-center gap-3 my-6">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-secondary text-xs">или</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-      <div className="flex justify-center">
-        <GoogleLogin
-          onSuccess={(credentialResponse) => {
-            if (credentialResponse.credential) onSuccess(credentialResponse.credential);
-          }}
-          onError={onError}
-          theme="outline"
-          shape="pill"
-          size="large"
-          text="continue_with"
-        />
-      </div>
-    </GoogleOAuthProvider>
-  );
+  return <GoogleAuthContent onSuccess={onSuccess} onError={onError} />;
 }

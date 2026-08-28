@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useBranding } from "@/context/BrandingContext";
 import { VizoraMark } from "@/components/VizoraMark";
 
@@ -21,9 +22,12 @@ export function BrandedLogo({ size = "md", className = "" }: Props) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       {branding.logoUrl ? (
-        <img
+        <Image
           src={branding.logoUrl}
           alt={branding.name}
+          width={36}
+          height={36}
+          unoptimized
           className={`${s.logo} rounded-lg object-cover`}
         />
       ) : branding.isWhiteLabel ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
 import { Upload, X } from "lucide-react";
 
@@ -55,9 +56,12 @@ export function LogoUpload({ currentUrl, onUploaded, onUpload }: Props) {
     <div>
       {preview ? (
         <div className="flex items-center gap-3">
-          <img
+          <Image
             src={preview}
             alt="Logo preview"
+            width={64}
+            height={64}
+            unoptimized
             className="w-16 h-16 rounded-xl object-cover border border-gray-200"
           />
           <div>

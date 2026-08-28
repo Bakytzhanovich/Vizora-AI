@@ -172,6 +172,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPass((v) => !v)}
+                  aria-label={showPass ? "Скрыть пароль" : "Показать пароль"}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors"
                 >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -218,7 +219,7 @@ export default function LoginPage() {
         <div className="text-center mt-4">
           <Link
             href="/agency/login"
-            className="inline-flex items-center gap-1.5 text-xs text-secondary/60 hover:text-secondary transition-colors border border-border rounded-lg px-3 py-1.5"
+            className="inline-flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors border border-border rounded-lg px-3 py-1.5"
           >
             <Building2 size={13} />
             Войти как агентство

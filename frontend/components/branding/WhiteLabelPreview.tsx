@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { VizoraMark } from "@/components/VizoraMark";
 
 interface Props {
@@ -16,7 +17,14 @@ export function WhiteLabelPreview({ name, logoUrl, primaryColor, isWhiteLabel = 
       <div className="bg-bg border-b border-border px-4 py-3 flex items-center justify-between rounded-t-xl mb-3">
         <div className="flex items-center gap-2">
           {logoUrl ? (
-            <img src={logoUrl} alt={name} className="w-7 h-7 rounded-lg object-cover" />
+            <Image
+              src={logoUrl}
+              alt={name}
+              width={28}
+              height={28}
+              unoptimized
+              className="w-7 h-7 rounded-lg object-cover"
+            />
           ) : isWhiteLabel ? (
             <span className="text-lg font-bold" style={{ color: primaryColor }}>◈</span>
           ) : (

@@ -13,8 +13,8 @@ export function VizoraMark({
     <Image
       src="/brand/vizora-mark.png"
       alt=""
-      width={512}
-      height={512}
+      width={36}
+      height={36}
       priority={priority}
       aria-hidden="true"
       className={`shrink-0 object-contain ${className}`}
