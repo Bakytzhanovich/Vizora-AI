@@ -21,6 +21,7 @@ const inter = Inter({
 
 // TODO: update to real domain once purchased (ТЗ-030)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export const metadata: Metadata = {
   title: {
@@ -101,6 +102,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0A0A0F" />
+        <link rel="preconnect" href={API_URL} crossOrigin="anonymous" />
         {/* Sets data-theme from localStorage before first paint — without this,
             a user who picked "light" would see a flash of the dark default
             (CSS vars in :root) on every load, since ThemeProvider only runs

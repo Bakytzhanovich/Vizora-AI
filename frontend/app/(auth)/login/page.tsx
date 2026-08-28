@@ -99,12 +99,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-4 py-12">
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
+      <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
@@ -116,17 +111,14 @@ export default function LoginPage() {
           </Link>
           <h1 className="text-2xl font-bold text-primary mb-2">Добро пожаловать</h1>
           <p className="text-secondary text-sm mb-3">Войди в свой аккаунт</p>
-          {studentCount !== null && studentCount > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-1.5 text-xs text-secondary bg-card border border-border rounded-full px-3 py-1.5"
-            >
-              <GraduationCap size={14} className="text-accent" />
-              <span>{studentCount}+ студентов готовятся к интервью в США</span>
-            </motion.div>
-          )}
+          <div className="min-h-[30px] flex items-center justify-center">
+            {studentCount !== null && studentCount > 0 && (
+              <div className="inline-flex items-center gap-1.5 text-xs text-secondary bg-card border border-border rounded-full px-3 py-1.5">
+                <GraduationCap size={14} className="text-accent" />
+                <span>{studentCount}+ студентов готовятся к интервью в США</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 sm:p-8">
@@ -206,7 +198,9 @@ export default function LoginPage() {
             )}
           </form>
 
-          <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+          <div className="min-h-[76px]">
+            <GoogleAuthButton onSuccess={handleGoogleSuccess} />
+          </div>
         </div>
 
         <p className="text-center text-secondary text-sm mt-6">
@@ -225,7 +219,7 @@ export default function LoginPage() {
             Войти как агентство
           </Link>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
