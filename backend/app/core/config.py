@@ -11,7 +11,12 @@ class Settings(BaseSettings):
     # Runs `alembic upgrade head` on every startup — needed on platforms without
     # shell/job access (e.g. Render free tier) where migrations can't be run manually.
     RUN_MIGRATIONS_ON_STARTUP: bool = True
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "https://vizora.ai"]
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://vizora.ai",
+        "https://vizora-ai-theta.vercel.app",
+    ]
 
     JWT_SECRET: str  # Required — set via .env (no default so startup fails if missing)
     JWT_ALGORITHM: str = "HS256"
