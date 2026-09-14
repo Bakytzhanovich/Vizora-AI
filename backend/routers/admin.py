@@ -82,56 +82,10 @@ async def _daily_counts(db: AsyncSession, column, since: datetime, *where) -> di
 _RETENTION_DAYS = [1, 3, 7, 14, 30]
 
 
-async def _compute_weekly_retention(db: AsyncSession) -> dict:
-    """Retention curve (D1/D3/D7/D14/D30) by weekly signup cohort.
-
-    "Returned" at DN means the user has *any* product activity (a tracked
-    analytics event, a chat message, a simulator session, or roadmap/
-    document progress) within N days of registering — the standard
-    cumulative "N-day retention" definition, counted from the moment of
-    signup so every DN window has positive width (a fixed 1-day exclusion
-    would make D1's window zero-length and permanently read ~0%). A cohort
-    only gets a DN rate once its DN window has fully elapsed; cohorts still
-    inside that window report a null rate instead of a misleadingly low one.
-    """
-    now = datetime.utcnow()
-    users = (await db.execute(select(User.id, User.created_at))).all()
-    empty_points = {f"d{d}": {"eligible": 0, "retained": 0, "rate": None} for d in _RETENTION_DAYS}
-    if not users:
-        return {"cohorts": [], "overall": empty_points, "eligible_users": 0}
-
-    activity_sources = [
-        (AnalyticsEvent.user_id, AnalyticsEvent.created_at),
-        (ChatMessage.user_id, ChatMessage.created_at),
-        (SimulatorSession.user_id, SimulatorSession.created_at),
-        (RoadmapProgress.user_id, RoadmapProgress.created_at),
-        (DocumentProgress.user_id, DocumentProgress.updated_at),
-    ]
-    activity_by_user: dict[str, list[datetime]] = defaultdict(list)
-    for user_col, ts_col in activity_sources:
-        rows = await db.execute(select(user_col, ts_col).where(user_col.isnot(None)))
-        for uid, ts in rows.all():
-            if uid and ts:
-                activity_by_user[uid].append(ts)
-
-    def _new_cohort() -> dict:
-        return {"cohort_size": 0, "points": {d: {"eligible": 0, "retained": 0} for d in _RETENTION_DAYS}}
-
-    cohorts: dict[str, dict] = defaultdict(_new_cohort)
-    for uid, created_at in users:
-        week_start = (created_at.date() - timedelta(days=created_at.weekday())).isoformat()
-        cohort = cohorts[week_start]
-        cohort["cohort_size"] += 1
-        user_activity = activity_by_user.get(uid, [])
-        for days in _RETENTION_DAYS:
-            window_end = created_at + timedelta(days=days)
-            if now < window_end:
-                continue
-            point = cohort["points"][days]
-            point["eligible"] += 1
-            if any(created_at <= ts <= window_end for ts in user_activity):
-                point["retained"] += 1
-
+def _finalize_retention(cohorts: dict, metric: str) -> dict:
+    """Shared cohort-list/overall roll-up for one metric ("cumulative" or
+    "classic") out of the combined per-cohort counters _compute_weekly_retention
+    builds in a single pass."""
     cohort_list = []
     overall_eligible = {d: 0 for d in _RETENTION_DAYS}
     overall_retained = {d: 0 for d in _RETENTION_DAYS}
@@ -139,7 +93,7 @@ async def _compute_weekly_retention(db: AsyncSession) -> dict:
         c = cohorts[week_start]
         points = {}
         for days in _RETENTION_DAYS:
-            p = c["points"][days]
+            p = c[metric][days]
             rate = round(p["retained"] / p["eligible"] * 100, 1) if p["eligible"] else None
             points[f"d{days}"] = {"eligible": p["eligible"], "retained": p["retained"], "rate": rate}
             overall_eligible[days] += p["eligible"]
@@ -158,6 +112,125 @@ async def _compute_weekly_retention(db: AsyncSession) -> dict:
         overall[f"d{days}"] = {"eligible": eligible, "retained": retained, "rate": rate}
 
     return {"cohorts": cohort_list, "overall": overall, "eligible_users": overall_eligible[7]}
+
+
+async def _compute_weekly_retention(db: AsyncSession) -> dict:
+    """Two retention curves (D1/D3/D7/D14/D30) by weekly signup cohort,
+    computed together off the same activity data (one set of queries).
+
+    "cumulative": the original, still-shown-first metric — "returned" at DN
+    means *any* product activity (analytics event, chat message, simulator
+    session, or roadmap/document progress) fell anywhere within [signup,
+    signup+N days]. This is an activation metric, not retention: one action
+    on signup day (e.g. finishing onboarding, which nearly everyone does)
+    permanently satisfies every DN window, which is why it reads ~95%+.
+
+    "classic": real day-N retention — "returned" at DN means activity fell
+    specifically within the single-day window [signup+N days, signup+(N+1)
+    days), i.e. day N itself, never day 0 (signup day), since N starts at 1.
+    Same continuous elapsed-time windowing as "cumulative" (no calendar-day
+    rounding — this product's users span timezones and a UTC calendar-day
+    floor would misclassify activity near midnight), same weekly cohorts,
+    same eligibility gating (a cohort only gets a DN rate once that day's
+    window has fully elapsed; still-pending cohorts report a null rate
+    instead of a misleadingly low one from partial data).
+    """
+    now = datetime.utcnow()
+    users = (await db.execute(select(User.id, User.created_at))).all()
+    empty_points = {f"d{d}": {"eligible": 0, "retained": 0, "rate": None} for d in _RETENTION_DAYS}
+    if not users:
+        empty = {"cohorts": [], "overall": empty_points, "eligible_users": 0}
+        return {"cumulative": empty, "classic": empty}
+
+    activity_sources = [
+        (AnalyticsEvent.user_id, AnalyticsEvent.created_at),
+        (ChatMessage.user_id, ChatMessage.created_at),
+        (SimulatorSession.user_id, SimulatorSession.created_at),
+        (RoadmapProgress.user_id, RoadmapProgress.created_at),
+        (DocumentProgress.user_id, DocumentProgress.updated_at),
+    ]
+    activity_by_user: dict[str, list[datetime]] = defaultdict(list)
+    for user_col, ts_col in activity_sources:
+        rows = await db.execute(select(user_col, ts_col).where(user_col.isnot(None)))
+        for uid, ts in rows.all():
+            if uid and ts:
+                activity_by_user[uid].append(ts)
+
+    def _new_cohort() -> dict:
+        return {
+            "cohort_size": 0,
+            "cumulative": {d: {"eligible": 0, "retained": 0} for d in _RETENTION_DAYS},
+            "classic": {d: {"eligible": 0, "retained": 0} for d in _RETENTION_DAYS},
+        }
+
+    cohorts: dict[str, dict] = defaultdict(_new_cohort)
+    for uid, created_at in users:
+        week_start = (created_at.date() - timedelta(days=created_at.weekday())).isoformat()
+        cohort = cohorts[week_start]
+        cohort["cohort_size"] += 1
+        user_activity = activity_by_user.get(uid, [])
+        for days in _RETENTION_DAYS:
+            # cumulative: [signup, signup+N days]
+            window_end = created_at + timedelta(days=days)
+            if now >= window_end:
+                point = cohort["cumulative"][days]
+                point["eligible"] += 1
+                if any(created_at <= ts <= window_end for ts in user_activity):
+                    point["retained"] += 1
+
+            # classic: [signup+N days, signup+(N+1) days) — day N only
+            day_start = created_at + timedelta(days=days)
+            day_end = created_at + timedelta(days=days + 1)
+            if now >= day_end:
+                point = cohort["classic"][days]
+                point["eligible"] += 1
+                if any(day_start <= ts < day_end for ts in user_activity):
+                    point["retained"] += 1
+
+    return {
+        "cumulative": _finalize_retention(cohorts, "cumulative"),
+        "classic": _finalize_retention(cohorts, "classic"),
+    }
+
+
+_FUNNEL_STEPS = ["register_complete", "onboarding_complete", "simulator_start", "simulator_end"]
+_FUNNEL_LABELS = {
+    "register_complete": "Регистрация завершена",
+    "onboarding_complete": "Онбординг пройден",
+    "simulator_start": "Первый запуск тренажёра",
+    "simulator_end": "Первая завершённая сессия",
+}
+
+
+async def _compute_activation_funnel(db: AsyncSession) -> dict:
+    """Register -> onboarding -> first simulator launch -> first completed
+    session, as distinct-user counts per step (not raw event counts — a
+    user can fire simulator_start/simulator_end more than once, which would
+    inflate later steps past earlier ones). Conversion is step-over-step
+    (% of the previous step), not % of the funnel's first step, so the
+    single biggest drop-off is visible directly instead of needing mental
+    division between numbers."""
+    counts: dict[str, int] = {}
+    for event in _FUNNEL_STEPS:
+        counts[event] = await db.scalar(
+            select(func.count(func.distinct(AnalyticsEvent.user_id)))
+            .where(AnalyticsEvent.event == event, AnalyticsEvent.user_id.isnot(None))
+        ) or 0
+
+    steps = []
+    previous: int | None = None
+    for event in _FUNNEL_STEPS:
+        count = counts[event]
+        pct_of_previous = round(count / previous * 100, 1) if previous else None
+        steps.append({
+            "event": event,
+            "label": _FUNNEL_LABELS[event],
+            "count": count,
+            "pct_of_previous": pct_of_previous,
+        })
+        previous = count
+
+    return {"steps": steps}
 
 
 async def _compute_entry_exit_pages(db: AsyncSession, days: int = 30) -> dict:
@@ -650,6 +723,7 @@ async def admin_analytics(
             for row in top_event_rows
         ],
         "retention": await _compute_weekly_retention(db),
+        "activation_funnel": await _compute_activation_funnel(db),
         "entry_exit_pages": await _compute_entry_exit_pages(db),
     }
 

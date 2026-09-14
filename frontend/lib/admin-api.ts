@@ -107,6 +107,16 @@ export interface RetentionPoint {
   rate: number | null;
 }
 
+export interface RetentionCurve {
+  cohorts: Array<{
+    week_start: string;
+    cohort_size: number;
+    points: Record<RetentionDay, RetentionPoint>;
+  }>;
+  overall: Record<RetentionDay, RetentionPoint>;
+  eligible_users: number;
+}
+
 export interface AdminAnalytics {
   activity_14d: Array<{
     date: string;
@@ -118,14 +128,22 @@ export interface AdminAnalytics {
   funnel: Record<string, number>;
   product_usage: Record<string, number>;
   top_events: Array<{ event: string; count: number }>;
+  // "cumulative" = the original metric: any activity anywhere in [signup,
+  // signup+N days] — an activation metric, reads ~95%+ because one onboarding
+  // action on day 0 satisfies every window forever. "classic" = real day-N
+  // retention: activity specifically within day N's own window, day 0 never
+  // counted. Same cohorts/eligibility gating, computed off the same data.
   retention: {
-    cohorts: Array<{
-      week_start: string;
-      cohort_size: number;
-      points: Record<RetentionDay, RetentionPoint>;
+    cumulative: RetentionCurve;
+    classic: RetentionCurve;
+  };
+  activation_funnel: {
+    steps: Array<{
+      event: string;
+      label: string;
+      count: number;
+      pct_of_previous: number | null;
     }>;
-    overall: Record<RetentionDay, RetentionPoint>;
-    eligible_users: number;
   };
   entry_exit_pages: {
     total_sessions: number;
