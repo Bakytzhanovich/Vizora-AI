@@ -3,13 +3,14 @@
   "interview_date": "Интервьюге дейін: {{days}} күн",
   "no_interview_date": "Интервью күні белгіленбеген",
   "progress": "Дайындық үрдісі",
-  "risk_profile": "Тәуекел профилің",
+  "risk_profile": "Виза алудан бас тарту тәуекелі",
+  "risk_summary": "{{level}} · {{count}} фактор бар",
   "risk_high": "Жоғары тәуекел",
   "risk_medium": "Орташа тәуекел",
   "risk_low": "Төмен тәуекел",
   "how_to_fix": "Қалай шешу керек:",
   "unlock_solutions": "Шешімдерді ашу →",
-  "no_risks": "🎉 Айқын тәуекелдер табылмады. Керемет профиль!",
+  "no_risks": "Айқын тәуекелдер табылмады. Керемет профиль!",
   "modules": "Дайындық модульдері",
   "module_titles": {
     "chat": "AI Көмекші",
@@ -52,6 +53,11 @@
   "hide_extra_risks": "Жасыру",
   "recommended_badge": "Ұсынамыз",
   "continue_hint": "Тоқтаған жеріңнен жалғастыр",
+  "continue_action": "Дайындықты жалғастыру",
+  "prep_plan_label": "Дайындық жоспары",
+  "more_label": "Тағы",
+  "documents_list_label": "Виза үшін құжаттар",
+  "emergency_list_label": "Бірдеңе дұрыс болмаса (Emergency)",
   "show_profile": "Профильді көрсету",
   "hide_profile": "Профильді жасыру",
   "referral_card": {
@@ -74,6 +80,11 @@
     "line1": "Айына {{count}} симулятор сеансы",
     "line2": "+ Консул режимі + Тәуекел талдауы",
     "cta": "Жазылу {{price}} →"
+  },
+  "upgrade_slim": {
+    "prefix": "СТАНДАРТ:",
+    "text": "айына {{count}} жаттығу + AI-консулмен талдау",
+    "cta": "{{price}} →"
   },
   "locked_features": {
     "title": "Стандартта қолжетімді",

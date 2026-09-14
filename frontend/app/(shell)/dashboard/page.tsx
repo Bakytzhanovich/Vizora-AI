@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogOut, ChevronDown, ChevronUp, Sparkles, Map, MessageCircle, Mic, FileText, Gift, LifeBuoy, User } from "lucide-react";
+import { LogOut, ChevronDown, AlertTriangle, Sparkles, MessageCircle, Mic, FileText, Gift, LifeBuoy, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
+import { PrepActionCard } from "@/components/dashboard/PrepActionCard";
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
@@ -45,6 +46,7 @@ export default function DashboardPage() {
   const [standardSessionsPerMonth, setStandardSessionsPerMonth] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAllRisks, setShowAllRisks] = useState(false);
+  const [riskExpanded, setRiskExpanded] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
@@ -177,127 +179,106 @@ export default function DashboardPage() {
         )}
       </motion.div>
 
-      {/* Progress */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-card border border-border rounded-2xl p-5 mb-5"
-      >
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-primary text-sm font-semibold">{t("dashboard:progress")}</span>
-          <span className="text-accent text-sm font-bold">{journeyProgress}%</span>
-        </div>
-        <div className="h-2 bg-border rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-gradient-to-r from-accent to-accent-light rounded-full"
-            initial={{ width: 0 }}
-            animate={{ width: `${journeyProgress}%` }}
-            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-          />
-        </div>
-        {isFree && subscription && (
-          <div className="mt-3 pt-3 border-t border-border text-xs text-secondary">
-            {t("dashboard:free_plan_usage", {
-              used: subscription.sessions_used ?? 0,
-              total: subscription.sessions_limit ?? 1,
-            })}
-          </div>
-        )}
-      </motion.div>
-
       {/* Main content (mobile: stacks in order below; desktop: 2/3 + 1/3 sidebar) */}
       <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
         {/* Main column */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Continue roadmap — the clearest "what do I do next" action, so
-              it leads on every width instead of only showing up buried in
-              the desktop-only modules grid further down. */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <ModuleCard
-              icon={Map}
-              title={t("dashboard:module_titles.roadmap")}
-              subtitle={t("dashboard:continue_hint")}
-              locked={false}
-              href="/roadmap"
-              index={0}
-              featured
-            />
-          </motion.div>
+        <div className="lg:col-span-2 space-y-3">
+          {/* Merged progress + "continue roadmap" — was two cards saying the
+              same thing two ways (a % bar, then a separate "continue" card
+              right below it). One card, one primary action, gets the only
+              real visual elevation on the screen. */}
+          <PrepActionCard progress={journeyProgress} href="/roadmap" />
+          {isFree && subscription && (
+            <p className="text-secondary text-xs px-1 -mt-1">
+              {t("dashboard:free_plan_usage", {
+                used: subscription.sessions_used ?? 0,
+                total: subscription.sessions_limit ?? 1,
+              })}
+            </p>
+          )}
 
-          {/* Risk profile */}
+          {/* Risk profile — collapsed to one row by default. Reading the
+              first risk's full advice (or the locked-upsell prompt) isn't
+              what a returning user needs at a glance; tapping to open it is
+              a deliberate second step, not something shipped expanded. */}
           {riskProfile && topRisks.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-card border border-border rounded-2xl p-5"
+              transition={{ delay: 0.15 }}
+              className="bg-card border border-border rounded-2xl p-4"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-primary font-semibold text-sm">{t("dashboard:risk_profile")}</h2>
+              <button
+                onClick={() => setRiskExpanded((v) => !v)}
+                aria-expanded={riskExpanded}
+                className="w-full flex items-center gap-3 text-left"
+              >
                 <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{ color: riskColor, background: `${riskColor}18` }}
+                  className="w-8 h-8 rounded-[10px] border flex items-center justify-center shrink-0"
+                  style={{ color: riskColor, background: `${riskColor}1E`, borderColor: `${riskColor}40` }}
                 >
-                  {t(`dashboard:risk_${overallRisk}` as const)}
+                  <AlertTriangle size={15} />
                 </span>
-              </div>
-              <div className="space-y-2.5">
-                <RiskCard risk={topRisks[0]} index={0} locked={!(subscription?.limits.risk_solutions ?? true)} />
-                {showAllRisks &&
-                  topRisks.slice(1).map((risk, i) => (
-                    <RiskCard key={risk.type} risk={risk} index={i + 1} locked={!(subscription?.limits.risk_solutions ?? true)} />
-                  ))}
-              </div>
-              {topRisks.length > 1 && (
-                <button
-                  onClick={() => setShowAllRisks((v) => !v)}
-                  className="flex items-center gap-1 text-secondary hover:text-primary text-xs mt-3 transition-colors"
-                >
-                  {showAllRisks ? (
-                    <>
-                      <ChevronUp size={14} />
-                      {t("dashboard:hide_extra_risks")}
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown size={14} />
-                      {t("dashboard:show_more_risks", { count: topRisks.length - 1 })}
-                    </>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-primary text-sm font-semibold">{t("dashboard:risk_profile")}</span>
+                  <span className="text-xs font-medium" style={{ color: riskColor }}>
+                    {t("dashboard:risk_summary", {
+                      level: t(`dashboard:risk_${overallRisk}` as const),
+                      count: topRisks.length,
+                    })}
+                  </span>
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-secondary shrink-0 transition-transform duration-200 ${riskExpanded ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {riskExpanded && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="space-y-2.5">
+                    <RiskCard risk={topRisks[0]} index={0} locked={!(subscription?.limits.risk_solutions ?? true)} />
+                    {showAllRisks &&
+                      topRisks.slice(1).map((risk, i) => (
+                        <RiskCard key={risk.type} risk={risk} index={i + 1} locked={!(subscription?.limits.risk_solutions ?? true)} />
+                      ))}
+                  </div>
+                  {topRisks.length > 1 && (
+                    <button
+                      onClick={() => setShowAllRisks((v) => !v)}
+                      className="flex items-center gap-1 text-secondary hover:text-primary text-xs mt-3 transition-colors"
+                    >
+                      <ChevronDown size={14} className={showAllRisks ? "rotate-180" : ""} />
+                      {showAllRisks ? t("dashboard:hide_extra_risks") : t("dashboard:show_more_risks", { count: topRisks.length - 1 })}
+                    </button>
                   )}
-                </button>
+                </div>
               )}
             </motion.div>
           )}
 
-          {/* Upgrade banner (FREE plan only) — after the free value content
-              above (roadmap nudge, risk profile), not ahead of it. */}
+          {/* Upgrade nudge (FREE plan only) — a slim row, not a bordered
+              card with its own heading and two lines of body copy. This is
+              the first thing a not-yet-paying user sees on every visit;
+              keeping it low-key matters more here than on a one-time
+              onboarding screen. */}
           {isFree && standardPriceKzt !== null && (
-            <motion.div
+            <motion.button
+              onClick={() => router.push("/pricing")}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-              className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/30 rounded-2xl p-5"
+              transition={{ delay: 0.2 }}
+              className="w-full flex items-center gap-2.5 bg-card border border-border hover:border-accent/40 rounded-xl px-3.5 py-2.5 text-left transition-colors"
             >
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles size={16} className="text-accent" />
-                <span className="text-primary font-bold text-sm">{t("dashboard:upgrade_banner.title")}</span>
-              </div>
-              <p className="text-secondary text-sm">
-                {t("dashboard:upgrade_banner.line1", { count: standardSessionsPerMonth ?? 15 })}
-              </p>
-              <p className="text-secondary text-sm mb-4">{t("dashboard:upgrade_banner.line2")}</p>
-              <button
-                onClick={() => router.push("/pricing")}
-                className="w-full sm:w-auto bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors"
-              >
-                {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}
-              </button>
-            </motion.div>
+              <Sparkles size={15} className="text-accent-light shrink-0" />
+              <span className="flex-1 min-w-0 text-xs text-secondary leading-tight">
+                <span className="text-primary font-semibold">{t("dashboard:upgrade_slim.prefix")}</span>{" "}
+                {t("dashboard:upgrade_slim.text", { count: standardSessionsPerMonth ?? 15 })}
+              </span>
+              <span className="text-accent-light text-xs font-bold shrink-0">
+                {t("dashboard:upgrade_slim.cta", { price: formatKzt(standardPriceKzt) })}
+              </span>
+            </motion.button>
           )}
 
           {/* Modules — Roadmap now leads the page above, and AI Помощник/
@@ -319,15 +300,19 @@ export default function DashboardPage() {
               onClick={() => router.push("/documents")}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-border/40 transition-colors"
             >
-              <FileText size={18} className="text-secondary shrink-0" />
-              <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:module_titles.documents")}</span>
+              <span className="w-7 h-7 rounded-lg bg-border flex items-center justify-center shrink-0">
+                <FileText size={15} className="text-secondary" />
+              </span>
+              <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:documents_list_label")}</span>
               <span className="text-secondary shrink-0">›</span>
             </button>
             <button
               onClick={() => router.push("/referral")}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-border/40 transition-colors"
             >
-              <Gift size={18} className="text-secondary shrink-0" />
+              <span className="w-7 h-7 rounded-lg bg-border flex items-center justify-center shrink-0">
+                <Gift size={15} className="text-secondary" />
+              </span>
               <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:referral_card.title")}</span>
               {(referralStats?.totalActive ?? 0) > 0 && (
                 <span className="text-[10px] font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
@@ -335,6 +320,16 @@ export default function DashboardPage() {
                   {referralStats!.totalActive > 1 ? t("dashboard:referral_card.friend_plural") : t("dashboard:referral_card.friend_singular")}
                 </span>
               )}
+              <span className="text-secondary shrink-0">›</span>
+            </button>
+            <button
+              onClick={() => router.push("/emergency")}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-border/40 transition-colors"
+            >
+              <span className="w-7 h-7 rounded-lg bg-error/10 flex items-center justify-center shrink-0">
+                <LifeBuoy size={15} className="text-error" />
+              </span>
+              <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:emergency_list_label")}</span>
               <span className="text-secondary shrink-0">›</span>
             </button>
           </motion.div>
@@ -394,11 +389,14 @@ export default function DashboardPage() {
             />
           </motion.div>
 
-          {/* Emergency card */}
+          {/* Emergency card — desktop sidebar only below md; the mobile
+              util-list above already has a compact Emergency row, a full
+              card there would duplicate it. */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
+            className="hidden md:block"
           >
             <button
               onClick={() => router.push("/emergency")}

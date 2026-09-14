@@ -3,13 +3,14 @@
   "interview_date": "До интервью: {{days}} дней",
   "no_interview_date": "Дата интервью ещё не назначена",
   "progress": "Прогресс подготовки",
-  "risk_profile": "Твой профиль риска",
+  "risk_profile": "Риск отказа в визе",
+  "risk_summary": "{{level}} · {{count}} фактора для проработки",
   "risk_high": "Высокий риск",
   "risk_medium": "Средний риск",
   "risk_low": "Низкий риск",
   "how_to_fix": "Как решить:",
   "unlock_solutions": "Разблокировать решения →",
-  "no_risks": "🎉 Явных рисков не обнаружено. Отличный профиль!",
+  "no_risks": "Явных рисков не обнаружено. Отличный профиль!",
   "modules": "Модули подготовки",
   "module_titles": {
     "chat": "AI Помощник",
@@ -52,6 +53,11 @@
   "hide_extra_risks": "Скрыть",
   "recommended_badge": "Рекомендуем",
   "continue_hint": "Продолжи с того, где остановился",
+  "continue_action": "Продолжить подготовку",
+  "prep_plan_label": "План подготовки",
+  "more_label": "Ещё",
+  "documents_list_label": "Документы для визы",
+  "emergency_list_label": "Если что-то пошло не так (Emergency)",
   "show_profile": "Показать профиль",
   "hide_profile": "Скрыть профиль",
   "referral_card": {
@@ -74,6 +80,11 @@
     "line1": "{{count}} сессий симулятора каждый месяц",
     "line2": "+ Режим Консул + Анализ рисков",
     "cta": "Подписаться {{price}} →"
+  },
+  "upgrade_slim": {
+    "prefix": "СТАНДАРТ:",
+    "text": "{{count}} тренировок в месяц + разбор с AI-консулом",
+    "cta": "{{price}} →"
   },
   "locked_features": {
     "title": "Доступно в Стандарт",
