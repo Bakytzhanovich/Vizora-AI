@@ -14,6 +14,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // TODO: добавить dropdown "Направления" при запуске новых стран/виз
   const navLinks: { href: string; label: string; isRoute?: boolean }[] = [
     { href: "#students", label: t("nav.students") },
     { href: "#agencies", label: t("nav.agencies") },

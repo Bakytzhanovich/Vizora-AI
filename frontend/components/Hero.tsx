@@ -6,6 +6,13 @@ import { motion } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+// TODO: stats[0] (4100+) and stats[3] (250000+) are real numbers but were
+// originally scoped to J-1/Work & Travel specifically (KZ J-1 applicants,
+// global W&T population) — the i18n labels were generalized to drop the
+// visa-category wording for the multi-visa-roadmap positioning, but the
+// underlying counts themselves haven't been re-sourced for that broader
+// scope. Revisit once real cross-program numbers exist; don't just relabel
+// further without new data.
 const statValues = [4100, 46, 3, 250000];
 
 interface Stat {
@@ -83,16 +90,27 @@ export function Hero() {
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto text-center">
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 bg-[#6C63FF]/10 border border-[#6C63FF]/30 text-[#9C8BFF] text-xs font-semibold px-4 py-2 rounded-full mb-8"
-        >
-          <span className="w-2 h-2 bg-[#6C63FF] rounded-full animate-pulse" />
-          {t("hero.badge")}
-        </motion.div>
+        {/* Badges — wrap so the secondary (country-scope) pill drops to its
+            own line on narrow screens instead of overflowing */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-2 bg-[#6C63FF]/10 border border-[#6C63FF]/30 text-[#9C8BFF] text-xs font-semibold px-4 py-2 rounded-full"
+          >
+            <span className="w-2 h-2 bg-[#6C63FF] rounded-full animate-pulse" />
+            {t("hero.badge")}
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="inline-flex items-center gap-2 bg-[#13131A]/60 border border-[#1E1E2E] text-[#8B8BA7] text-xs font-semibold px-4 py-2 rounded-full"
+          >
+            {t("hero.badge_secondary")}
+          </motion.div>
+        </div>
 
         {/* Headline */}
         <motion.h1

@@ -6,7 +6,13 @@ def generate_risk_profile(
     financial_source: str,
     course_year: int,
     english_level: str,
+    country_code: str = "USA",
+    visa_type: str = "J1",
 ) -> dict[str, Any]:
+    # Tagged with the target visa program now — risk logic below is still
+    # entirely J1/USA-specific and untouched; this just records which
+    # program a given profile was generated for, so a future non-J1/USA
+    # risk model doesn't need to backfill or migrate existing profiles.
     risks = []
 
     if not travel_history:
@@ -76,4 +82,9 @@ def generate_risk_profile(
     else:
         overall = "low"
 
-    return {"risks": risks, "overall_risk": overall}
+    return {
+        "risks": risks,
+        "overall_risk": overall,
+        "country_code": country_code,
+        "visa_type": visa_type,
+    }
