@@ -102,7 +102,7 @@ export function Hero() {
           className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-[#F0F0FF] leading-tight tracking-tight mb-6"
         >
           {t("hero.title_line1")}{" "}
-          <span className="relative">
+          <span className="relative whitespace-nowrap">
             <span className="bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] bg-clip-text text-transparent">
               {t("hero.title_highlight")}
             </span>
