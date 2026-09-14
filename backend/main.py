@@ -100,6 +100,17 @@ async def bootstrap_admin_user() -> None:
                     raise RuntimeError("BOOTSTRAP_ADMIN_PASSWORD must contain at least 8 characters")
                 user.password_hash = hash_password(password)
                 changed = True
+            elif password:
+                # BOOTSTRAP_ADMIN_PASSWORD is set but has no effect on an
+                # existing user without this flag — log it loudly instead of
+                # silently ignoring it, so "I changed the password but login
+                # still fails" isn't a mystery next time.
+                logger.warning(
+                    "BOOTSTRAP_ADMIN_PASSWORD is set for existing admin %s but "
+                    "BOOTSTRAP_ADMIN_RESET_PASSWORD is not true — password left "
+                    "unchanged.",
+                    email,
+                )
             if changed:
                 await db.commit()
                 logger.info("Bootstrap admin updated: %s", email)
