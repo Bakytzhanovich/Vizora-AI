@@ -6,14 +6,14 @@ import { useTranslation } from "react-i18next";
 import { Clock, BarChart3, Trophy } from "lucide-react";
 import { IconTile } from "@/components/ui/IconTile";
 
+const benefitIcons = [Clock, BarChart3, Trophy];
+
 interface Benefit {
   title: string;
   description: string;
   metric: string;
   metric_label: string;
 }
-
-const icons = [Clock, BarChart3, Trophy];
 
 interface Plan {
   id: string;
@@ -54,7 +54,7 @@ export function Agencies() {
   };
 
   return (
-    <section id="agencies" ref={ref} className="py-24 px-4 relative">
+    <section id="agencies" ref={ref} className="py-24 lg:py-32 px-4 relative">
       {/* Slightly lighter background */}
       <div className="absolute inset-0 bg-[#13131A]/40" />
 
@@ -66,7 +66,7 @@ export function Agencies() {
           transition={{ duration: 0.5 }}
           className="flex justify-center mb-4"
         >
-          <span className="text-xs font-semibold text-[#00D4AA] uppercase tracking-widest">
+          <span className="text-xs font-semibold text-[#9C8BFF] uppercase tracking-widest">
             {t("agencies.label")}
           </span>
         </motion.div>
@@ -76,7 +76,7 @@ export function Agencies() {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.05 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
+          className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
         >
           {t("agencies.title")}
         </motion.h2>
@@ -90,36 +90,28 @@ export function Agencies() {
           {t("agencies.subtitle")}
         </motion.p>
 
-        {/* Benefit cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-14">
-          {benefits.map((b, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.15 + i * 0.1 }}
-              whileHover={{ y: -4, transition: { duration: 0.2 } }}
-              className="group bg-[#13131A] border border-[#1E1E2E] hover:border-[#00D4AA]/30 rounded-2xl p-6 relative overflow-hidden transition-colors duration-300"
-            >
-              {/* Teal accent */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#00D4AA]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#00D4AA]/5 rounded-full blur-2xl group-hover:bg-[#00D4AA]/10 transition-all duration-300" />
-
-              <div className="relative z-10">
-                <div className="mb-4">
-                  <IconTile icons={icons} index={i} size={32} className="text-[#00D4AA]" />
+        {/* Benefits — horizontal stat strip instead of a third card-grid
+            pattern (Solution section already owns that layout language) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="border border-[#1E1E2E] bg-[#13131A]/60 backdrop-blur-sm rounded-2xl p-6 sm:p-8 mb-14"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6 sm:divide-x sm:divide-[#1E1E2E]">
+            {benefits.map((b, i) => (
+              <div key={i} className="sm:px-6 first:sm:pl-0 last:sm:pr-0">
+                <IconTile icons={benefitIcons} index={i} size={24} className="text-[#9C8BFF] mb-3" />
+                <div className="font-heading text-3xl font-bold text-[#F0F0FF] tabular-nums mb-1">
+                  {b.metric}
                 </div>
-                <h3 className="text-[#F0F0FF] font-bold text-lg mb-3">{b.title}</h3>
-                <p className="text-[#8B8BA7] text-sm leading-relaxed mb-5">{b.description}</p>
-
-                <div className="border-t border-[#1E1E2E] pt-4">
-                  <div className="text-2xl font-bold text-[#00D4AA]">{b.metric}</div>
-                  <div className="text-xs text-[#8B8BA7] mt-0.5">{b.metric_label}</div>
-                </div>
+                <div className="text-[#8B8BA7] text-xs mb-3">{b.metric_label}</div>
+                <h3 className="text-[#F0F0FF] font-semibold text-sm mb-1.5">{b.title}</h3>
+                <p className="text-[#8B8BA7] text-xs leading-relaxed">{b.description}</p>
               </div>
-            </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </motion.div>
 
         {/* Pricing table */}
         <motion.div
@@ -133,7 +125,7 @@ export function Agencies() {
               key={plan.id}
               className={`rounded-2xl p-6 border transition-all duration-200 ${
                 plan.highlight
-                  ? "bg-gradient-to-br from-[#6C63FF]/10 to-[#00D4AA]/5 border-[#6C63FF]/30 shadow-lg shadow-[#6C63FF]/10"
+                  ? "bg-gradient-to-br from-[#6C63FF]/10 to-[#9C8BFF]/5 border-[#6C63FF]/30 shadow-lg shadow-[#6C63FF]/10"
                   : "bg-[#13131A] border-[#1E1E2E]"
               }`}
             >
@@ -146,14 +138,14 @@ export function Agencies() {
                 {plan.name}
               </div>
               <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-3xl font-bold text-[#F0F0FF]">{plan.price}</span>
+                <span className="font-heading text-3xl font-bold text-[#F0F0FF] tabular-nums">{plan.price}</span>
                 <span className="text-[#8B8BA7] text-sm">{plan.period}</span>
               </div>
               <div className="text-[#8B8BA7] text-xs mb-5">{plan.students}</div>
               <ul className="space-y-2.5">
                 {plan.features.map((f, j) => (
                   <li key={j} className="flex items-start gap-2 text-sm text-[#8B8BA7]">
-                    <span className="text-[#00D4AA] mt-0.5 shrink-0">✓</span>
+                    <span className="text-[#9C8BFF] mt-0.5 shrink-0">✓</span>
                     {f}
                   </li>
                 ))}
@@ -162,7 +154,8 @@ export function Agencies() {
           ))}
         </motion.div>
 
-        {/* CTA */}
+        {/* CTA — same violet brand button as everywhere else, outline
+            variant so it still reads as distinct from the primary hero CTA */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -173,7 +166,7 @@ export function Agencies() {
             onClick={handleScroll}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
-            className="bg-gradient-to-r from-[#00D4AA] to-[#00B894] text-[#0A0A0F] font-bold px-8 py-4 rounded-xl shadow-lg shadow-[#00D4AA]/20 text-sm transition-all duration-200"
+            className="border border-[#6C63FF]/40 hover:border-[#6C63FF] text-[#9C8BFF] font-bold px-8 py-4 rounded-xl bg-[#6C63FF]/5 hover:bg-[#6C63FF]/10 text-sm transition-all duration-200"
           >
             {t("agencies.cta")}
           </motion.button>

@@ -53,7 +53,7 @@ export function EarlyAccess() {
   };
 
   return (
-    <section id="early-access" ref={ref} className="py-24 px-4 relative overflow-hidden">
+    <section id="early-access" ref={ref} className="py-24 lg:py-32 px-4 relative overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] bg-[#6C63FF]/10 rounded-full blur-[120px]" />
@@ -77,7 +77,7 @@ export function EarlyAccess() {
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.05 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] mb-4 tracking-tight"
+          className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] mb-4 tracking-tight"
         >
           {t("early_access.title")}
         </motion.h2>

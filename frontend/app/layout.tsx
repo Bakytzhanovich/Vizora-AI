@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Unbounded } from "next/font/google";
 import "./globals.css";
 import { BrandingProvider } from "@/context/BrandingContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -17,6 +17,16 @@ const inter = Inter({
   weight: ["400", "600", "700"],
   display: "swap",
   variable: "--font-inter",
+});
+
+// Distinct heading face so H1/H2 don't read as the same generic Inter/
+// shadcn-default grotesque as body text — chosen for full Cyrillic support
+// (most "characterful" display fonts on Google Fonts are Latin-only).
+const unbounded = Unbounded({
+  subsets: ["latin", "cyrillic"],
+  weight: ["600", "700", "800"],
+  display: "swap",
+  variable: "--font-heading",
 });
 
 // TODO: update to real domain once purchased (ТЗ-030)
@@ -98,7 +108,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={inter.variable} suppressHydrationWarning>
+    <html lang="ru" className={`${inter.variable} ${unbounded.variable}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0A0A0F" />

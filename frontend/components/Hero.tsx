@@ -38,7 +38,7 @@ function StatCard({
       transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
       className="text-center px-4"
     >
-      <div className="text-2xl sm:text-3xl font-bold text-[#F0F0FF] mb-1">
+      <div className="text-2xl sm:text-3xl font-bold text-[#F0F0FF] mb-1 tabular-nums">
         {stat.prefix ?? ""}
         {stat.value.toLocaleString("ru-RU")}
         {stat.suffix}
@@ -86,7 +86,7 @@ export function Hero() {
       {/* Glow background */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-[#6C63FF]/10 rounded-full blur-[120px]" />
-        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-[#00D4AA]/5 rounded-full blur-[80px]" />
+        <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-[#9C8BFF]/5 rounded-full blur-[80px]" />
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto text-center">
@@ -117,7 +117,7 @@ export function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-[#F0F0FF] leading-tight tracking-tight mb-6"
+          className="font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-[#F0F0FF] leading-tight tracking-tight mb-6"
         >
           {t("hero.title_line1")}{" "}
           <span className="relative">

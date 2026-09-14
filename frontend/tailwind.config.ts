@@ -41,6 +41,7 @@ const config: Config = {
       } as unknown as Record<string, string>,
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        heading: ["var(--font-heading)", "var(--font-inter)", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "accent-gradient": "linear-gradient(135deg, #6C63FF 0%, #9C8BFF 100%)",

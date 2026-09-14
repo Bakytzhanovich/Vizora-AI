@@ -96,7 +96,7 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="min-h-screen bg-[#0A0A0F] overflow-x-hidden">
+      <main className="min-h-screen bg-[#0D0B14] overflow-x-hidden">
         <Navbar />
         <Hero />
         <Problem />

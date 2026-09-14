@@ -19,9 +19,13 @@ export function Problem() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
   const problems = t("problem.items", { returnObjects: true }) as ProblemItem[];
+  const statHighlight = t("problem.stat_highlight", { returnObjects: true }) as {
+    value: string;
+    label: string;
+  };
 
   return (
-    <section ref={ref} className="py-24 px-4 relative">
+    <section ref={ref} className="py-24 lg:py-32 px-4 relative">
       <div className="max-w-6xl mx-auto">
         {/* Label */}
         <motion.div
@@ -30,7 +34,7 @@ export function Problem() {
           transition={{ duration: 0.5 }}
           className="flex justify-center mb-4"
         >
-          <span className="text-xs font-semibold text-[#FF6B6B] uppercase tracking-widest">
+          <span className="text-xs font-semibold text-[#C9A876] uppercase tracking-widest">
             {t("problem.label")}
           </span>
         </motion.div>
@@ -40,7 +44,7 @@ export function Problem() {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.05 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-4 tracking-tight"
+          className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-4 tracking-tight"
         >
           {t("problem.title")}
         </motion.h2>
@@ -54,53 +58,52 @@ export function Problem() {
           {t("problem.subtitle")}
         </motion.p>
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {problems.map((p, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.15 + i * 0.1 }}
-              whileHover={{ y: -4, transition: { duration: 0.2 } }}
-              className="group relative bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-6 overflow-hidden"
-            >
-              {/* Red top accent line */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF6B6B]/60 to-transparent" />
+        {/* Asymmetric split: big stat card + compact item list */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-6 lg:gap-8 items-stretch">
+          {/* Left: stat card */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="relative bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-8 sm:p-10 flex flex-col justify-center overflow-hidden"
+          >
+            <div className="absolute -top-16 -right-16 w-56 h-56 bg-[#C9A876]/[0.06] rounded-full blur-3xl" />
+            <div className="relative z-10">
+              <div className="font-heading text-6xl sm:text-7xl font-bold text-[#C9A876] tabular-nums leading-none mb-4">
+                {statHighlight.value}
+              </div>
+              <p className="text-[#8B8BA7] text-base sm:text-lg leading-relaxed max-w-xs">
+                {statHighlight.label}
+              </p>
+            </div>
+          </motion.div>
 
-              {/* Red corner glow */}
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#FF6B6B]/5 rounded-full blur-2xl group-hover:bg-[#FF6B6B]/10 transition-all duration-300" />
-
-              <div className="relative z-10">
-                <div className="mb-4">
-                  <IconTile icons={icons} index={i} size={32} className="text-[#FF6B6B]" />
-                </div>
-
-                <h3 className="text-[#F0F0FF] font-bold text-lg mb-3 leading-snug">
-                  {p.title}
-                </h3>
-
-                <p className="text-[#8B8BA7] text-sm leading-relaxed mb-4">
-                  {p.description}
-                </p>
-
-                <div className="border-t border-[#1E1E2E] pt-4">
-                  <p className="text-[#8B8BA7]/70 text-xs leading-relaxed">
+          {/* Right: compact item list */}
+          <div className="flex flex-col gap-3">
+            {problems.map((p, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: 20 }}
+                animate={inView ? { opacity: 1, x: 0 } : {}}
+                transition={{ duration: 0.5, delay: 0.2 + i * 0.1 }}
+                className="flex gap-4 bg-[#13131A] border border-[#1E1E2E] rounded-xl p-5"
+              >
+                <IconTile icons={icons} index={i} size={22} className="text-[#C9A876] shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-[#F0F0FF] font-semibold text-base mb-1 leading-snug">
+                    {p.title}
+                  </h3>
+                  <p className="text-[#8B8BA7] text-sm leading-relaxed">
+                    {p.description}
+                  </p>
+                  <p className="text-[#8B8BA7]/60 text-xs leading-relaxed mt-2">
                     {p.detail}
                   </p>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))}
+          </div>
         </div>
-
-        {/* Bottom accent */}
-        <motion.div
-          initial={{ opacity: 0, scaleX: 0 }}
-          animate={inView ? { opacity: 1, scaleX: 1 } : {}}
-          transition={{ duration: 0.8, delay: 0.5 }}
-          className="mt-16 h-px bg-gradient-to-r from-transparent via-[#1E1E2E] to-transparent"
-        />
       </div>
     </section>
   );

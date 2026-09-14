@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Bot, Mic, FileText } from "lucide-react";
+import { Bot, Mic, FileText, Target } from "lucide-react";
 import { IconTile } from "@/components/ui/IconTile";
 
 interface SolutionFeature {
@@ -31,7 +31,7 @@ export function Solution() {
   const riskColors = ["#FF6B6B", "#F59E0B", "#FF6B6B"];
 
   return (
-    <section id="solution" ref={ref} className="py-24 px-4 relative">
+    <section id="solution" ref={ref} className="py-24 lg:py-32 px-4 relative">
       {/* Subtle glow */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-[#6C63FF]/5 rounded-full blur-[120px]" />
@@ -55,7 +55,7 @@ export function Solution() {
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.05 }}
-          className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
+          className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
         >
           {t("solution.title")}
         </motion.h2>
@@ -125,8 +125,8 @@ export function Solution() {
           className="mt-10 bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-6 sm:p-8"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#6C63FF]/10 border border-[#6C63FF]/20 flex items-center justify-center text-lg shrink-0">
-              🎯
+            <div className="w-10 h-10 rounded-xl bg-[#6C63FF]/10 border border-[#6C63FF]/20 flex items-center justify-center shrink-0">
+              <Target size={18} strokeWidth={1.75} className="text-[#9C8BFF]" />
             </div>
             <div>
               <div className="text-[#F0F0FF] font-semibold text-sm">{t("solution.risk_preview.title")}</div>
