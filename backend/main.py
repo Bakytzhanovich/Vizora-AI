@@ -255,7 +255,8 @@ app.add_middleware(
 app.add_middleware(
     HealthCheckAwareHostMiddleware,
     allowed_hosts=[
-        "vizora-backend-d6kv.onrender.com",
+        "vizora-ai.onrender.com",
+        "vizora-backend-d6kv.onrender.com",  # old Render service, suspended for non-payment
         "localhost",
         "127.0.0.1",
         "::1",  # IPv6 loopback, for local dev
