@@ -57,10 +57,14 @@ export function track(event: string, properties?: Record<string, unknown>): void
 
     // Single endpoint handles both anon and authenticated users.
     // Backend extracts user_id from token if valid; returns 204 regardless.
+    // AbortSignal.timeout caps how long this can hang — without it, a
+    // Render free-tier cold start (up to ~1min to spin up) leaves the
+    // request pending far longer than a best-effort telemetry call should.
     fetch(`${BASE}/api/analytics/track`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
     }).catch(() => {});
   } catch {
     // Best-effort telemetry — swallow and move on.

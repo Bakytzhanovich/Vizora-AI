@@ -23,6 +23,14 @@
     "remark": "^15.0.1",
     "remark-html": "^16.0.1"
   },
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "Firefox ESR",
+    "not dead",
+    "not IE 11",
+    "not op_mini all"
+  ],
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^20",

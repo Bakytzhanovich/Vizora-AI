@@ -121,10 +121,10 @@ export function Footer() {
 
         {/* Divider */}
         <div className="border-t border-[#1E1E2E] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[#8B8BA7]/60 text-sm">
+          <p className="text-[#8B8BA7] text-sm">
             {t("footer.copyright")}
           </p>
-          <div className="flex items-center gap-4 text-[#8B8BA7]/60 text-xs">
+          <div className="flex items-center gap-4 text-[#8B8BA7] text-xs">
             <Link href="/privacy" className="hover:text-[#F0F0FF] transition-colors duration-200">
               {t("footer.privacy")}
             </Link>
@@ -137,7 +137,7 @@ export function Footer() {
 
         {/* Disclaimer */}
         <div className="mt-6 bg-[#13131A] border border-[#1E1E2E] rounded-xl px-4 py-3">
-          <p className="text-[#8B8BA7]/50 text-xs text-center leading-relaxed">
+          <p className="text-[#8B8BA7] text-xs text-center leading-relaxed">
             {t("footer.disclaimer")}
           </p>
         </div>
