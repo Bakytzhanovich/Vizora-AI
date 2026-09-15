@@ -93,32 +93,23 @@ export function Hero() {
         {/* Badges — wrap so the secondary (country-scope) pill drops to its
             own line on narrow screens instead of overflowing */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 bg-[#6C63FF]/10 border border-[#6C63FF]/30 text-[#9C8BFF] text-xs font-semibold px-4 py-2 rounded-full"
-          >
+          <div className="inline-flex items-center gap-2 bg-[#6C63FF]/10 border border-[#6C63FF]/30 text-[#9C8BFF] text-xs font-semibold px-4 py-2 rounded-full">
             <span className="w-2 h-2 bg-[#6C63FF] rounded-full animate-pulse" />
             {t("hero.badge")}
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="inline-flex items-center gap-2 bg-[#13131A]/60 border border-[#1E1E2E] text-[#8B8BA7] text-xs font-semibold px-4 py-2 rounded-full"
-          >
+          </div>
+          <div className="inline-flex items-center gap-2 bg-[#13131A]/60 border border-[#1E1E2E] text-[#8B8BA7] text-xs font-semibold px-4 py-2 rounded-full">
             {t("hero.badge_secondary")}
-          </motion.div>
+          </div>
         </div>
 
-        {/* Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-[#F0F0FF] leading-tight tracking-tight mb-6"
-        >
+        {/* Headline — deliberately not fade-in animated: this is the LCP
+            element, and gating its opacity behind framer-motion mount +
+            transition delay was adding ~2s+ to LCP on throttled mobile
+            (element painted at opacity:0 until JS hydrated and animated
+            it in). Above-the-fold hero content renders at full opacity
+            immediately; motion is reserved for below-fold/scroll-triggered
+            reveals (see StatCard's IntersectionObserver-gated animation). */}
+        <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-[#F0F0FF] leading-tight tracking-tight mb-6">
           {t("hero.title_line1")}{" "}
           <span className="relative">
             <span className="bg-gradient-to-r from-[#6C63FF] to-[#9C8BFF] bg-clip-text text-transparent">
@@ -127,27 +118,17 @@ export function Hero() {
           </span>
           <br />
           {t("hero.title_line2")}
-        </motion.h1>
+        </h1>
 
         {/* Subheadline */}
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-lg sm:text-xl text-[#8B8BA7] max-w-2xl mx-auto mb-10 leading-relaxed"
-        >
+        <p className="text-lg sm:text-xl text-[#8B8BA7] max-w-2xl mx-auto mb-10 leading-relaxed">
           {t("hero.subtitle_line1")}
           <br className="hidden sm:block" />
           {t("hero.subtitle_line2")}
-        </motion.p>
+        </p>
 
         {/* CTA Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-        >
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
           <motion.button
             onClick={() => router.push("/register")}
             whileHover={{ scale: 1.02 }}
@@ -166,7 +147,7 @@ export function Hero() {
             <Play size={16} className="text-[#6C63FF]" />
             {t("hero.cta_demo")}
           </motion.button>
-        </motion.div>
+        </div>
 
         {/* Stats row */}
         <motion.div
