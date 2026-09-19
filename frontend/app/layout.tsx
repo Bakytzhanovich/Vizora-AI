@@ -11,6 +11,7 @@ import { PaymentIssueBanner } from "@/components/PaymentIssueBanner";
 import { BottomNav } from "@/components/BottomNav";
 import { I18nInit } from "@/components/I18nInit";
 import { PageViewTracker } from "@/components/PageViewTracker";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -128,6 +129,7 @@ export default function RootLayout({
             "telegram-sdk-loaded" event as a fallback in case it mounts before
             this finishes loading. */}
         <TelegramSdkScript />
+        <GoogleAnalytics />
       </head>
       <body className="bg-bg text-primary antialiased font-sans">
         <I18nInit />
