@@ -167,7 +167,11 @@ export interface AdminAnalytics {
       pct_of_previous: number | null;
     }>;
   };
-  traffic_sources: TrafficSources;
+  // Optional, not required: a frontend deploy (Vercel, seconds) can land
+  // before the matching backend deploy (Render, minutes) — during that
+  // window /admin/analytics predates this field. TrafficSourcesPanel treats
+  // its absence as "no data yet", not as a bug.
+  traffic_sources?: TrafficSources;
   entry_exit_pages: {
     total_sessions: number;
     top_entry_pages: Array<{ url: string; count: number; pct: number }>;

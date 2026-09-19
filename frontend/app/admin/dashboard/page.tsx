@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { PanelErrorBoundary } from "@/components/admin/PanelErrorBoundary";
 import {
   getAdminAgencies,
   getAdminAnalytics,
@@ -393,20 +394,21 @@ function SourceList({
   totalLabel: string;
   barClass: string;
 }) {
-  if (rows.length === 0) {
+  if (!rows || rows.length === 0) {
     return <p className="py-6 text-center text-xs text-[#81889B]">Пока нет данных</p>;
   }
-  const max = Math.max(...rows.map((r) => r.count));
+  const max = Math.max(...rows.map((r) => r.count ?? 0), 1); // ", 1" avoids a
+  // 0/0 -> NaN bar width if every count is somehow 0 despite rows existing.
   return (
     <div className="space-y-2">
       {rows.map((r) => (
         <div key={r.source} className="flex items-center gap-3">
-          <span className="w-32 shrink-0 truncate text-xs text-[#C7CAD9]">{sourceLabel(r.source)}</span>
+          <span className="w-32 shrink-0 truncate text-xs text-[#C7CAD9]">{sourceLabel(r.source ?? "other")}</span>
           <div className="h-2 flex-1 rounded-full bg-[#0D0F16]">
-            <div className={`h-2 rounded-full ${barClass}`} style={{ width: `${(r.count / max) * 100}%` }} />
+            <div className={`h-2 rounded-full ${barClass}`} style={{ width: `${((r.count ?? 0) / max) * 100}%` }} />
           </div>
           <span className="w-20 shrink-0 text-right text-xs text-white tabular-nums">
-            {r.count} <span className="text-[#81889B]">({r.pct}%)</span>
+            {r.count ?? 0} <span className="text-[#81889B]">({r.pct ?? 0}%)</span>
           </span>
         </div>
       ))}
@@ -417,8 +419,21 @@ function SourceList({
   );
 }
 
-function TrafficSourcesPanel({ data }: { data: TrafficSources }) {
-  if (data.total_visits === 0 && data.total_signups === 0) {
+/** `data` is typed as required (TrafficSources) by AdminAnalytics, but at
+ * runtime it can still be missing for a while: Vercel deploys the frontend
+ * in seconds, Render can take minutes to roll out the matching backend
+ * change, so there's a real window where /admin/analytics predates this
+ * field entirely. Every access below is defensive for exactly that window —
+ * this isn't defensive programming against a hypothetical, it's the actual
+ * cause of the crash this component is named after fixing. */
+function TrafficSourcesPanel({ data }: { data: TrafficSources | undefined | null }) {
+  const totalVisits = data?.total_visits ?? 0;
+  const totalSignups = data?.total_signups ?? 0;
+  const visitsBySource = data?.visits_by_source ?? [];
+  const signupsBySource = data?.signups_by_source ?? [];
+  const conversion = data?.conversion ?? [];
+
+  if (totalVisits === 0 && totalSignups === 0) {
     return (
       <Panel
         title="Источники трафика"
@@ -437,8 +452,8 @@ function TrafficSourcesPanel({ data }: { data: TrafficSources }) {
           subtitle="Все визиты за 30 дней по источнику первого касания. Соцсети видны здесь только если ссылка опубликована с UTM-меткой — иначе трафик попадает в «Прямые заходы»."
         >
           <SourceList
-            rows={data.visits_by_source}
-            total={data.total_visits}
+            rows={visitsBySource}
+            total={totalVisits}
             totalLabel="Всего визитов за 30 дней"
             barClass="bg-blue-400"
           />
@@ -448,8 +463,8 @@ function TrafficSourcesPanel({ data }: { data: TrafficSources }) {
           subtitle="Те же источники, но только для тех, кто дошёл до регистрации. «Неизвестно» — аккаунты, созданные до включения атрибуции."
         >
           <SourceList
-            rows={data.signups_by_source}
-            total={data.total_signups}
+            rows={signupsBySource}
+            total={totalSignups}
             totalLabel="Всего регистраций за 30 дней"
             barClass="bg-emerald-400"
           />
@@ -460,6 +475,9 @@ function TrafficSourcesPanel({ data }: { data: TrafficSources }) {
         title="Конверсия по источникам"
         subtitle="Какой канал приводит людей, которые реально регистрируются, а не просто заходят посмотреть. Отсортировано по конверсии. «Неизвестно» здесь намеренно не показано: это не канал, а отсутствие данных — его визиты и его регистрации относятся к разным людям, и их отношение ничего не значит."
       >
+        {conversion.length === 0 ? (
+          <EmptyState text="Пока нет данных" />
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -471,13 +489,13 @@ function TrafficSourcesPanel({ data }: { data: TrafficSources }) {
               </tr>
             </thead>
             <tbody>
-              {data.conversion.map((row) => (
+              {conversion.map((row) => (
                 <tr key={row.source} className="border-b border-[#1E2130]/60 last:border-0">
                   <td className="py-2 pr-3 text-[#C7CAD9]">{sourceLabel(row.source)}</td>
-                  <td className="py-2 pr-3 text-right text-white tabular-nums">{row.visits}</td>
-                  <td className="py-2 pr-3 text-right text-white tabular-nums">{row.signups}</td>
+                  <td className="py-2 pr-3 text-right text-white tabular-nums">{row.visits ?? 0}</td>
+                  <td className="py-2 pr-3 text-right text-white tabular-nums">{row.signups ?? 0}</td>
                   <td className="py-2 text-right tabular-nums">
-                    {row.conversion_pct === null ? (
+                    {row.conversion_pct == null ? (
                       <span className="text-[#81889B]" title="Нет данных о визитах для этого источника">
                         —
                       </span>
@@ -492,6 +510,7 @@ function TrafficSourcesPanel({ data }: { data: TrafficSources }) {
             </tbody>
           </table>
         </div>
+        )}
       </Panel>
     </div>
   );
@@ -749,7 +768,9 @@ function AnalyticsSection({ data }: { data: AdminAnalytics }) {
         </Panel>
       </div>
 
-      <TrafficSourcesPanel data={data.traffic_sources} />
+      <PanelErrorBoundary title="Источники трафика">
+        <TrafficSourcesPanel data={data.traffic_sources} />
+      </PanelErrorBoundary>
       <EntryExitPanel data={data.entry_exit_pages} />
 
       <RetentionPanel retention={data.retention} />
