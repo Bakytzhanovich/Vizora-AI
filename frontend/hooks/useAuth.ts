@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiLogin, apiGoogleLogin, apiRegister, apiGetMe, apiLogout } from "@/lib/api";
+import { getFirstTouch } from "@/lib/attribution";
 import type { UserProfile, RiskProfile, SubscriptionInfo } from "@/lib/api";
 import i18n, { setStoredLanguage, type SupportedLanguage } from "@/lib/i18n";
 
@@ -91,7 +92,7 @@ export function useAuth() {
   }, [loadUser]);
 
   const register = async (email: string, password: string, referral_code?: string) => {
-    const data = await apiRegister(email, password, referral_code);
+    const data = await apiRegister(email, password, referral_code, getFirstTouch());
     setTokens(data.access_token, data.user_id);
     if (data.referrer_name) {
       localStorage.setItem("referral_from", data.referrer_name);
@@ -108,7 +109,10 @@ export function useAuth() {
   };
 
   const loginWithGoogle = async (idToken: string) => {
-    const data = await apiGoogleLogin(idToken);
+    // Sent on every Google sign-in, not just the first: the backend only
+    // stores it when this call actually creates a new user, so a returning
+    // user's existing attribution is never overwritten.
+    const data = await apiGoogleLogin(idToken, getFirstTouch());
     setTokens(data.access_token, data.user_id);
     const me = await apiGetMe();
     applyUserState(me);

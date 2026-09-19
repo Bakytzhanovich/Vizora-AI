@@ -1,6 +1,7 @@
 """Admin endpoints: scraper control + knowledge base management."""
 
 import asyncio
+import json
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -294,6 +295,125 @@ async def _compute_entry_exit_pages(db: AsyncSession, days: int = 30) -> dict:
         "total_sessions": total_sessions,
         "top_entry_pages": _top(entry_counts),
         "top_exit_pages": _top(exit_counts),
+    }
+
+
+# Anything outside this set is bucketed as "other". utm_source is attacker-
+# controllable (it's just a query param), so without an allowlist anyone could
+# fill this panel with arbitrary junk labels by hitting the site with crafted
+# links. The raw value is still kept on the user row for ad-hoc inspection.
+_KNOWN_SOURCES = {
+    "tiktok", "instagram", "telegram", "linkedin",
+    "facebook", "youtube", "google", "yandex", "direct",
+}
+
+
+def _bucket_source(raw: str | None) -> str:
+    """None means the signup predates attribution or the browser blocked
+    storage — deliberately NOT folded into "direct", which is a real answer."""
+    if not raw:
+        return "unknown"
+    value = raw.strip().lower()
+    return value if value in _KNOWN_SOURCES else "other"
+
+
+async def _compute_traffic_sources(db: AsyncSession, days: int = 30) -> dict:
+    """Visits and signups broken down by first-touch source, plus the
+    conversion between them.
+
+    A visit is one browser session (same session_id grouping as
+    _compute_entry_exit_pages); its source is taken from the session's
+    earliest page_view, since that is the one carrying first-touch
+    attribution. Signups come from the users table, so the number survives
+    any future pruning of the events table.
+
+    Both sides use the same window, otherwise the conversion column would
+    divide counts taken over different periods.
+    """
+    since = datetime.utcnow() - timedelta(days=days)
+
+    rows = await db.execute(
+        select(AnalyticsEvent.session_id, AnalyticsEvent.properties)
+        .where(
+            AnalyticsEvent.event == "page_view",
+            AnalyticsEvent.session_id.isnot(None),
+            AnalyticsEvent.created_at >= since,
+        )
+        .order_by(AnalyticsEvent.session_id, AnalyticsEvent.created_at, AnalyticsEvent.id)
+    )
+
+    # properties is a JSON *string* column, parsed here rather than in SQL:
+    # this app runs on SQLite locally and Postgres in prod, and their JSON
+    # operators differ (same reasoning as the scores handling in payments.py).
+    visit_sources: dict[str, str] = {}
+    for session_id, properties in rows.all():
+        if session_id in visit_sources:
+            continue  # first page_view of the session wins
+        source = None
+        if properties:
+            try:
+                source = json.loads(properties).get("source")
+            except (json.JSONDecodeError, AttributeError):
+                source = None
+        visit_sources[session_id] = _bucket_source(source)
+
+    visit_counts: dict[str, int] = defaultdict(int)
+    for bucket in visit_sources.values():
+        visit_counts[bucket] += 1
+
+    signup_rows = await db.execute(
+        select(User.signup_source, func.count())
+        .where(User.created_at >= since)
+        .group_by(User.signup_source)
+    )
+    signup_counts: dict[str, int] = defaultdict(int)
+    for raw_source, count in signup_rows.all():
+        signup_counts[_bucket_source(raw_source)] += count
+
+    total_visits = sum(visit_counts.values())
+    total_signups = sum(signup_counts.values())
+
+    def _breakdown(counts: dict[str, int], total: int) -> list[dict]:
+        return [
+            {
+                "source": source,
+                "count": count,
+                "pct": round(count / total * 100, 1) if total else 0,
+            }
+            for source, count in sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
+        ]
+
+    # "unknown" is deliberately excluded here (but kept in the two breakdowns
+    # above). It isn't a channel — it's missing data, and its visits and its
+    # signups are unrelated populations: un-attributed sessions on one side,
+    # accounts created before attribution existed on the other. Dividing one
+    # by the other produces a meaningless number that can legitimately exceed
+    # 100%, which reads as a broken dashboard rather than as absent data.
+    conversion = [
+        {
+            "source": source,
+            "visits": visit_counts.get(source, 0),
+            "signups": signup_counts.get(source, 0),
+            # None (not 0) when there are no visits to divide by — the UI shows
+            # a dash, since "0%" would wrongly imply a channel that failed to
+            # convert rather than one we have no visit data for.
+            "conversion_pct": (
+                round(signup_counts.get(source, 0) / visit_counts[source] * 100, 1)
+                if visit_counts.get(source)
+                else None
+            ),
+        }
+        for source in (set(visit_counts) | set(signup_counts)) - {"unknown"}
+    ]
+    conversion.sort(key=lambda r: (r["conversion_pct"] is not None, r["conversion_pct"] or 0), reverse=True)
+
+    return {
+        "period_days": days,
+        "total_visits": total_visits,
+        "total_signups": total_signups,
+        "visits_by_source": _breakdown(visit_counts, total_visits),
+        "signups_by_source": _breakdown(signup_counts, total_signups),
+        "conversion": conversion,
     }
 
 
@@ -725,6 +845,7 @@ async def admin_analytics(
         "retention": await _compute_weekly_retention(db),
         "activation_funnel": await _compute_activation_funnel(db),
         "entry_exit_pages": await _compute_entry_exit_pages(db),
+        "traffic_sources": await _compute_traffic_sources(db),
     }
 
 

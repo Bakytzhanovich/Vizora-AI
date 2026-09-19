@@ -30,6 +30,8 @@ import {
   type AdminUsersResponse,
   type RetentionCurve,
   type RetentionDay,
+  type SourceBreakdown,
+  type TrafficSources,
 } from "@/lib/admin-api";
 
 type Section = "overview" | "users" | "agencies" | "managers" | "analytics" | "system";
@@ -364,6 +366,137 @@ function PageList({ pages, total }: { pages: Array<{ url: string; count: number;
   );
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  telegram: "Telegram",
+  linkedin: "LinkedIn",
+  facebook: "Facebook",
+  youtube: "YouTube",
+  google: "Google (поиск)",
+  yandex: "Яндекс",
+  direct: "Прямые заходы",
+  other: "Другое",
+  unknown: "Неизвестно",
+};
+
+const sourceLabel = (source: string) => SOURCE_LABELS[source] ?? source;
+
+function SourceList({
+  rows,
+  total,
+  totalLabel,
+  barClass,
+}: {
+  rows: SourceBreakdown[];
+  total: number;
+  totalLabel: string;
+  barClass: string;
+}) {
+  if (rows.length === 0) {
+    return <p className="py-6 text-center text-xs text-[#81889B]">Пока нет данных</p>;
+  }
+  const max = Math.max(...rows.map((r) => r.count));
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => (
+        <div key={r.source} className="flex items-center gap-3">
+          <span className="w-32 shrink-0 truncate text-xs text-[#C7CAD9]">{sourceLabel(r.source)}</span>
+          <div className="h-2 flex-1 rounded-full bg-[#0D0F16]">
+            <div className={`h-2 rounded-full ${barClass}`} style={{ width: `${(r.count / max) * 100}%` }} />
+          </div>
+          <span className="w-20 shrink-0 text-right text-xs text-white tabular-nums">
+            {r.count} <span className="text-[#81889B]">({r.pct}%)</span>
+          </span>
+        </div>
+      ))}
+      <p className="pt-1 text-[10px] text-[#81889B]">
+        {totalLabel}: {total}
+      </p>
+    </div>
+  );
+}
+
+function TrafficSourcesPanel({ data }: { data: TrafficSources }) {
+  if (data.total_visits === 0 && data.total_signups === 0) {
+    return (
+      <Panel
+        title="Источники трафика"
+        subtitle="Откуда приходят посетители и кто из них доходит до регистрации (за 30 дней)"
+      >
+        <EmptyState text="Пока нет данных — атрибуцию только что включили, она появится по мере новых визитов" />
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Panel
+          title="Источники трафика — визиты"
+          subtitle="Все визиты за 30 дней по источнику первого касания. Соцсети видны здесь только если ссылка опубликована с UTM-меткой — иначе трафик попадает в «Прямые заходы»."
+        >
+          <SourceList
+            rows={data.visits_by_source}
+            total={data.total_visits}
+            totalLabel="Всего визитов за 30 дней"
+            barClass="bg-blue-400"
+          />
+        </Panel>
+        <Panel
+          title="Источники трафика — регистрации"
+          subtitle="Те же источники, но только для тех, кто дошёл до регистрации. «Неизвестно» — аккаунты, созданные до включения атрибуции."
+        >
+          <SourceList
+            rows={data.signups_by_source}
+            total={data.total_signups}
+            totalLabel="Всего регистраций за 30 дней"
+            barClass="bg-emerald-400"
+          />
+        </Panel>
+      </div>
+
+      <Panel
+        title="Конверсия по источникам"
+        subtitle="Какой канал приводит людей, которые реально регистрируются, а не просто заходят посмотреть. Отсортировано по конверсии. «Неизвестно» здесь намеренно не показано: это не канал, а отсутствие данных — его визиты и его регистрации относятся к разным людям, и их отношение ничего не значит."
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-[#1E2130] text-left text-[#81889B]">
+                <th className="py-2 pr-3 font-medium">Источник</th>
+                <th className="py-2 pr-3 text-right font-medium">Визитов</th>
+                <th className="py-2 pr-3 text-right font-medium">Регистраций</th>
+                <th className="py-2 text-right font-medium">Конверсия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.conversion.map((row) => (
+                <tr key={row.source} className="border-b border-[#1E2130]/60 last:border-0">
+                  <td className="py-2 pr-3 text-[#C7CAD9]">{sourceLabel(row.source)}</td>
+                  <td className="py-2 pr-3 text-right text-white tabular-nums">{row.visits}</td>
+                  <td className="py-2 pr-3 text-right text-white tabular-nums">{row.signups}</td>
+                  <td className="py-2 text-right tabular-nums">
+                    {row.conversion_pct === null ? (
+                      <span className="text-[#81889B]" title="Нет данных о визитах для этого источника">
+                        —
+                      </span>
+                    ) : (
+                      <span className={row.conversion_pct >= 5 ? "text-emerald-400" : "text-white"}>
+                        {row.conversion_pct}%
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 function EntryExitPanel({ data }: { data: AdminAnalytics["entry_exit_pages"] }) {
   if (data.total_sessions === 0) {
     return (
@@ -616,6 +749,7 @@ function AnalyticsSection({ data }: { data: AdminAnalytics }) {
         </Panel>
       </div>
 
+      <TrafficSourcesPanel data={data.traffic_sources} />
       <EntryExitPanel data={data.entry_exit_pages} />
 
       <RetentionPanel retention={data.retention} />

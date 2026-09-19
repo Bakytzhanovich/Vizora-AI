@@ -117,6 +117,28 @@ export interface RetentionCurve {
   eligible_users: number;
 }
 
+export interface SourceBreakdown {
+  source: string;
+  count: number;
+  pct: number;
+}
+
+export interface TrafficSources {
+  period_days: number;
+  total_visits: number;
+  total_signups: number;
+  visits_by_source: SourceBreakdown[];
+  signups_by_source: SourceBreakdown[];
+  conversion: Array<{
+    source: string;
+    visits: number;
+    signups: number;
+    // null when there are no visits for this source — rendered as a dash, not
+    // as 0%, which would read as "this channel converts nobody".
+    conversion_pct: number | null;
+  }>;
+}
+
 export interface AdminAnalytics {
   activity_14d: Array<{
     date: string;
@@ -145,6 +167,7 @@ export interface AdminAnalytics {
       pct_of_previous: number | null;
     }>;
   };
+  traffic_sources: TrafficSources;
   entry_exit_pages: {
     total_sessions: number;
     top_entry_pages: Array<{ url: string; count: number; pct: number }>;

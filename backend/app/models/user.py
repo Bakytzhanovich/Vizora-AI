@@ -39,6 +39,14 @@ class User(Base):
     language = Column(String(5), nullable=False, default="ru")  # "ru" | "kz"
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
+    # First-touch traffic attribution, captured in the browser and sent once at
+    # signup (see frontend/lib/attribution.ts). Nullable on purpose: rows
+    # created before this existed, and signups from clients with storage
+    # disabled, legitimately have no value — that is different from "direct".
+    signup_source = Column(String(64), nullable=True, index=True)
+    signup_medium = Column(String(64), nullable=True)
+    signup_campaign = Column(String(128), nullable=True)
+
     # ─── Monetization (Free / Standard / Premium + Kaspi Pay) ─────────────────
     # trial_started_at/trial_ends_at are vestigial — kept for historical data
     # from the old 7-day-trial model, no longer read anywhere. FREE is now a

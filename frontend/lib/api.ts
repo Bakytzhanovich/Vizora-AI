@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import type { Attribution } from "@/lib/attribution";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export const api = axios.create({
@@ -125,16 +127,34 @@ export async function fetchWithAuth(
 
 // ─── Auth ───────────────────────────────────────────────────────────────────
 
+/** Flattens first-touch attribution into the signup_* fields the backend
+ * stores on the user row. Omitted entirely when unknown, so the backend can
+ * tell "never captured" apart from an explicit "direct". */
+function attributionFields(attribution?: Attribution | null) {
+  if (!attribution) return {};
+  return {
+    signup_source: attribution.source,
+    signup_medium: attribution.medium,
+    ...(attribution.campaign ? { signup_campaign: attribution.campaign } : {}),
+  };
+}
+
 export async function apiRegister(
   email: string,
   password: string,
-  referral_code?: string
+  referral_code?: string,
+  attribution?: Attribution | null
 ) {
   const { data } = await api.post<{
     access_token: string;
     user_id: string;
     referrer_name?: string | null;
-  }>("/auth/register", { email, password, ...(referral_code ? { referral_code } : {}) });
+  }>("/auth/register", {
+    email,
+    password,
+    ...(referral_code ? { referral_code } : {}),
+    ...attributionFields(attribution),
+  });
   return data;
 }
 
@@ -146,11 +166,11 @@ export async function apiLogin(email: string, password: string) {
   return data;
 }
 
-export async function apiGoogleLogin(idToken: string) {
+export async function apiGoogleLogin(idToken: string, attribution?: Attribution | null) {
   const { data } = await api.post<{
     access_token: string;
     user_id: string;
-  }>("/auth/google", { id_token: idToken });
+  }>("/auth/google", { id_token: idToken, ...attributionFields(attribution) });
   return data;
 }
 

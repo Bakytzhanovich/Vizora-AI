@@ -33,7 +33,21 @@ from slowapi.util import get_remote_address
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class RegisterRequest(BaseModel):
+class AttributionRequest(BaseModel):
+    """First-touch traffic attribution captured in the browser at signup.
+
+    These originate from utm_* query params, i.e. from a URL any visitor can
+    craft — treat as untrusted input. They're only ever stored and displayed,
+    never used in a query predicate, and _apply_signup_attribution() clamps
+    them to the column widths.
+    """
+
+    signup_source: str | None = None
+    signup_medium: str | None = None
+    signup_campaign: str | None = None
+
+
+class RegisterRequest(AttributionRequest):
     email: EmailStr
     password: str
     referral_code: str | None = None
@@ -65,7 +79,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class GoogleAuthRequest(BaseModel):
+class GoogleAuthRequest(AttributionRequest):
     id_token: str
 
 
@@ -128,6 +142,22 @@ def _validate_origin(request: Request) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid origin")
 
 
+def _apply_signup_attribution(user: User, body: AttributionRequest) -> None:
+    """Record where this signup came from. Called only on the path that
+    actually creates the user, so a returning user's original first-touch is
+    never overwritten by a later session.
+
+    Values are truncated rather than validated: they come from a URL the
+    visitor controls, and a malformed utm_campaign must not be able to fail an
+    otherwise valid registration.
+    """
+    if not body.signup_source:
+        return
+    user.signup_source = body.signup_source[:64]
+    user.signup_medium = (body.signup_medium or "unknown")[:64]
+    user.signup_campaign = body.signup_campaign[:128] if body.signup_campaign else None
+
+
 async def _issue_login_response(
     user: User, response: Response, db: AsyncSession
 ) -> TokenResponse:
@@ -154,6 +184,7 @@ async def register(
 ):
     user = User(email=body.email.lower(), password_hash=hash_password(body.password))
     set_free_plan(user)
+    _apply_signup_attribution(user, body)
     db.add(user)
     try:
         await db.commit()
@@ -280,6 +311,7 @@ async def google_auth(
             avatar_url=avatar_url,
         )
         set_free_plan(user)
+        _apply_signup_attribution(user, body)
         db.add(user)
         try:
             await db.commit()
