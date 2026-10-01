@@ -5,7 +5,16 @@ import { AgencyLayout } from "@/components/agency/AgencyLayout";
 import { StatsCard } from "@/components/agency/StatsCard";
 import { AnalyticsChart } from "@/components/agency/AnalyticsChart";
 import { AIInsightBox } from "@/components/agency/AIInsightBox";
-import { agencyGetAnalytics, type AgencyAnalytics } from "@/lib/agency-api";
+import { agencyGetAnalytics, ENGLISH_LEVELS, type AgencyAnalytics } from "@/lib/agency-api";
+
+// Same scale as EnglishLevelBadge: below B1 needs work, B1 is the usual bar.
+const LEVEL_COLORS: Record<(typeof ENGLISH_LEVELS)[number], string> = {
+  A1: "#EF4444",
+  A2: "#F87171",
+  B1: "#F59E0B",
+  B2: "#10B981",
+  C1: "#059669",
+};
 
 export default function AgencyAnalyticsPage() {
   const [data, setData] = useState<AgencyAnalytics | null>(null);
@@ -42,6 +51,13 @@ export default function AgencyAnalyticsPage() {
     value: t.avg_score,
     color: t.avg_score >= 7 ? "#10B981" : t.avg_score >= 5 ? "#F59E0B" : "#EF4444",
   }));
+
+  // Absent on a backend that predates the level test — the card is then hidden.
+  const english = data.english_levels;
+  const levelItems = english
+    ? ENGLISH_LEVELS.map((lvl) => ({ label: lvl, value: english.distribution[lvl] ?? 0, color: LEVEL_COLORS[lvl] }))
+    : [];
+  const belowB1 = english ? english.distribution.A1 + english.distribution.A2 : 0;
 
   const distItems = [
     { label: "Высокая готовность (70%+)", value: data.readiness_distribution.high, color: "#10B981" },
@@ -118,6 +134,39 @@ export default function AgencyAnalyticsPage() {
           </div>
         </div>
       </div>
+
+      {english && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+            <div>
+              <h2 className="font-semibold text-gray-900 mb-1">Уровень английского</h2>
+              <p className="text-xs text-gray-400">По последнему тесту каждого студента</p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700">
+                Проверили: {english.tested} из {data.total_students}
+              </span>
+              {data.total_students - english.tested > 0 && (
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-600">
+                  Не проверяли: {data.total_students - english.tested}
+                </span>
+              )}
+              {belowB1 > 0 && (
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-red-50 text-red-600">
+                  Ниже B1: {belowB1}
+                </span>
+              )}
+            </div>
+          </div>
+          {english.tested === 0 ? (
+            <div className="flex items-center justify-center h-24 text-sm text-gray-400">
+              Пока никто не проходил проверку уровня
+            </div>
+          ) : (
+            <AnalyticsChart items={levelItems} max={english.tested} unit=" студ." />
+          )}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Weak topics */}

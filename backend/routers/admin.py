@@ -21,10 +21,12 @@ from app.models.documents import DocumentProgress
 from app.models.early_access import EarlyAccessEmail
 from app.models.emergency import EmergencySession
 from app.models.knowledge_base import KnowledgeBase, ScraperRun
+from app.models.level_test import LevelTest
 from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from app.services.level_test_service import latest_level_results, level_distribution
 from app.core.security import get_current_user
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
@@ -452,6 +454,7 @@ async def admin_overview(
         SimulatorSession,
         SimulatorSession.completed.is_(True),
     )
+    level_results = await latest_level_results(db)
     kb_entries = await _count(db, KnowledgeBase)
     verified_kb_entries = await _count(db, KnowledgeBase, KnowledgeBase.verified.is_(True))
 
@@ -491,7 +494,11 @@ async def admin_overview(
             "knowledge_base_entries": kb_entries,
             "verified_knowledge_base_entries": verified_kb_entries,
             "early_access_leads": await _count(db, EarlyAccessEmail),
+            "level_test_users": len(level_results),
+            "level_tests_completed": await _count(db, LevelTest, LevelTest.completed.is_(True)),
         },
+        # Latest result per student, by CEFR band.
+        "english_levels": level_distribution(level_results),
         "recent_users": [
             {
                 "email": row.email,

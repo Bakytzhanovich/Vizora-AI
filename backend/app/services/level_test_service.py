@@ -21,7 +21,10 @@ import random
 from typing import Any
 
 import openai
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.level_test import LevelTest
 from app.services.ai_service import get_ai_client, get_chat_model, reasoning_kwargs
 
 logger = logging.getLogger(__name__)
@@ -412,3 +415,39 @@ def build_result(turns: list[dict[str, Any]], final_level: str, summary: dict[st
         "question_count": len(counted),
     }
 
+
+# ─── Reporting (admin panel, agency cabinet) ──────────────────────────────────
+
+REPORT_LEVELS = ["A1", "A2", "B1", "B2", "C1"]
+
+
+async def latest_level_results(db: AsyncSession, user_ids: list[str] | None = None) -> dict[str, dict[str, Any]]:
+    """Each user's most recent completed test: {user_id: {"level", "tested_at"}}.
+    `user_ids=None` means every user (admin); an empty list means nobody."""
+    if user_ids is not None and not user_ids:
+        return {}
+    query = (
+        select(LevelTest.user_id, LevelTest.final_level, LevelTest.completed_at)
+        .where(LevelTest.completed.is_(True))
+        .order_by(LevelTest.completed_at.desc())
+    )
+    if user_ids is not None:
+        query = query.where(LevelTest.user_id.in_(user_ids))
+    latest: dict[str, dict[str, Any]] = {}
+    for user_id, level, completed_at in (await db.execute(query)).all():
+        if user_id not in latest:  # rows are newest first
+            latest[user_id] = {
+                "level": level,
+                "tested_at": completed_at.isoformat() if completed_at else None,
+            }
+    return latest
+
+
+def level_distribution(latest: dict[str, dict[str, Any]]) -> dict[str, int]:
+    """Students per CEFR band; "B1+" counts as B1."""
+    counts = {lvl: 0 for lvl in REPORT_LEVELS}
+    for result in latest.values():
+        base = (result.get("level") or "").rstrip("+")
+        if base in counts:
+            counts[base] += 1
+    return counts

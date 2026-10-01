@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight, Clock } from "lucide-react";
 import type { AgencyStudent } from "@/lib/agency-api";
 import { ReadinessBar } from "./ReadinessBar";
+import { EnglishLevelBadge } from "./EnglishLevelBadge";
 
 interface Props {
   students: AgencyStudent[];
@@ -39,11 +40,12 @@ export function StudentsTable({ students }: Props) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="hidden md:grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+      <div className="hidden md:grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
         <span>Студент</span>
         <span>Готовность</span>
         <span>Документы</span>
         <span>Симулятор</span>
+        <span>Английский</span>
         <span>Интервью</span>
         <span>Активность</span>
         <span />
@@ -54,7 +56,7 @@ export function StudentsTable({ students }: Props) {
           <Link
             key={s.id}
             href={`/agency/students/${s.id}`}
-            className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-4 hover:bg-gray-50 transition-colors items-center"
+            className="grid grid-cols-1 md:grid-cols-[2fr_1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 px-5 py-4 hover:bg-gray-50 transition-colors items-center"
           >
             {/* Name + university */}
             <div className="min-w-0">
@@ -84,6 +86,9 @@ export function StudentsTable({ students }: Props) {
                 <span className="block text-xs text-gray-400">{s.simulator_avg_score.toFixed(1)}/10</span>
               )}
             </div>
+
+            {/* English level test */}
+            <EnglishLevelBadge test={s.english_test} />
 
             {/* Interview */}
             <div>

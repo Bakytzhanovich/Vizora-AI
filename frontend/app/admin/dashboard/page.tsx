@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   Database,
+  Languages,
   RefreshCw,
   ServerCog,
   Users,
@@ -558,7 +559,18 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
         <StatCard title="Симулятор" value={m.simulator_sessions} subtitle={`${m.completed_simulations} завершено`} icon={Clock} />
         <StatCard title="Knowledge Base" value={m.knowledge_base_entries} subtitle={`${m.verified_knowledge_base_entries} verified`} icon={Database} tone="emerald" />
         <StatCard title="Early access" value={m.early_access_leads} icon={Users} tone="amber" />
+        {m.level_test_users !== undefined && (
+          <StatCard
+            title="Проверили уровень"
+            value={m.level_test_users}
+            subtitle={`${m.level_tests_completed} тестов пройдено`}
+            icon={Languages}
+            tone="emerald"
+          />
+        )}
       </div>
+
+      {overview.english_levels && <EnglishLevelsPanel levels={overview.english_levels} />}
 
       <div className="grid gap-4 xl:grid-cols-3">
         <Panel title="Новые пользователи">
@@ -604,6 +616,36 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
         </Panel>
       </div>
     </div>
+  );
+}
+
+const ENGLISH_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
+
+function EnglishLevelsPanel({ levels }: { levels: NonNullable<AdminOverview["english_levels"]> }) {
+  const total = ENGLISH_LEVELS.reduce((sum, lvl) => sum + (levels[lvl] ?? 0), 0);
+  return (
+    <Panel title="Уровень английского" subtitle="Студенты по последнему тесту уровня">
+      {total === 0 ? (
+        <EmptyState text="Пока никто не проходил проверку уровня" />
+      ) : (
+        <div className="grid grid-cols-5 gap-3">
+          {ENGLISH_LEVELS.map((lvl) => {
+            const count = levels[lvl] ?? 0;
+            const pct = Math.round((count / total) * 100);
+            return (
+              <div key={lvl} className="rounded-lg bg-[#0D0F16] px-3 py-3 text-center">
+                <p className="text-xs font-semibold text-[#81889B]">{lvl}</p>
+                <p className="mt-1 text-xl font-bold text-white">{number(count)}</p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#242837]">
+                  <div className="h-full rounded-full bg-emerald-400" style={{ width: `${pct}%` }} />
+                </div>
+                <p className="mt-1 text-[11px] text-[#81889B]">{pct}%</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Panel>
   );
 }
 

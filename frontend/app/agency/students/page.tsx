@@ -7,6 +7,7 @@ import { AgencyLayout } from "@/components/agency/AgencyLayout";
 import { StudentsTable } from "@/components/agency/StudentsTable";
 import { AddStudentModal } from "@/components/agency/AddStudentModal";
 import { ReadinessBar } from "@/components/agency/ReadinessBar";
+import { EnglishLevelBadge } from "@/components/agency/EnglishLevelBadge";
 import {
   agencyGetStudents,
   agencyGetTeam,
@@ -256,7 +257,7 @@ function AdminStudentsTable({
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="hidden md:grid grid-cols-[32px_2fr_1.5fr_1fr_1fr_1fr_1.5fr_auto] gap-4 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+      <div className="hidden md:grid grid-cols-[32px_2fr_1.5fr_1fr_1fr_1fr_1fr_1.5fr_auto] gap-4 px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide">
         <label>
           <input
             type="checkbox"
@@ -269,6 +270,7 @@ function AdminStudentsTable({
         <span>Готовность</span>
         <span>Документы</span>
         <span>Симулятор</span>
+        <span>Английский</span>
         <span>Интервью</span>
         <span>Менеджер</span>
         <span />
@@ -278,7 +280,7 @@ function AdminStudentsTable({
         {students.map((s) => (
           <div
             key={s.id}
-            className={`grid grid-cols-1 md:grid-cols-[32px_2fr_1.5fr_1fr_1fr_1fr_1.5fr_auto] gap-4 px-5 py-4 items-center transition-colors hover:bg-gray-50 ${
+            className={`grid grid-cols-1 md:grid-cols-[32px_2fr_1.5fr_1fr_1fr_1fr_1fr_1.5fr_auto] gap-4 px-5 py-4 items-center transition-colors hover:bg-gray-50 ${
               selectedIds.has(s.id) ? "bg-blue-50" : ""
             }`}
           >
@@ -304,6 +306,7 @@ function AdminStudentsTable({
                 <span className="block text-xs text-gray-400">{s.simulator_avg_score.toFixed(1)}/10</span>
               )}
             </div>
+            <EnglishLevelBadge test={s.english_test} />
             <div>
               {s.days_until_interview === null ? (
                 <span className="text-gray-400 text-xs">—</span>

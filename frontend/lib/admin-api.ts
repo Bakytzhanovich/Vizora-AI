@@ -46,6 +46,9 @@ export interface AdminOverview {
     created_at: string | null;
   }>;
   subscription_plans: Array<{ plan: string; count: number }>;
+  // Students per CEFR band by their latest level test. Optional: the backend
+  // deploys separately and may not send it yet.
+  english_levels?: Record<"A1" | "A2" | "B1" | "B2" | "C1", number>;
 }
 
 export interface AdminUsersResponse {

@@ -18,10 +18,12 @@ from app.core.database import get_db
 from app.models.agency import Agency, AgencyMember, AgencyStudent
 from app.models.chat import ChatMessage
 from app.models.documents import DocumentProgress
+from app.models.level_test import LevelTest
 from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from app.services.level_test_service import LEVEL_TITLES, latest_level_results, level_distribution
 from app.services.roadmap_service import _PROGRESS_WEIGHTS
 from app.services.subscription_service import get_agency_billing_status
 from app.services.subscription_service import set_free_plan
@@ -468,6 +470,8 @@ async def list_students(
     for uid in user_ids:
         sim_data[uid] = await _get_simulator_stats(db, uid)
 
+    level_results = await latest_level_results(db, user_ids)
+
     doc_rows = await db.execute(
         select(DocumentProgress.user_id, func.count(DocumentProgress.id)).where(
             DocumentProgress.user_id.in_(user_ids),
@@ -535,6 +539,8 @@ async def list_students(
             "last_active": last_active.isoformat() if last_active else None,
             "assigned_manager_id": assigned_manager_id,
             "assigned_manager_name": members_map.get(assigned_manager_id) if assigned_manager_id else None,
+            # Latest spoken level test, or None if the student hasn't taken one.
+            "english_test": level_results.get(uid),
         })
 
     if sort == "readiness":
@@ -609,6 +615,27 @@ async def get_student(
 
     last_active = await _get_student_last_active(db, student_id)
 
+    level_test = await db.scalar(
+        select(LevelTest)
+        .where(LevelTest.user_id == student_id, LevelTest.completed.is_(True))
+        .order_by(LevelTest.completed_at.desc())
+        .limit(1)
+    )
+    level_test_count = await db.scalar(
+        select(func.count(LevelTest.id)).where(LevelTest.user_id == student_id, LevelTest.completed.is_(True))
+    ) or 0
+    english_test = None
+    if level_test:
+        result = json.loads(level_test.result or "{}")
+        english_test = {
+            "level": level_test.final_level,
+            "level_title": LEVEL_TITLES.get((level_test.final_level or "").rstrip("+"), ""),
+            "tested_at": level_test.completed_at.isoformat() if level_test.completed_at else None,
+            "tests_taken": level_test_count,
+            "criteria": result.get("criteria"),
+            "summary_ru": result.get("summary_ru"),
+        }
+
     risk_profile = []
     if profile and profile.risk_profile:
         try:
@@ -639,6 +666,7 @@ async def get_student(
         "risk_profile": risk_profile,
         "roadmap_completed": sorted(completed_steps),
         "last_active": last_active.isoformat() if last_active else None,
+        "english_test": english_test,
     }
 
 
@@ -672,6 +700,7 @@ async def get_analytics(
             "weak_topics": [],
             "weekly_activity": [],
             "unassigned_students": unassigned_count,
+            "english_levels": {"tested": 0, "distribution": level_distribution({})},
         }
 
     today = datetime.utcnow().date()
@@ -703,6 +732,7 @@ async def get_analytics(
             SimulatorSession.completed == True,
         )
     )
+    level_results = await latest_level_results(db, user_ids)
 
     topic_sums: dict[str, float] = {}
     topic_counts: dict[str, int] = {}
@@ -767,6 +797,10 @@ async def get_analytics(
         "weak_topics": weak_topics,
         "weekly_activity": weekly,
         "unassigned_students": unassigned_count,
+        "english_levels": {
+            "tested": len(level_results),
+            "distribution": level_distribution(level_results),
+        },
     }
 
 

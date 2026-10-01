@@ -107,6 +107,16 @@ export interface AgencyStudent {
   last_active: string | null;
   assigned_manager_id: string | null;
   assigned_manager_name: string | null;
+  // Latest spoken English level test; null if the student hasn't taken one.
+  // Optional: the backend deploys separately and may not send it yet.
+  english_test?: { level: string; tested_at: string | null } | null;
+}
+
+export const ENGLISH_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
+
+export interface EnglishLevelStats {
+  tested: number;
+  distribution: Record<(typeof ENGLISH_LEVELS)[number], number>;
 }
 
 export interface AgencyStudentDetail {
@@ -132,6 +142,20 @@ export interface AgencyStudentDetail {
   risk_profile: { type: string; level: string; description: string }[];
   roadmap_completed: string[];
   last_active: string | null;
+  english_test?: {
+    level: string; // "B1", "B2+", …
+    level_title: string;
+    tested_at: string | null;
+    tests_taken: number;
+    criteria: {
+      grammar: number;
+      vocabulary: number;
+      coherence: number;
+      development: number;
+      fluency: number | null;
+    } | null;
+    summary_ru: string | null;
+  } | null;
 }
 
 export interface AgencyAlert {
@@ -156,6 +180,7 @@ export interface AgencyAnalytics {
   weak_topics: WeakTopic[];
   weekly_activity: { date: string; active_users: number }[];
   unassigned_students: number;
+  english_levels?: EnglishLevelStats;
 }
 
 export interface AgencyTeamMember {

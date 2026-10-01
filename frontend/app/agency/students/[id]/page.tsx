@@ -7,10 +7,17 @@ import { AgencyLayout } from "@/components/agency/AgencyLayout";
 import { ReadinessBar } from "@/components/agency/ReadinessBar";
 import { agencyGetStudent, type AgencyStudentDetail } from "@/lib/agency-api";
 
-const TABS = ["Обзор", "Симулятор", "Документы", "Риски"] as const;
+const TABS = ["Обзор", "Английский", "Симулятор", "Документы", "Риски"] as const;
 type Tab = (typeof TABS)[number];
 
 const ENGLISH_MAP: Record<string, string> = { weak: "Слабый", medium: "Средний", good: "Хороший" };
+const ENGLISH_CRITERIA = [
+  { key: "grammar", label: "Грамматика" },
+  { key: "vocabulary", label: "Словарный запас" },
+  { key: "coherence", label: "Связность речи" },
+  { key: "development", label: "Развёрнутость ответов" },
+  { key: "fluency", label: "Беглость" },
+] as const;
 const FINANCE_MAP: Record<string, string> = { self: "Свои", parents: "Родители", scholarship: "Стипендия" };
 const RISK_COLORS: Record<string, string> = {
   high: "text-red-600 bg-red-50 border-red-200",
@@ -56,6 +63,7 @@ export default function StudentDetailPage() {
 
   if (!data) return null;
   const { student, readiness, documents_pct, simulator_sessions, simulator_avg_score, simulator_scores, risk_profile, roadmap_completed } = data;
+  const englishTest = data.english_test ?? null;
   const days = daysUntil(student.interview_date);
 
   return (
@@ -92,7 +100,8 @@ export default function StudentDetailPage() {
                 {student.country}
               </span>
               <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
-                🇺🇸 {ENGLISH_MAP[student.english_level] ?? student.english_level}
+                {/* A measured level beats the self-reported one from onboarding */}
+                🇺🇸 {englishTest ? `${englishTest.level} (тест)` : ENGLISH_MAP[student.english_level] ?? student.english_level}
               </span>
               <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 flex items-center gap-1">
                 <DollarSign size={11} />
@@ -194,6 +203,61 @@ export default function StudentDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tab: Английский */}
+      {tab === "Английский" && (
+        !englishTest ? (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-10 text-center">
+            <p className="text-2xl mb-2">🎯</p>
+            <p className="text-sm text-gray-700 font-medium">Студент ещё не проверял уровень английского</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Проверка уровня — в симуляторе, занимает 3–4 минуты. Уровень в профиле сейчас указан самим студентом:{" "}
+              {ENGLISH_MAP[student.english_level] ?? student.english_level}.
+            </p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center justify-center text-center">
+              <p className="text-xs text-gray-500 font-medium mb-1">Уровень по тесту</p>
+              <p className="text-5xl font-black text-blue-600 mt-1">{englishTest.level}</p>
+              <p className="text-gray-700 font-medium">{englishTest.level_title}</p>
+              <p className="text-gray-400 text-xs mt-2">
+                Тестов пройдено: {englishTest.tests_taken}
+                {englishTest.tested_at &&
+                  ` · последний ${new Date(englishTest.tested_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`}
+              </p>
+              {englishTest.summary_ru && <p className="text-sm text-gray-600 mt-4 leading-relaxed">{englishTest.summary_ru}</p>}
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="font-semibold text-gray-900 mb-4">Оценка по критериям</h3>
+              <div className="space-y-4">
+                {ENGLISH_CRITERIA.map(({ key, label }) => {
+                  const score = englishTest.criteria?.[key] ?? null;
+                  return (
+                    <div key={key}>
+                      <div className="flex justify-between text-sm mb-1.5">
+                        <span className="text-gray-600">{label}</span>
+                        <span className={`font-bold ${score == null ? "text-gray-400" : score >= 7 ? "text-emerald-600" : score >= 5 ? "text-amber-600" : "text-red-500"}`}>
+                          {score == null ? "—" : `${score.toFixed(1)}/10`}
+                        </span>
+                      </div>
+                      <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${score == null ? "" : score >= 7 ? "bg-emerald-500" : score >= 5 ? "bg-amber-400" : "bg-red-400"}`}
+                          style={{ width: `${(score ?? 0) * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-4">
+                Примерный уровень по разговорной речи. Для визового интервью обычно достаточно B1.
+              </p>
+            </div>
+          </div>
+        )
       )}
 
       {/* Tab: Симулятор */}
