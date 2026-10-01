@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-type Mode = "trainer" | "consul";
+export type Mode = "trainer" | "consul" | "level_test";
 type Difficulty = "easy" | "medium" | "hard";
 
 interface Props {
@@ -28,6 +28,7 @@ export function ModeSelector({ onStart, isLoading }: Props) {
 
   const trainerFeatures = t("trainer.features", { returnObjects: true }) as string[];
   const consulFeatures = t("consul.features", { returnObjects: true }) as string[];
+  const levelFeatures = t("level_test.features", { returnObjects: true }) as string[];
 
   return (
     <div className="min-h-screen bg-bg px-4 py-8 max-w-2xl mx-auto">
@@ -114,7 +115,40 @@ export function ModeSelector({ onStart, isLoading }: Props) {
           </motion.div>
         </div>
 
+        {/* Level test — adapts its own difficulty, so the picker below is hidden for it */}
+        <motion.div
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setSelectedMode("level_test")}
+          className={`cursor-pointer rounded-2xl border p-5 mb-6 transition-all duration-200 ${
+            selectedMode === "level_test"
+              ? "border-accent bg-accent/10"
+              : "border-border bg-card hover:border-accent/40"
+          }`}
+        >
+          <div className="flex items-start gap-4">
+            <div className="text-3xl">🎯</div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-primary font-bold">{t("level_test.title")}</h2>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-teal border border-teal/30 bg-teal/10 rounded-full px-2 py-0.5">
+                  {t("level_test.free_badge")}
+                </span>
+              </div>
+              <p className="text-secondary text-xs mb-3">{t("level_test.desc")}</p>
+              <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                {levelFeatures.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-xs text-secondary">
+                    <span className="text-teal shrink-0 mt-0.5">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Difficulty */}
+        {selectedMode !== "level_test" && (
         <div className="bg-card border border-border rounded-2xl p-4 mb-6">
           <p className="text-secondary text-xs mb-3">{t("difficulty.label")}</p>
           <div className="flex gap-2">
@@ -133,6 +167,7 @@ export function ModeSelector({ onStart, isLoading }: Props) {
             ))}
           </div>
         </div>
+        )}
 
         {/* Start button */}
         <motion.button
@@ -144,7 +179,13 @@ export function ModeSelector({ onStart, isLoading }: Props) {
           {isLoading
             ? t("start_button.starting")
             : selectedMode
-            ? t(selectedMode === "trainer" ? "start_button.start_trainer" : "start_button.start_consul")
+            ? t(
+                selectedMode === "trainer"
+                  ? "start_button.start_trainer"
+                  : selectedMode === "consul"
+                  ? "start_button.start_consul"
+                  : "start_button.start_level_test"
+              )
             : t("start_button.select_first")}
         </motion.button>
       </motion.div>

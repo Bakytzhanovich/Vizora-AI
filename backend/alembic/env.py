@@ -20,6 +20,7 @@ import app.models.documents  # noqa: F401
 import app.models.early_access  # noqa: F401
 import app.models.emergency  # noqa: F401
 import app.models.knowledge_base  # noqa: F401
+import app.models.level_test  # noqa: F401
 import app.models.profile  # noqa: F401
 import app.models.referral  # noqa: F401
 import app.models.roadmap  # noqa: F401

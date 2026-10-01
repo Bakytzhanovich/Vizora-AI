@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 
 import { ModeSelector } from "@/components/simulator/ModeSelector";
 import { InterviewScreen } from "@/components/simulator/InterviewScreen";
+import { LevelTestScreen } from "@/components/level-test/LevelTestScreen";
+import { LevelResultScreen, LevelResult } from "@/components/level-test/LevelResultScreen";
 import { ResultsScreen, FeedbackData } from "@/components/simulator/ResultsScreen";
 import { SessionsLimitOverlay } from "@/components/simulator/SessionsLimitOverlay";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
@@ -15,7 +17,13 @@ import { apiGetPlans } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-type Step = "mode_select" | "interview" | "results";
+type Step = "mode_select" | "interview" | "results" | "level_test" | "level_result";
+
+interface LevelTestData {
+  testId: string;
+  openingMessage: string;
+  maxQuestions: number;
+}
 
 interface SessionData {
   sessionId: string;
@@ -44,6 +52,8 @@ export default function SimulatorPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [session, setSession] = useState<SessionData | null>(null);
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
+  const [levelTest, setLevelTest] = useState<LevelTestData | null>(null);
+  const [levelResult, setLevelResult] = useState<LevelResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [sessionsLimitHit, setSessionsLimitHit] = useState(false);
   const [standardPriceKzt, setStandardPriceKzt] = useState<number | null>(null);
@@ -79,7 +89,32 @@ export default function SimulatorPage() {
     ? scoredSessions.reduce((sum, h) => sum + (h.scores?.overall ?? 0), 0) / scoredSessions.length
     : null;
 
-  const handleStart = async (mode: "trainer" | "consul", difficulty: string) => {
+  const handleStartLevelTest = async () => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    setIsStarting(true);
+    try {
+      const res = await fetch(`${API_URL}/api/level-test/start`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to start level test");
+      const data = await res.json();
+      setLevelTest({ testId: data.test_id, openingMessage: data.message, maxQuestions: data.max_questions });
+      setLevelResult(null);
+      track("level_test_start", {});
+      setStep("level_test");
+    } catch {
+      alert(t("start_error"));
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const handleStart = async (mode: "trainer" | "consul" | "level_test", difficulty: string) => {
+    if (mode === "level_test") return handleStartLevelTest();
+
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
@@ -185,6 +220,35 @@ export default function SimulatorPage() {
         openingQuestion={session.openingQuestion}
         closingPhrases={session.closingPhrases}
         onEnd={handleSessionEnd}
+        onBack={() => setStep("mode_select")}
+      />
+    );
+  }
+
+  if (step === "level_test" && levelTest) {
+    return (
+      <LevelTestScreen
+        key={levelTest.testId}
+        testId={levelTest.testId}
+        openingMessage={levelTest.openingMessage}
+        maxQuestions={levelTest.maxQuestions}
+        onDone={(result) => {
+          track("level_test_end", { level: result.level });
+          setLevelResult(result);
+          setStep("level_result");
+          // english_level in the profile may have just changed
+          refreshProfile();
+        }}
+        onBack={() => setStep("mode_select")}
+      />
+    );
+  }
+
+  if (step === "level_result" && levelResult) {
+    return (
+      <LevelResultScreen
+        result={levelResult}
+        onRetry={handleStartLevelTest}
         onBack={() => setStep("mode_select")}
       />
     );

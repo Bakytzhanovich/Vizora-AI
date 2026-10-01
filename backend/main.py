@@ -40,6 +40,7 @@ import app.models.knowledge_base  # noqa: F401
 import app.models.push_subscription  # noqa: F401
 import app.models.subscription_event  # noqa: F401
 import app.models.security_log  # noqa: F401
+import app.models.level_test  # noqa: F401
 from app.models.user import User
 from routers.auth import router as auth_router
 from routers.profile import router as profile_router
@@ -58,6 +59,7 @@ from routers.internal import router as internal_router
 from routers.admin import router as admin_router
 from routers.push import router as push_router
 from routers.payments import router as payments_router
+from routers.level_test import router as level_test_router
 
 
 def run_migrations() -> None:
@@ -292,6 +294,7 @@ app.include_router(internal_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(push_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
+app.include_router(level_test_router, prefix="/api")
 
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(_static_dir, exist_ok=True)
