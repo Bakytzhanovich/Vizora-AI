@@ -22,6 +22,7 @@ interface SessionData {
   openingQuestion: string;
   mode: "trainer" | "consul";
   difficulty: string;
+  closingPhrases: Record<string, string>;
 }
 
 interface HistoryItem {
@@ -108,6 +109,9 @@ export default function SimulatorPage() {
       setSession({
         sessionId: data.session_id,
         openingQuestion: data.opening_question,
+        // Absent on a backend that predates the officer-decision flow — the
+        // interview then just runs until the student presses "Завершить".
+        closingPhrases: data.closing_phrases ?? {},
         mode,
         difficulty,
       });
@@ -179,6 +183,7 @@ export default function SimulatorPage() {
         difficulty={session.difficulty}
         sessionId={session.sessionId}
         openingQuestion={session.openingQuestion}
+        closingPhrases={session.closingPhrases}
         onEnd={handleSessionEnd}
         onBack={() => setStep("mode_select")}
       />

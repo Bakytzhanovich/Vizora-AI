@@ -6,7 +6,7 @@ from typing import Any, AsyncGenerator
 
 import openai
 
-from app.services.ai_service import get_ai_client, get_chat_model, strip_unexpected_scripts
+from app.services.ai_service import get_ai_client, get_chat_model, reasoning_kwargs, strip_unexpected_scripts
 
 # Full question bank sourced from official agency interview prep document (58 real questions).
 # 70% of these are asked at every interview. Order within each phase reflects real consul flow.
@@ -218,6 +218,37 @@ _PERSONALITY_INSTRUCTIONS: dict[str, str] = {
 }
 
 
+# Consul interviews are a 2-3 minute experience, like the real window interview.
+# Elapsed time is measured server-side from SimulatorSession.created_at, so a
+# slow client or a paused tab can't stretch the interview past the close.
+CONSUL_WRAP_UP_SECONDS = 120  # finish the current topic, then decide
+CONSUL_CLOSE_SECONDS = 150    # deliver the decision on this turn, no more questions
+
+# The officer's closing sentences, one per decision. The prompt makes the model
+# say them verbatim; detect_officer_decision() recognises them by these key
+# phrases; /simulator/start sends the phrases to the frontend so it can end the
+# interview the moment one is spoken — one source of truth for all three.
+CLOSING_LINES: dict[str, str] = {
+    "approved": "Congratulations. Your visa is approved. Welcome to the Work and Travel program.",
+    "processing": "Thank you. Your application will be processed. You'll receive notification within 3 to 5 business days.",
+    "refused": "Thank you. That will be all.",
+}
+CLOSING_KEY_PHRASES: dict[str, str] = {
+    "approved": "your visa is approved",
+    "processing": "your application will be processed",
+    "refused": "that will be all",
+}
+
+
+def detect_officer_decision(officer_text: str) -> str | None:
+    """Return "approved" / "processing" / "refused" if this turn is the close."""
+    normalized = " ".join(officer_text.lower().replace("’", "'").split())
+    for decision, phrase in CLOSING_KEY_PHRASES.items():
+        if phrase in normalized:
+            return decision
+    return None
+
+
 def get_officer_personality(session_id: str | None) -> str:
     """Deterministic per-session officer personality: neutral 50% / friendly 20% / strict 30%.
 
@@ -398,6 +429,7 @@ def get_consul_prompt(
     session_id: str | None = None,
     turn_index: int = 0,
     transcript: list[dict[str, Any]] | None = None,
+    elapsed_seconds: float = 0,
 ) -> str:
     rng = _session_rng(session_id)
 
@@ -436,8 +468,22 @@ def get_consul_prompt(
     use_wildcard = turn_rng.random() < 0.10 and bool(available_wildcards)
     wildcard_question = _pick(turn_rng, available_wildcards, 1)[0] if use_wildcard else None
 
+    must_close = elapsed_seconds >= CONSUL_CLOSE_SECONDS
+    wrapping_up = elapsed_seconds >= CONSUL_WRAP_UP_SECONDS
+
     turn_directives = []
-    if use_wildcard:
+    if must_close:
+        # Overrides the wildcard/silence rolls — a surprise question here would
+        # push the decision past the 2-3 minute window.
+        turn_directives.append(
+            "THIS TURN: time is up. Go to PHASE 10 now — output ONLY the closing sentence for your decision."
+        )
+    elif wrapping_up:
+        turn_directives.append(
+            "THIS TURN: the interview is almost over. Ask at most ONE final question (prefer an unresolved "
+            "concern or a return/ties question), then close on your next turn."
+        )
+    elif use_wildcard:
         turn_directives.append(
             f'THIS TURN: instead of the next planned question, ask this unexpected personal question '
             f'verbatim to test naturalness: "{wildcard_question}"'
@@ -453,7 +499,10 @@ def get_consul_prompt(
 
 === THIS SESSION'S QUESTION SET ===
 Each session uses a different mix of questions drawn from the real consulate question bank.
-Work through each phase in order. After 2-3 questions per phase, move to the next.
+A real window interview lasts only 2-3 minutes — about 6-8 questions in total. You will NOT get
+through every phase, and that is expected: ask 1 question from each of the most important phases
+(Opening, Rights, Education, Finances, Return, and any Risk follow-ups for this student), in order,
+and skip the rest. Spend extra questions only on answers that raised a concern.
 Use THESE specific questions — not other questions you might know.
 
 PHASE 1 — Opening (1 question only):
@@ -480,21 +529,26 @@ PHASE 9 — Risk follow-ups for this student:{risk_text}
 PHASE 10 — Close (see INTERVIEW LENGTH below for when to trigger this):
   Privately judge how the WHOLE interview went, then output ONLY the matching quoted sentence
   below — verbatim, nothing before or after it, no explanation of which case matched, no
-  restating the condition:
-  - Case: answers were strong, confident, and consistent throughout, with no unresolved concerns.
-    Output exactly: "Congratulations. Your visa is approved. Welcome to the Work and Travel program."
+  restating the condition. This is practice for students who are still learning, so judge
+  fairly but not harshly — imperfect English and small hesitations are normal and are NOT
+  reasons to withhold approval:
+  - Case: the student answered most questions sensibly — a clear non-money purpose, a plan to
+    return home, no serious red flags — even if some answers were short or the English was imperfect.
+    Output exactly: "{CLOSING_LINES['approved']}"
     (say it as a genuine motivating moment — the one time you may sound warm)
-  - Case: answers were mixed — acceptable overall but with some vague or weak moments.
-    Output exactly: "Thank you. Your application will be processed. You'll receive notification within 3 to 5 business days."
-  - Case: you had to press hard on multiple weak, evasive, or contradictory answers.
-    Output exactly: "Thank you. That will be all."
-  Do not default to the approval line — only use it when genuinely earned.
+  - Case: several answers were vague or unconvincing, or a concern you pressed on stayed unresolved,
+    but nothing was disqualifying.
+    Output exactly: "{CLOSING_LINES['processing']}"
+  - Case: a clear red flag — the main goal is earning money, intent to stay in the US or not return,
+    relatives in the US the student plans to stay with, an answer contradicting an earlier one, or
+    the student could not answer most questions at all.
+    Output exactly: "{CLOSING_LINES['refused']}"
 
 === INTERVIEW LENGTH ===
-So far there have been {turn_index} exchanges in this interview.
-- If the student's answers have been strong, consistent, and confident: move to PHASE 10 after 8-10 exchanges total.
-- If answers have been vague, evasive, or raised concerns you had to press on: extend to 15+ exchanges before closing.
-- Never end abruptly mid-phase — finish the current phase's minimum questions first, then close.
+Elapsed time: {int(elapsed_seconds) // 60}:{int(elapsed_seconds) % 60:02d}. Exchanges so far: {turn_index}.
+- The whole interview lasts about 2-3 minutes. Before 2:00 — keep asking questions.
+- From 2:00 — ask at most one final question, then close.
+- From 2:30 — close on this turn with PHASE 10, whatever phase you are in.
 
 === EMOTIONAL REACTIONS (this is what makes you feel like a real officer, not a form) ===
 1. GOOD answer (clear, confident, complete): respond with ONE short neutral acknowledgment only —
@@ -553,12 +607,15 @@ async def generate_simulator_response(
     risks: list[dict[str, Any]],
     difficulty: str = "medium",
     session_id: str | None = None,
+    elapsed_seconds: float = 0,
 ) -> AsyncGenerator[str, None]:
     if mode == "trainer":
         system_prompt = get_trainer_prompt(profile, risks)
     else:
         turn_index = len([e for e in transcript if e["role"] == "student"])
-        system_prompt = get_consul_prompt(profile, risks, difficulty, session_id, turn_index, transcript)
+        system_prompt = get_consul_prompt(
+            profile, risks, difficulty, session_id, turn_index, transcript, elapsed_seconds
+        )
 
     messages: list[dict[str, str]] = []
     for entry in transcript:
@@ -568,7 +625,10 @@ async def generate_simulator_response(
     # Consul needs low temperature for consistent phase adherence and short answers.
     # Trainer needs room for feedback + coaching tip + next question.
     temperature = 0.7 if mode == "trainer" else 0.5
-    max_tokens = 350 if mode == "trainer" else 120
+    # Reply length is enforced by the prompts; these caps are runaway guards
+    # with headroom for reasoning tokens — at 120 the consul's reasoning used
+    # the whole budget and the officer's bubble came back empty.
+    max_tokens = 1200 if mode == "trainer" else 600
 
     client = get_ai_client()
     response = await client.chat.completions.create(
@@ -577,6 +637,7 @@ async def generate_simulator_response(
         stream=True,
         max_tokens=max_tokens,
         temperature=temperature,
+        **reasoning_kwargs(),
     )
 
     async for chunk in response:
@@ -618,6 +679,13 @@ _FEEDBACK_FALLBACK: dict[str, Any] = {
 }
 
 
+_DECISION_LABELS_RU: dict[str, str] = {
+    "approved": "виза одобрена",
+    "processing": "отправлено на дополнительную проверку (administrative processing)",
+    "refused": "отказ",
+}
+
+
 def _officer_reveal_text(personality: str, overall: float) -> str:
     label = _PERSONALITY_LABELS_RU[personality]
     displayed = round(overall)
@@ -638,6 +706,7 @@ async def generate_feedback(
     session_id: str | None = None,
     profile: dict[str, Any] | None = None,
     risks: list[dict[str, Any]] | None = None,
+    officer_decision: str | None = None,
 ) -> dict[str, Any]:
     # Build a numbered transcript so the model can cite specific exchanges
     pairs: list[str] = []
@@ -659,6 +728,18 @@ async def generate_feedback(
     mode_label = "тренировка с фидбеком" if mode == "trainer" else "строгий режим консула"
     profile_text = _profile_text(profile) if profile else "Профиль не указан"
     risks_text = _risks_text(risks or [])
+    # The officer already announced a decision on screen — the feedback has to
+    # explain it, or the student sees "approved" and a list of mistakes with
+    # nothing connecting the two.
+    decision_text = (
+        f"""
+РЕШЕНИЕ КОНСУЛА В ЭТОЙ СИМУЛЯЦИИ: {_DECISION_LABELS_RU[officer_decision]}.
+В "recommendation" первым предложением объясни, почему консул принял именно такое решение
+(со ссылкой на конкретные ответы), затем — что сделать, чтобы на настоящем интервью получить одобрение.
+"""
+        if officer_decision in _DECISION_LABELS_RU
+        else ""
+    )
 
     prompt = f"""Ты эксперт по визовым интервью J-1 Work and Travel USA.
 Проанализируй это конкретное интервью (режим: {mode_label}) и дай детальный разбор.
@@ -668,7 +749,7 @@ async def generate_feedback(
 
 ТРАНСКРИПТ (пронумерованные пары вопрос-ответ):
 {transcript_text}
-
+{decision_text}
 КРИТЕРИИ ОЦЕНКИ:
 - Знание программы: ответы про спонсора, SEVIS, DS-2019, права из брошюры
 - Ties to home country: упомянул ли учёбу / семью в КЗ / планы после программы

@@ -97,6 +97,22 @@ def get_chat_model() -> str:
     return cfg["default_model"]
 
 
+def reasoning_kwargs() -> dict:
+    """Extra create() kwargs that keep reasoning models from eating the answer.
+
+    gpt-oss spends completion tokens on hidden reasoning before any visible
+    text, and that reasoning counts against max_tokens — with a tight cap the
+    stream ends (finish_reason=length) before a single content token, so the
+    UI shows an empty bubble with a 200. "low" keeps reasoning short so the
+    answer arrives fast. Keyed on the model, not the provider: AI_MODEL can
+    point Groq at a non-reasoning model, and OpenAI's gpt-4o-mini rejects the
+    parameter outright.
+    """
+    if get_chat_model().startswith("openai/gpt-oss"):
+        return {"extra_body": {"reasoning_effort": "low"}}
+    return {}
+
+
 # Backward-compatibility alias — kept so legacy imports don't break.
 def get_openai_client() -> AsyncOpenAI:
     return get_ai_client()
@@ -253,8 +269,11 @@ async def generate_chat_response(
         model=get_chat_model(),
         messages=[{"role": "system", "content": system_prompt}, *messages],
         stream=True,
-        max_tokens=500,
+        # Headroom for reasoning tokens (see reasoning_kwargs) — answer length
+        # is set by the prompt, this cap is only a runaway guard.
+        max_tokens=1500,
         temperature=0.7,
+        **reasoning_kwargs(),
     )
 
     async for chunk in response:

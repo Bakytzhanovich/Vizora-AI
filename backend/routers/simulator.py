@@ -16,8 +16,10 @@ from app.models.profile import StudentProfile
 from app.models.simulator import SimulatorSession
 from app.models.user import User
 from app.services.simulator_service import (
+    CLOSING_KEY_PHRASES,
     INTERVIEW_QUESTION_BANK,
     compute_verdict,
+    detect_officer_decision,
     generate_feedback,
     generate_simulator_response,
 )
@@ -166,7 +168,14 @@ async def start_session(
     await db.commit()
     await db.refresh(session)
 
-    return {"session_id": session.id, "opening_question": opening, "mode": body.mode}
+    return {
+        "session_id": session.id,
+        "opening_question": opening,
+        "mode": body.mode,
+        # Lets the frontend recognise the officer's decision and end the
+        # interview itself, without keeping its own copy of the sentences.
+        "closing_phrases": CLOSING_KEY_PHRASES if body.mode == "consul" else {},
+    }
 
 
 @router.post("/respond")
@@ -208,10 +217,14 @@ async def respond(
                 },
             )
 
+    elapsed_seconds = (datetime.utcnow() - session.created_at).total_seconds()
+
     async def event_stream():
         accumulated = ""
         try:
-            async for chunk in generate_simulator_response(session.mode, transcript, profile, risks, session.difficulty, session.id):
+            async for chunk in generate_simulator_response(
+                session.mode, transcript, profile, risks, session.difficulty, session.id, elapsed_seconds
+            ):
                 accumulated += chunk
                 yield chunk
         except Exception:
@@ -224,6 +237,10 @@ async def respond(
             "content": accumulated,
             "timestamp": datetime.utcnow().isoformat(),
         }
+        if session.mode == "consul":
+            decision = detect_officer_decision(accumulated)
+            if decision:
+                officer_message["decision"] = decision
 
         # Use a fresh session — the dependency-injected one closes when the
         # route handler returns StreamingResponse, before this generator runs.
@@ -269,8 +286,15 @@ async def end_session(
     transcript: list[dict] = json.loads(session.transcript)
     profile, risks = await _load_profile(db, user_id)
 
-    feedback = await generate_feedback(transcript, session.mode, session.id, profile, risks)
+    officer_decision = next(
+        (t["decision"] for t in reversed(transcript) if t.get("role") == "officer" and t.get("decision")),
+        None,
+    )
+
+    feedback = await generate_feedback(transcript, session.mode, session.id, profile, risks, officer_decision)
     feedback["verdict"] = compute_verdict(feedback.get("scores", {}).get("overall", 5.0))
+    if officer_decision:
+        feedback["officer_decision"] = officer_decision
 
     session.feedback = json.dumps(feedback, ensure_ascii=False)
     session.scores = json.dumps(feedback.get("scores", {}), ensure_ascii=False)

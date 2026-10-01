@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Dumbbell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ScoreCard } from "./ScoreCard";
+import { OfficerDecision, OfficerDecisionCard, isOfficerDecision } from "./OfficerDecisionCard";
 
 interface Scores {
   confidence: number;
@@ -63,6 +64,9 @@ export interface FeedbackData {
   // verdict card entirely rather than guessing a score client-side (which
   // would duplicate the 75/50 threshold rule in two languages).
   verdict?: Verdict;
+  // What the consul announced at the end of a consul-mode interview; absent
+  // when the student ended the session before the officer decided.
+  officer_decision?: OfficerDecision;
   // Legacy fields (kept for backward compat)
   weak_points?: string[];
   phrases_to_use?: string[];
@@ -300,6 +304,11 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
             Guarded: a frontend deploy can briefly ship ahead of a backend that doesn't
             send `verdict` yet (or an unrecognized color), so this degrades to just not
             showing the card rather than crashing the whole results screen. */}
+        {isOfficerDecision(feedback.officer_decision) && (
+          <div className="mb-4">
+            <OfficerDecisionCard decision={feedback.officer_decision} />
+          </div>
+        )}
         {verdict && verdict.color in VERDICT_STYLES && <VerdictCard verdict={verdict} />}
 
         {/* Header */}

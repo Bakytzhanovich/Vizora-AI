@@ -9,6 +9,7 @@ import { VoiceButton, VoiceState } from "./VoiceButton";
 import { VoiceRecorder } from "@/lib/voice";
 import type { FeedbackData } from "./ResultsScreen";
 import { TrialSessionEndedModal } from "./TrialSessionEndedModal";
+import { OfficerDecision, OfficerDecisionCard, isOfficerDecision } from "./OfficerDecisionCard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -16,16 +17,36 @@ function makeId() {
   return Math.random().toString(36).slice(2);
 }
 
+// Consul interviews are 2-3 minutes; the backend closes them by 2:30 (see
+// CONSUL_CLOSE_SECONDS in simulator_service.py). This is only the number shown
+// next to the timer — the actual close is decided server-side.
+const CONSUL_DISPLAY_LIMIT_SECONDS = 180;
+const CONSUL_WARN_SECONDS = 120;
+
+// Long enough to read the decision before the results screen replaces it.
+const DECISION_MIN_DISPLAY_MS = 3500;
+
+// Phrases come from /simulator/start (CLOSING_KEY_PHRASES on the backend) and
+// are matched the same way detect_officer_decision() matches them there.
+function detectDecision(text: string, closingPhrases: Record<string, string>): OfficerDecision | null {
+  const normalized = text.toLowerCase().replace(/’/g, "'").split(/\s+/).join(" ");
+  for (const [decision, phrase] of Object.entries(closingPhrases)) {
+    if (isOfficerDecision(decision) && normalized.includes(phrase)) return decision;
+  }
+  return null;
+}
+
 interface Props {
   mode: "trainer" | "consul";
   difficulty: string;
   sessionId: string;
   openingQuestion: string;
+  closingPhrases: Record<string, string>;
   onEnd: (feedback: FeedbackData) => void;
   onBack: () => void;
 }
 
-export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBack }: Props) {
+export function InterviewScreen({ mode, sessionId, openingQuestion, closingPhrases, onEnd, onBack }: Props) {
   const { t } = useTranslation("simulator");
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     { id: makeId(), role: "officer", content: openingQuestion },
@@ -41,6 +62,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
   const [questionNumber, setQuestionNumber] = useState(1);
   const [isEnding, setIsEnding] = useState(false);
   const [trialEnded, setTrialEnded] = useState<{ answered: number; total: number } | null>(null);
+  const [decision, setDecision] = useState<OfficerDecision | null>(null);
 
   const recorderRef = useRef(new VoiceRecorder());
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -159,6 +181,10 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
       setVoiceState("idle");
 
       if (accumulated) await playTTS(accumulated);
+
+      // The officer just announced the decision — show it, then go to feedback.
+      const announced = mode === "consul" ? detectDecision(accumulated, closingPhrases) : null;
+      if (announced) setDecision(announced);
     } catch {
       setTranscript((prev) =>
         prev.map((m) =>
@@ -170,7 +196,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
     } finally {
       reader?.cancel();
     }
-  }, [isStreaming, sessionId, questionNumber, playTTS]);
+  }, [isStreaming, sessionId, questionNumber, playTTS, mode, closingPhrases]);
 
   const handleMicClick = useCallback(async () => {
     if (voiceState === "idle") {
@@ -214,18 +240,21 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
     await submitAnswer(text);
   };
 
-  const handleEnd = async () => {
+  const handleEnd = async (minDisplayMs = 0) => {
     if (isEnding) return;
     setIsEnding(true);
     if (timerRef.current) clearInterval(timerRef.current);
     recorderRef.current.cleanup();
 
     try {
-      const res = await fetch(`${API_URL}/api/simulator/end`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ session_id: sessionId, duration_seconds: timer }),
-      });
+      const [res] = await Promise.all([
+        fetch(`${API_URL}/api/simulator/end`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+          body: JSON.stringify({ session_id: sessionId, duration_seconds: timer }),
+        }),
+        new Promise((resolve) => setTimeout(resolve, minDisplayMs)),
+      ]);
       if (!res.ok) throw new Error(`/simulator/end failed: ${res.status}`);
       const data = await res.json();
       if (!data.feedback) throw new Error("/simulator/end returned no feedback");
@@ -247,20 +276,37 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
     }
   };
 
-  const isBusy = isStreaming || voiceState === "processing" || isPlaying;
+  // handleEnd is recreated every render; the effect below must call the
+  // current one (fresh `timer`), not the one captured when decision was set.
+  const handleEndRef = useRef(handleEnd);
+  handleEndRef.current = handleEnd;
+
+  useEffect(() => {
+    if (decision) handleEndRef.current(DECISION_MIN_DISPLAY_MS);
+  }, [decision]);
+
+  const isBusy = isStreaming || voiceState === "processing" || isPlaying || decision !== null;
 
   if (trialEnded) {
     return (
       <TrialSessionEndedModal
         answered={trialEnded.answered}
         total={trialEnded.total}
-        onSeeResults={handleEnd}
+        onSeeResults={() => handleEnd()}
       />
     );
   }
 
   return (
     <div className="flex flex-col h-screen bg-bg">
+      {decision && (
+        <div className="fixed inset-0 z-50 bg-bg/90 backdrop-blur flex items-center justify-center px-4">
+          <div className="w-full max-w-md">
+            <OfficerDecisionCard decision={decision} />
+            <p className="text-secondary text-xs text-center mt-4 animate-pulse">{t("decision.preparing_feedback")}</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="shrink-0 bg-bg/90 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -274,8 +320,15 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="font-mono text-accent text-sm font-bold tabular-nums">
+            <span
+              className={`font-mono text-sm font-bold tabular-nums ${
+                mode === "consul" && timer >= CONSUL_WARN_SECONDS ? "text-warning" : "text-accent"
+              }`}
+            >
               {formatTimer(timer)}
+              {mode === "consul" && (
+                <span className="text-secondary font-normal"> / {formatTimer(CONSUL_DISPLAY_LIMIT_SECONDS)}</span>
+              )}
             </span>
             <button
               onClick={() => setAudioEnabled((v) => !v)}
@@ -284,7 +337,7 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, onEnd, onBac
               {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
             <button
-              onClick={handleEnd}
+              onClick={() => handleEnd()}
               disabled={isEnding}
               className="text-xs text-error border border-error/30 px-3 py-1.5 rounded-lg hover:bg-error/10 transition-all disabled:opacity-50"
             >
