@@ -28,6 +28,7 @@ const STORAGE_KEY = "vizora_first_touch";
 const REFERRER_SOURCES: Array<[RegExp, string]> = [
   [/(^|\.)tiktok\.com$/, "tiktok"],
   [/(^|\.)instagram\.com$/, "instagram"],
+  [/(^|\.)threads\.(net|com)$/, "threads"],
   [/(^|\.)(t\.me|telegram\.org|telegram\.me)$/, "telegram"],
   [/(^|\.)linkedin\.com$/, "linkedin"],
   [/(^|\.)(facebook\.com|fb\.com)$/, "facebook"],

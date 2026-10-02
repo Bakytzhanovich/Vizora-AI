@@ -305,7 +305,7 @@ async def _compute_entry_exit_pages(db: AsyncSession, days: int = 30) -> dict:
 # fill this panel with arbitrary junk labels by hitting the site with crafted
 # links. The raw value is still kept on the user row for ad-hoc inspection.
 _KNOWN_SOURCES = {
-    "tiktok", "instagram", "telegram", "linkedin",
+    "tiktok", "instagram", "threads", "telegram", "linkedin",
     "facebook", "youtube", "google", "yandex", "direct",
 }
 

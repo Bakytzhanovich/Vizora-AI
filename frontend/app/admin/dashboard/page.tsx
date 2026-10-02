@@ -371,6 +371,7 @@ function PageList({ pages, total }: { pages: Array<{ url: string; count: number;
 const SOURCE_LABELS: Record<string, string> = {
   tiktok: "TikTok",
   instagram: "Instagram",
+  threads: "Threads",
   telegram: "Telegram",
   linkedin: "LinkedIn",
   facebook: "Facebook",
