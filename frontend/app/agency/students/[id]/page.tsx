@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Calendar, Globe, BookOpen, DollarSign } from "lucide-react";
+import { ArrowLeft, Calendar, Globe, BookOpen, DollarSign, KeyRound, X } from "lucide-react";
 import { AgencyLayout } from "@/components/agency/AgencyLayout";
 import { ReadinessBar } from "@/components/agency/ReadinessBar";
-import { agencyGetStudent, type AgencyStudentDetail } from "@/lib/agency-api";
+import { agencyGetStudent, agencyIssueStudentPassword, type AgencyStudentDetail } from "@/lib/agency-api";
+import { StudentAccessCard } from "@/components/agency/StudentAccessCard";
 import { criteriaKeys, criterionFraction, criterionLabel } from "@/lib/englishLevel";
 
 const TABS = ["Обзор", "Английский", "Симулятор", "Документы", "Риски"] as const;
@@ -57,6 +58,24 @@ export default function StudentDetailPage() {
   const [data, setData] = useState<AgencyStudentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("Обзор");
+  // "confirm" asks first: issuing a new password signs the old one out.
+  const [access, setAccess] = useState<"confirm" | { password: string; link: string } | null>(null);
+  const [accessError, setAccessError] = useState("");
+  const [issuing, setIssuing] = useState(false);
+
+  const issuePassword = async () => {
+    setIssuing(true);
+    setAccessError("");
+    try {
+      const res = await agencyIssueStudentPassword(id);
+      setAccess({ password: res.password, link: res.invite_link });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setAccessError(msg || "Не удалось выдать пароль");
+    } finally {
+      setIssuing(false);
+    }
+  };
 
   useEffect(() => {
     agencyGetStudent(id)
@@ -85,6 +104,52 @@ export default function StudentDetailPage() {
 
   return (
     <AgencyLayout>
+      {access && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <KeyRound size={18} className="text-blue-600" />
+                <h3 className="font-semibold text-gray-900">Доступ для студента</h3>
+              </div>
+              <button
+                onClick={() => { setAccess(null); setAccessError(""); }}
+                aria-label="Закрыть"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              {access === "confirm" ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-700">
+                    Сгенерировать новый пароль для {student.name}? Старый пароль перестанет работать.
+                  </p>
+                  {accessError && <p className="text-sm text-red-500">{accessError}</p>}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setAccess(null); setAccessError(""); }}
+                      className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      onClick={issuePassword}
+                      disabled={issuing}
+                      className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {issuing ? "Генерируем..." : "Сгенерировать"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <StudentAccessCard name={student.name} email={student.email} link={access.link} password={access.password} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Back */}
       <button
         onClick={() => router.back()}
@@ -105,6 +170,15 @@ export default function StudentDetailPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-gray-900">{student.name}</h1>
             <p className="text-sm text-gray-500">{student.email}</p>
+            {data.can_issue_password && (
+              <button
+                onClick={() => setAccess("confirm")}
+                className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              >
+                <KeyRound size={12} />
+                Выдать новый пароль для входа
+              </button>
+            )}
             {student.university && (
               <p className="text-sm text-gray-600 mt-0.5 flex items-center gap-1">
                 <BookOpen size={13} className="text-gray-400" />

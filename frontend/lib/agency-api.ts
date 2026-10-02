@@ -160,6 +160,8 @@ export interface AgencyStudentDetail {
     criteria: Criteria | null;
     summary_ru: string | null;
   } | null;
+  // This agency created the account and may issue it a new password.
+  can_issue_password?: boolean;
 }
 
 export interface AgencyAlert {
@@ -283,9 +285,18 @@ export async function agencyGetStudent(studentId: string): Promise<AgencyStudent
 }
 
 export async function agencyAddStudent(email: string, name: string) {
-  const { data } = await agencyApi.post<{ student_id: string; invite_link: string }>(
+  // `password` is null when the student already had an account.
+  const { data } = await agencyApi.post<{ student_id: string; invite_link: string; password: string | null }>(
     "/students/add",
     { email, name }
+  );
+  return data;
+}
+
+// A new password for a student whose account this agency created.
+export async function agencyIssueStudentPassword(studentId: string) {
+  const { data } = await agencyApi.post<{ password: string; invite_link: string }>(
+    `/students/${studentId}/password`
   );
   return data;
 }

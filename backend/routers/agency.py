@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.agency_auth import AgencyCtx, create_member_token, get_current_member, require_admin
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import validate_new_password
+from app.core.security import hash_password, validate_new_password
 from app.models.agency import Agency, AgencyMember, AgencyStudent
 from app.models.chat import ChatMessage
 from app.models.level_test import LevelTest
@@ -55,6 +55,43 @@ async def _get_student_last_active(db: AsyncSession, user_id: str) -> datetime |
     # Raw SQL bypasses column types: Postgres returns a datetime, SQLite (tests)
     # an ISO string.
     return datetime.fromisoformat(last) if isinstance(last, str) else last
+
+
+# No look-alike characters (0/O, 1/l/I): the agency reads the password out or
+# retypes it into a messenger.
+_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+
+def _generate_student_password() -> str:
+    return "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(10))
+
+
+def _login_link(email: str) -> str:
+    return f"{settings.FRONTEND_URL}/login?{urlencode({'email': email})}"
+
+
+async def _create_student_account(db: AsyncSession, email: str, name: str, agency_id: str) -> tuple[User, str]:
+    """New student account with a generated password, returned once so the
+    agency can pass it on — it's never stored in plain text."""
+    password = _generate_student_password()
+    user = User(email=email, password_hash=hash_password(password), password_set_by_agency=agency_id)
+    set_free_plan(user)
+    db.add(user)
+    await db.flush()
+    db.add(StudentProfile(
+        user_id=user.id,
+        name=name,
+        university="",
+        course_year=1,
+        profession="",
+        english_level="medium",
+        travel_history=False,
+        financial_source="self",
+        job_offer="no",
+        country="KZ",
+        via_agency=True,
+    ))
+    return user, password
 
 
 async def _get_student_readiness(db: AsyncSession, user_id: str) -> int:
@@ -338,28 +375,9 @@ async def add_student(
 ):
     # func.lower also matches accounts created before emails were normalised.
     user = await db.scalar(select(User).where(func.lower(User.email) == body.email))
+    password = None
     if not user:
-        temp_password = secrets.token_urlsafe(12)
-        hashed = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
-        user = User(email=body.email, password_hash=hashed)
-        set_free_plan(user)
-        db.add(user)
-        await db.flush()
-
-        profile = StudentProfile(
-            user_id=user.id,
-            name=body.name,
-            university="",
-            course_year=1,
-            profession="",
-            english_level="medium",
-            travel_history=False,
-            financial_source="self",
-            job_offer="no",
-            country="KZ",
-            via_agency=True,
-        )
-        db.add(profile)
+        user, password = await _create_student_account(db, body.email, body.name, ctx.agency_id)
 
     existing_link = await db.scalar(
         select(AgencyStudent).where(
@@ -380,8 +398,9 @@ async def add_student(
     await db.commit()
     await db.refresh(link)
 
-    invite_link = f"{settings.FRONTEND_URL}/login?{urlencode({'email': body.email})}"
-    return {"student_id": user.id, "invite_link": invite_link}
+    # `password` is null for a student who already had an account — they sign
+    # in with their own.
+    return {"student_id": user.id, "invite_link": _login_link(body.email), "password": password}
 
 
 @router.post("/students/bulk-add")
@@ -395,28 +414,9 @@ async def bulk_add_students(
     for s in body.students:
         try:
             user = await db.scalar(select(User).where(func.lower(User.email) == s.email))
+            password = None
             if not user:
-                temp_password = secrets.token_urlsafe(12)
-                hashed = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
-                user = User(email=s.email, password_hash=hashed)
-                set_free_plan(user)
-                db.add(user)
-                await db.flush()
-
-                profile = StudentProfile(
-                    user_id=user.id,
-                    name=s.name,
-                    university="",
-                    course_year=1,
-                    profession="",
-                    english_level="medium",
-                    travel_history=False,
-                    financial_source="self",
-                    job_offer="no",
-                    country="KZ",
-                    via_agency=True,
-                )
-                db.add(profile)
+                user, password = await _create_student_account(db, s.email, s.name, ctx.agency_id)
 
             existing = await db.scalar(
                 select(AgencyStudent).where(
@@ -431,7 +431,7 @@ async def bulk_add_students(
                     assigned_manager_id=assigned_manager,
                 )
                 db.add(link)
-                results.append({"email": s.email, "status": "added"})
+                results.append({"email": s.email, "status": "added", "password": password})
             else:
                 results.append({"email": s.email, "status": "already_linked"})
         except Exception as e:
@@ -684,7 +684,36 @@ async def get_student(
         "roadmap_completed": sorted(completed_steps),
         "last_active": last_active.isoformat() if last_active else None,
         "english_test": english_test,
+        "can_issue_password": user.password_set_by_agency == ctx.agency_id,
     }
+
+
+@router.post("/students/{student_id}/password")
+async def issue_student_password(
+    student_id: str,
+    ctx: AgencyCtx = Depends(get_current_member),
+    db: AsyncSession = Depends(get_db),
+):
+    """A new password for a student whose account this agency created — e.g.
+    the first one got lost. Never for an account the student registered
+    themselves: knowing an email must not let an agency take it over."""
+    cond = [AgencyStudent.agency_id == ctx.agency_id, AgencyStudent.user_id == student_id]
+    if ctx.role == "manager" and ctx.member_id:
+        cond.append(AgencyStudent.assigned_manager_id == ctx.member_id)
+    if not await db.scalar(select(AgencyStudent).where(*cond)):
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    user = await db.get(User, student_id)
+    if not user or user.password_set_by_agency != ctx.agency_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Студент сам создал аккаунт — пароль может сменить только он",
+        )
+    password = _generate_student_password()
+    user.password_hash = hash_password(password)
+    user.refresh_token_hash = None  # signs out sessions that used the old one
+    await db.commit()
+    return {"password": password, "invite_link": _login_link(user.email)}
 
 
 # ─── Analytics ───────────────────────────────────────────────────────────────

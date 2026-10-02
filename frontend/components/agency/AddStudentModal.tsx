@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, UserPlus, Copy, CheckCheck } from "lucide-react";
+import { X, UserPlus } from "lucide-react";
 import { agencyAddStudent } from "@/lib/agency-api";
+import { StudentAccessCard } from "@/components/agency/StudentAccessCard";
 
 interface Props {
   onClose: () => void;
@@ -14,8 +15,7 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [inviteLink, setInviteLink] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [access, setAccess] = useState<{ link: string; password: string | null } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +23,7 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
     setLoading(true);
     try {
       const res = await agencyAddStudent(email.trim(), name.trim());
-      setInviteLink(res.invite_link);
+      setAccess({ link: res.invite_link, password: res.password });
       onAdded();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -31,12 +31,6 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const copyLink = async () => {
-    await navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -55,7 +49,7 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
 
         {/* Body */}
         <div className="px-6 py-5">
-          {!inviteLink ? (
+          {!access ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Имя студента</label>
@@ -102,18 +96,7 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-700 font-medium">
                 ✓ Студент успешно добавлен!
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Ссылка для входа:</p>
-                <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
-                  <span className="flex-1 text-xs text-gray-600 truncate">{inviteLink}</span>
-                  <button
-                    onClick={copyLink}
-                    className="shrink-0 text-blue-600 hover:text-blue-700 transition-colors"
-                  >
-                    {copied ? <CheckCheck size={16} /> : <Copy size={16} />}
-                  </button>
-                </div>
-              </div>
+              <StudentAccessCard name={name.trim()} email={email.trim()} link={access.link} password={access.password} />
               <button
                 onClick={onClose}
                 className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"

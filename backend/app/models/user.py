@@ -35,6 +35,10 @@ class User(Base):
     telegram_username = Column(String(255), nullable=True)
     oauth_provider = Column(String(20), nullable=True)  # e.g. "google"; null for email/password users
     oauth_id = Column(String(255), nullable=True)  # provider's unique user ID
+    # Agency that created this account and generated its password. Only that
+    # agency may issue a new one (POST /agency/students/{id}/password) — never
+    # for accounts the student registered themselves.
+    password_set_by_agency = Column(String(36), nullable=True)
     avatar_url = Column(String(500), nullable=True)
     language = Column(String(5), nullable=False, default="ru")  # "ru" | "kz"
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
