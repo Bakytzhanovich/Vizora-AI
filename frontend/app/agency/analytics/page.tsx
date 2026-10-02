@@ -14,6 +14,7 @@ const LEVEL_COLORS: Record<(typeof ENGLISH_LEVELS)[number], string> = {
   B1: "#F59E0B",
   B2: "#10B981",
   C1: "#059669",
+  C2: "#047857",
 };
 
 export default function AgencyAnalyticsPage() {

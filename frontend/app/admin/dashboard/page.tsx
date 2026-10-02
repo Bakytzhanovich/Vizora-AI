@@ -619,7 +619,7 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
   );
 }
 
-const ENGLISH_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
+const ENGLISH_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
 function EnglishLevelsPanel({ levels }: { levels: NonNullable<AdminOverview["english_levels"]> }) {
   const total = ENGLISH_LEVELS.reduce((sum, lvl) => sum + (levels[lvl] ?? 0), 0);
@@ -628,7 +628,7 @@ function EnglishLevelsPanel({ levels }: { levels: NonNullable<AdminOverview["eng
       {total === 0 ? (
         <EmptyState text="Пока никто не проходил проверку уровня" />
       ) : (
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
           {ENGLISH_LEVELS.map((lvl) => {
             const count = levels[lvl] ?? 0;
             const pct = Math.round((count / total) * 100);

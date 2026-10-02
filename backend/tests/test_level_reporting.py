@@ -128,7 +128,7 @@ class LevelReportingTests(unittest.TestCase):
         res = self.client.get("/api/agency/analytics", headers=self._agency_headers("owner", "admin"))
         levels = res.json()["english_levels"]
         self.assertEqual(levels["tested"], 1)
-        self.assertEqual(levels["distribution"], {"A1": 0, "A2": 0, "B1": 0, "B2": 1, "C1": 0})
+        self.assertEqual(levels["distribution"], {"A1": 0, "A2": 0, "B1": 0, "B2": 1, "C1": 0, "C2": 0})
 
     def test_level_test_counts_as_activity(self):
         # A student whose only activity is a level test was flagged
@@ -154,7 +154,7 @@ class LevelReportingTests(unittest.TestCase):
         body = res.json()
         self.assertEqual(body["metrics"]["level_test_users"], 2)
         self.assertEqual(body["metrics"]["level_tests_completed"], 3)
-        self.assertEqual(body["english_levels"], {"A1": 0, "A2": 0, "B1": 0, "B2": 1, "C1": 1})
+        self.assertEqual(body["english_levels"], {"A1": 0, "A2": 0, "B1": 0, "B2": 1, "C1": 1, "C2": 0})
 
 
 if __name__ == "__main__":

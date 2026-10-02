@@ -3,17 +3,12 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { CEFR, type Criteria, criteriaKeys, criterionFraction, criterionLabel } from "@/lib/englishLevel";
 
 export interface LevelResult {
-  level: string; // "A1" … "C1", optionally with "+"
+  level: string; // "A1" … "C2"; results before the CEFR rubric may end in "+"
   level_title: string;
-  criteria: {
-    grammar: number;
-    vocabulary: number;
-    coherence: number;
-    development: number;
-    fluency: number | null; // null when every answer was typed
-  };
+  criteria: Criteria; // fluency is null when every answer was typed
   corrections: { wrong: string; correct: string; explanation_ru?: string }[];
   summary_ru: string;
   strengths: string[];
@@ -21,10 +16,9 @@ export interface LevelResult {
   visa_note_ru: string;
   question_count: number;
   profile_updated?: boolean;
+  finished_early?: boolean;
 }
 
-const SCALE = ["A1", "A2", "B1", "B2", "C1"] as const;
-const CRITERIA = ["grammar", "vocabulary", "coherence", "development", "fluency"] as const;
 
 interface Props {
   result: LevelResult;
@@ -36,7 +30,7 @@ export function LevelResultScreen({ result, onRetry, onBack }: Props) {
   const { t } = useTranslation("simulator");
   const router = useRouter();
   const baseLevel = result.level.replace("+", "");
-  const reached = SCALE.indexOf(baseLevel as (typeof SCALE)[number]);
+  const reached = CEFR.indexOf(baseLevel as (typeof CEFR)[number]);
 
   return (
     <div className="min-h-screen bg-bg px-4 py-6 max-w-2xl mx-auto">
@@ -57,7 +51,7 @@ export function LevelResultScreen({ result, onRetry, onBack }: Props) {
           <p className="text-primary font-semibold mb-6">{result.level_title}</p>
 
           <div className="flex gap-1.5 max-w-xs mx-auto mb-2">
-            {SCALE.map((lvl, i) => (
+            {CEFR.map((lvl, i) => (
               <div key={lvl} className="flex-1">
                 <div className={`h-2 rounded-full ${i <= reached ? "bg-accent" : "bg-border"}`} />
                 <p className={`text-[10px] mt-1 ${i === reached ? "text-accent font-bold" : "text-secondary"}`}>{lvl}</p>
@@ -66,6 +60,11 @@ export function LevelResultScreen({ result, onRetry, onBack }: Props) {
           </div>
 
           <p className="text-secondary text-sm leading-relaxed mt-4">{result.summary_ru}</p>
+          {result.finished_early && (
+            <p className="text-warning text-xs leading-relaxed mt-4">
+              {t("level_test.finished_early_note", { count: result.question_count })}
+            </p>
+          )}
           <p className="text-secondary/60 text-[11px] mt-4">{t("level_test.disclaimer")}</p>
         </div>
 
@@ -73,21 +72,21 @@ export function LevelResultScreen({ result, onRetry, onBack }: Props) {
         <div className="bg-card border border-border rounded-2xl p-5 mb-4">
           <h2 className="text-primary font-semibold text-sm mb-4">{t("level_test.criteria_title")}</h2>
           <div className="space-y-3">
-            {CRITERIA.map((key) => {
-              const value = result.criteria[key];
+            {criteriaKeys(result.criteria).map((key) => {
+              const value = result.criteria[key] ?? null;
               return (
                 <div key={key}>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-secondary">{t(`level_test.criteria.${key}`)}</span>
                     <span className="text-primary font-semibold tabular-nums">
-                      {value == null ? t("level_test.no_fluency") : `${value}/10`}
+                      {criterionLabel(value) ?? t("level_test.no_fluency")}
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-border overflow-hidden">
                     <motion.div
                       className="h-full rounded-full bg-accent"
                       initial={{ width: 0 }}
-                      animate={{ width: `${(value ?? 0) * 10}%` }}
+                      animate={{ width: `${criterionFraction(value) * 100}%` }}
                       transition={{ duration: 0.8, ease: "easeOut" }}
                     />
                   </div>

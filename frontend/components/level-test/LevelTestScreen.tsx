@@ -27,6 +27,8 @@ interface Props {
   onBack: () => void;
 }
 
+type Confirm = "exit" | "finish" | null;
+
 function makeId() {
   return Math.random().toString(36).slice(2);
 }
@@ -43,8 +45,10 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
   const [textInput, setTextInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [confirm, setConfirm] = useState<Confirm>(null);
 
   const recorderRef = useRef(new VoiceRecorder());
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const recordStartRef = useRef<number>(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const getToken = () => (typeof window !== "undefined" ? localStorage.getItem("access_token") ?? "" : "");
@@ -53,9 +57,17 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const stopSpeech = () => {
+    audioRef.current?.pause();
+    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  };
+
   useEffect(() => {
     const recorder = recorderRef.current;
-    return () => recorder.cleanup();
+    return () => {
+      recorder.cleanup();
+      stopSpeech();
+    };
   }, []);
 
   const playTTS = useCallback(async (text: string) => {
@@ -71,6 +83,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
       if (!res.ok) throw new Error("tts_api");
       const url = URL.createObjectURL(await res.blob());
       const audio = new Audio(url);
+      audioRef.current = audio;
       await new Promise<void>((resolve) => {
         audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
         audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
@@ -96,7 +109,9 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // the opening is spoken once on mount
 
-  const submitAnswer = useCallback(async (text: string, durationSeconds: number | null) => {
+  // `speech` is what /level-test/transcribe measured — the backend judges
+  // fluency from it. Null for typed answers.
+  const submitAnswer = useCallback(async (text: string, durationSeconds: number | null, speech: unknown = null) => {
     setError(null);
     setMessages((prev) => [...prev, { id: makeId(), role: "student", content: text }]);
     setIsWaiting(true);
@@ -104,7 +119,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
       const res = await fetch(`${API_URL}/api/level-test/answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ test_id: testId, answer: text, duration_seconds: durationSeconds }),
+        body: JSON.stringify({ test_id: testId, answer: text, duration_seconds: durationSeconds, speech }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -150,7 +165,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
     form.append("audio", blob, `recording.${blob.type.includes("mp4") ? "mp4" : "webm"}`);
 
     try {
-      const res = await fetch(`${API_URL}/api/simulator/transcribe`, {
+      const res = await fetch(`${API_URL}/api/level-test/transcribe`, {
         method: "POST",
         headers: { Authorization: `Bearer ${getToken()}` },
         body: form,
@@ -158,7 +173,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
       const data = await res.json();
       const text: string = data.text || "";
       if (text) {
-        await submitAnswer(text, durationSeconds);
+        await submitAnswer(text, durationSeconds, data.speech ?? null);
       } else {
         setError(t("level_test.not_heard"));
         setVoiceState("idle");
@@ -177,16 +192,90 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
   };
 
   const isBusy = isWaiting || isPlaying || isFinishing || voiceState === "processing";
+  const answered = messages.filter((m) => m.role === "student").length;
+  // Finishing mid-answer would drop the answer being recorded or scored.
+  const canFinish = answered > 0 && !isWaiting && !isFinishing && voiceState === "idle";
+
+  const handleExit = () => {
+    if (answered === 0) return onBack();
+    setConfirm("exit");
+  };
+
+  const handleFinish = async () => {
+    setConfirm(null);
+    setError(null);
+    setIsFinishing(true);
+    stopSpeech();
+    try {
+      const res = await fetch(`${API_URL}/api/level-test/finish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ test_id: testId }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      onDone(data.result);
+    } catch {
+      setError(t("level_test.finish_error"));
+      setIsFinishing(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-bg">
+      {confirm && (
+        <div
+          className="fixed inset-0 z-50 bg-bg/90 backdrop-blur flex items-center justify-center px-4"
+          onClick={() => setConfirm(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-card border border-border rounded-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-primary font-semibold mb-2">
+              {t(confirm === "exit" ? "level_test.confirm_exit_title" : "level_test.confirm_finish_title")}
+            </h2>
+            <p className="text-secondary text-sm leading-relaxed mb-5">
+              {t(confirm === "exit" ? "level_test.confirm_exit_text" : "level_test.confirm_finish_text")}
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleFinish}
+                disabled={!canFinish}
+                className="w-full bg-accent hover:bg-accent-hover disabled:opacity-40 text-white font-semibold py-3 rounded-xl text-sm transition-all"
+              >
+                {t(confirm === "exit" ? "level_test.finish_and_see" : "level_test.finish")}
+              </button>
+              {confirm === "exit" && (
+                <button
+                  onClick={onBack}
+                  className="w-full text-error border border-error/30 hover:bg-error/10 font-semibold py-3 rounded-xl text-sm transition-all"
+                >
+                  {t("level_test.exit")}
+                </button>
+              )}
+              <button
+                onClick={() => setConfirm(null)}
+                className="w-full text-secondary hover:text-primary py-2 text-sm transition-colors"
+              >
+                {t("level_test.continue")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="shrink-0 bg-bg/90 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="text-secondary hover:text-primary transition-colors">
+            <button
+              onClick={handleExit}
+              disabled={isFinishing}
+              className="flex items-center gap-1 text-secondary hover:text-primary transition-colors text-sm disabled:opacity-50"
+            >
               <ArrowLeft size={20} />
+              <span className="hidden sm:inline">{t("level_test.exit")}</span>
             </button>
-            <span className="text-primary font-semibold text-sm">🎯 {t("level_test.title")}</span>
+            <span className="text-primary font-semibold text-sm truncate">🎯 {t("level_test.title")}</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-secondary text-xs tabular-nums">
@@ -197,6 +286,14 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
               className="text-secondary hover:text-primary transition-colors"
             >
               {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+            <button
+              onClick={() => setConfirm("finish")}
+              disabled={!canFinish}
+              title={answered === 0 ? t("level_test.finish_hint") : undefined}
+              className="text-xs text-accent border border-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              {t("level_test.finish")}
             </button>
           </div>
         </div>

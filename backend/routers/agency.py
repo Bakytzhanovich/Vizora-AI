@@ -630,12 +630,16 @@ async def get_student(
 
     level_test = await db.scalar(
         select(LevelTest)
-        .where(LevelTest.user_id == student_id, LevelTest.completed.is_(True))
+        .where(
+            LevelTest.user_id == student_id, LevelTest.completed.is_(True), LevelTest.final_level.is_not(None)
+        )
         .order_by(LevelTest.completed_at.desc())
         .limit(1)
     )
     level_test_count = await db.scalar(
-        select(func.count(LevelTest.id)).where(LevelTest.user_id == student_id, LevelTest.completed.is_(True))
+        select(func.count(LevelTest.id)).where(
+            LevelTest.user_id == student_id, LevelTest.completed.is_(True), LevelTest.final_level.is_not(None)
+        )
     ) or 0
     english_test = None
     if level_test:

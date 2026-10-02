@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { Criteria } from "@/lib/englishLevel";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -112,7 +113,7 @@ export interface AgencyStudent {
   english_test?: { level: string; tested_at: string | null } | null;
 }
 
-export const ENGLISH_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
+export const ENGLISH_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
 export interface EnglishLevelStats {
   tested: number;
@@ -156,13 +157,7 @@ export interface AgencyStudentDetail {
     level_title: string;
     tested_at: string | null;
     tests_taken: number;
-    criteria: {
-      grammar: number;
-      vocabulary: number;
-      coherence: number;
-      development: number;
-      fluency: number | null;
-    } | null;
+    criteria: Criteria | null;
     summary_ru: string | null;
   } | null;
 }

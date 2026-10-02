@@ -6,18 +6,32 @@ import { ArrowLeft, Calendar, Globe, BookOpen, DollarSign } from "lucide-react";
 import { AgencyLayout } from "@/components/agency/AgencyLayout";
 import { ReadinessBar } from "@/components/agency/ReadinessBar";
 import { agencyGetStudent, type AgencyStudentDetail } from "@/lib/agency-api";
+import { criteriaKeys, criterionFraction, criterionLabel } from "@/lib/englishLevel";
 
 const TABS = ["Обзор", "Английский", "Симулятор", "Документы", "Риски"] as const;
 type Tab = (typeof TABS)[number];
 
 const ENGLISH_MAP: Record<string, string> = { weak: "Слабый", medium: "Средний", good: "Хороший" };
-const ENGLISH_CRITERIA = [
-  { key: "grammar", label: "Грамматика" },
-  { key: "vocabulary", label: "Словарный запас" },
-  { key: "coherence", label: "Связность речи" },
-  { key: "development", label: "Развёрнутость ответов" },
-  { key: "fluency", label: "Беглость" },
-] as const;
+const ENGLISH_CRITERIA_LABELS: Record<string, string> = {
+  fluency: "Беглость",
+  accuracy: "Точность",
+  vocabulary: "Словарный запас",
+  grammar: "Грамматика",
+  coherence: "Связность речи",
+  development: "Развёрнутость ответов",
+};
+// Colour by the visa interview bar (B1), as in EnglishLevelBadge; older
+// results scored criteria 0-10.
+const CRITERION_TONES = [
+  { text: "text-red-500", bar: "bg-red-400" },
+  { text: "text-amber-600", bar: "bg-amber-400" },
+  { text: "text-emerald-600", bar: "bg-emerald-500" },
+];
+function criterionTone(value: string | number) {
+  if (typeof value === "number") return CRITERION_TONES[value >= 7 ? 2 : value >= 5 ? 1 : 0];
+  const base = value.replace("+", "");
+  return CRITERION_TONES[base === "A1" || base === "A2" ? 0 : base === "B1" ? 1 : 2];
+}
 const FINANCE_MAP: Record<string, string> = { self: "Свои", parents: "Родители", scholarship: "Стипендия" };
 const RISK_COLORS: Record<string, string> = {
   high: "text-red-600 bg-red-50 border-red-200",
@@ -235,20 +249,19 @@ export default function StudentDetailPage() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <h3 className="font-semibold text-gray-900 mb-4">Оценка по критериям</h3>
               <div className="space-y-4">
-                {ENGLISH_CRITERIA.map(({ key, label }) => {
-                  const score = englishTest.criteria?.[key] ?? null;
+                {criteriaKeys(englishTest.criteria ?? {}).map((key) => {
+                  const value = englishTest.criteria?.[key] ?? null;
+                  const tone = value == null ? null : criterionTone(value);
                   return (
                     <div key={key}>
                       <div className="flex justify-between text-sm mb-1.5">
-                        <span className="text-gray-600">{label}</span>
-                        <span className={`font-bold ${score == null ? "text-gray-400" : score >= 7 ? "text-emerald-600" : score >= 5 ? "text-amber-600" : "text-red-500"}`}>
-                          {score == null ? "—" : `${score.toFixed(1)}/10`}
-                        </span>
+                        <span className="text-gray-600">{ENGLISH_CRITERIA_LABELS[key]}</span>
+                        <span className={`font-bold ${tone?.text ?? "text-gray-400"}`}>{criterionLabel(value) ?? "—"}</span>
                       </div>
                       <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${score == null ? "" : score >= 7 ? "bg-emerald-500" : score >= 5 ? "bg-amber-400" : "bg-red-400"}`}
-                          style={{ width: `${(score ?? 0) * 10}%` }}
+                          className={`h-full rounded-full ${tone?.bar ?? ""}`}
+                          style={{ width: `${criterionFraction(value) * 100}%` }}
                         />
                       </div>
                     </div>
