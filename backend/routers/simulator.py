@@ -15,14 +15,19 @@ from app.core.security import get_current_user_id
 from app.models.profile import StudentProfile
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from app.services.level_test_service import latest_level_results
 from app.services.simulator_service import (
     CLOSING_KEY_PHRASES,
+    CLOSING_LINE,
     INTERVIEW_QUESTION_BANK,
+    _profile_text_en,
     compute_verdict,
-    detect_officer_decision,
+    consul_must_decide,
     generate_feedback,
     generate_simulator_response,
+    wants_to_decide,
 )
+from app.services.visa_decision import make_decision
 from app.services.pdf_report_service import generate_session_pdf
 from app.services.stt_service import speech_to_text
 from app.services.subscription_service import check_feature_access, get_user_access, increment_simulator_usage
@@ -218,15 +223,42 @@ async def respond(
             )
 
     elapsed_seconds = (datetime.utcnow() - session.created_at).total_seconds()
+    student_answers = len([t for t in transcript if t["role"] == "student"])
+    english_level = None
+    if session.mode == "consul":
+        measured = (await latest_level_results(db, [user_id])).get(user_id)
+        english_level = measured["level"] if measured else None
+
+    async def consul_decision() -> tuple[str, dict]:
+        # The officer always approves; what a real officer would decide is
+        # kept for the feedback.
+        result = await make_decision(transcript, _profile_text_en(profile), english_level)
+        return CLOSING_LINE, result
 
     async def event_stream():
         accumulated = ""
+        decision: dict | None = None
         try:
-            async for chunk in generate_simulator_response(
-                session.mode, transcript, profile, risks, session.difficulty, session.id, elapsed_seconds
-            ):
-                accumulated += chunk
-                yield chunk
+            if session.mode == "consul":
+                # The consul's reply is short and is spoken only once complete,
+                # so it's held back whole: if the model asks to decide, the
+                # student must never see the marker, only the closing line.
+                if consul_must_decide(elapsed_seconds, student_answers):
+                    accumulated, decision = await consul_decision()
+                else:
+                    async for chunk in generate_simulator_response(
+                        session.mode, transcript, profile, risks, session.difficulty, session.id, elapsed_seconds
+                    ):
+                        accumulated += chunk
+                    if wants_to_decide(accumulated):
+                        accumulated, decision = await consul_decision()
+                yield accumulated
+            else:
+                async for chunk in generate_simulator_response(
+                    session.mode, transcript, profile, risks, session.difficulty, session.id, elapsed_seconds
+                ):
+                    accumulated += chunk
+                    yield chunk
         except Exception:
             logging.getLogger(__name__).exception("Simulator response generation failed")
             yield "I'm sorry, there seems to be a technical issue. Please try again."
@@ -237,10 +269,10 @@ async def respond(
             "content": accumulated,
             "timestamp": datetime.utcnow().isoformat(),
         }
-        if session.mode == "consul":
-            decision = detect_officer_decision(accumulated)
-            if decision:
-                officer_message["decision"] = decision
+        if decision:
+            officer_message["decision"] = "approved"
+            officer_message["real_decision"] = decision["decision"]
+            officer_message["decision_reasons"] = decision["reasons"]
 
         # Use a fresh session — the dependency-injected one closes when the
         # route handler returns StreamingResponse, before this generator runs.
@@ -286,15 +318,23 @@ async def end_session(
     transcript: list[dict] = json.loads(session.transcript)
     profile, risks = await _load_profile(db, user_id)
 
-    officer_decision = next(
-        (t["decision"] for t in reversed(transcript) if t.get("role") == "officer" and t.get("decision")),
+    closing = next(
+        (t for t in reversed(transcript) if t.get("role") == "officer" and t.get("decision")),
         None,
     )
+    officer_decision = closing["decision"] if closing else None
+    real_decision = closing.get("real_decision") if closing else None
+    decision_reasons = closing.get("decision_reasons") if closing else None
 
-    feedback = await generate_feedback(transcript, session.mode, session.id, profile, risks, officer_decision)
-    feedback["verdict"] = compute_verdict(feedback.get("scores", {}).get("overall", 5.0))
+    feedback = await generate_feedback(
+        transcript, session.mode, session.id, profile, risks, real_decision, decision_reasons
+    )
+    feedback["verdict"] = compute_verdict(feedback.get("scores", {}).get("overall", 5.0), real_decision)
     if officer_decision:
         feedback["officer_decision"] = officer_decision
+    if real_decision:
+        feedback["real_decision"] = real_decision
+        feedback["decision_reasons"] = decision_reasons or []
 
     session.feedback = json.dumps(feedback, ensure_ascii=False)
     session.scores = json.dumps(feedback.get("scores", {}), ensure_ascii=False)
@@ -387,7 +427,9 @@ async def get_session(
     if feedback is not None and "verdict" not in feedback:
         # Backfill for sessions completed before the verdict field existed —
         # derived from the same stored scores, nothing to migrate.
-        feedback["verdict"] = compute_verdict(feedback.get("scores", {}).get("overall", 5.0))
+        feedback["verdict"] = compute_verdict(
+            feedback.get("scores", {}).get("overall", 5.0), feedback.get("real_decision")
+        )
     return {
         "session": {
             "id": session.id,

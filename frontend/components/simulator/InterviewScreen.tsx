@@ -26,8 +26,8 @@ const CONSUL_WARN_SECONDS = 120;
 // Long enough to read the decision before the results screen replaces it.
 const DECISION_MIN_DISPLAY_MS = 3500;
 
-// Phrases come from /simulator/start (CLOSING_KEY_PHRASES on the backend) and
-// are matched the same way detect_officer_decision() matches them there.
+// Phrases come from /simulator/start (CLOSING_KEY_PHRASES on the backend); the
+// backend decides and sends the fixed closing line, this only recognises it.
 function detectDecision(text: string, closingPhrases: Record<string, string>): OfficerDecision | null {
   const normalized = text.toLowerCase().replace(/’/g, "'").split(/\s+/).join(" ");
   for (const [decision, phrase] of Object.entries(closingPhrases)) {

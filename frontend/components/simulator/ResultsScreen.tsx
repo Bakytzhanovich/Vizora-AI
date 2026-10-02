@@ -21,6 +21,8 @@ interface AnswerAnalysis {
   verdict: "good" | "warning" | "critical";
   what_was_good: string | null;
   what_was_wrong: string | null;
+  // How the consul actually heard the answer; absent in older sessions.
+  officer_heard?: string | null;
   better_answer: string | null;
 }
 
@@ -67,10 +69,22 @@ export interface FeedbackData {
   // What the consul announced at the end of a consul-mode interview; absent
   // when the student ended the session before the officer decided.
   officer_decision?: OfficerDecision;
+  // The officer always approves in the simulation; this is what a real
+  // officer would most likely have decided, and the 214(b) checklist items it
+  // rests on, quoting the student. Absent for sessions before the checklist.
+  real_decision?: OfficerDecision;
+  decision_reasons?: DecisionReason[];
   // Legacy fields (kept for backward compat)
   weak_points?: string[];
   phrases_to_use?: string[];
   risk_flags?: string[];
+}
+
+interface DecisionReason {
+  key: string;
+  label_ru: string;
+  quote: string;
+  note_ru: string;
 }
 
 const VERDICT_STYLES = {
@@ -218,9 +232,15 @@ function AnswerCard({ item, index }: { item: AnswerAnalysis; index: number }) {
                   <p className="text-secondary text-xs leading-relaxed">{item.what_was_wrong}</p>
                 </div>
               )}
+              {item.officer_heard && (
+                <div>
+                  <p className="text-primary text-xs font-semibold mb-0.5">Как это услышал консул</p>
+                  <p className="text-secondary text-xs leading-relaxed">{item.officer_heard}</p>
+                </div>
+              )}
               {item.better_answer && (
                 <div className="bg-bg rounded-lg p-3">
-                  <p className="text-accent text-xs font-semibold mb-1">Лучший ответ</p>
+                  <p className="text-accent text-xs font-semibold mb-1">Пример сильного ответа</p>
                   <p className="text-secondary text-xs leading-relaxed italic">&ldquo;{item.better_answer}&rdquo;</p>
                 </div>
               )}
@@ -307,6 +327,42 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
         {isOfficerDecision(feedback.officer_decision) && (
           <div className="mb-4">
             <OfficerDecisionCard decision={feedback.officer_decision} />
+          </div>
+        )}
+        {isOfficerDecision(feedback.real_decision) && (
+          <div
+            className={`bg-card border rounded-2xl p-5 mb-4 ${
+              feedback.real_decision === "approved"
+                ? "border-teal/30"
+                : feedback.real_decision === "processing"
+                  ? "border-warning/30"
+                  : "border-error/30"
+            }`}
+          >
+            <h2
+              className={`font-semibold text-sm mb-1 ${
+                feedback.real_decision === "approved"
+                  ? "text-teal"
+                  : feedback.real_decision === "processing"
+                    ? "text-warning"
+                    : "text-error"
+              }`}
+            >
+              {t(`decision.real.${feedback.real_decision}.title`)}
+            </h2>
+            <p className="text-secondary text-xs leading-relaxed mb-4">
+              {t(`decision.real.${feedback.real_decision}.subtitle`)}
+            </p>
+            <div className="space-y-3">
+              {(feedback.decision_reasons ?? []).map((r) => (
+                <div key={r.key} className="text-sm">
+                  <p className="text-primary font-medium">{r.label_ru}</p>
+                  {r.note_ru && <p className="text-secondary text-xs mt-0.5 leading-relaxed">{r.note_ru}</p>}
+                  {r.quote && <p className="text-secondary/70 text-xs italic mt-1">«{r.quote}»</p>}
+                </div>
+              ))}
+            </div>
+            <p className="text-secondary/60 text-[11px] mt-4">{t("decision.reasons_note")}</p>
           </div>
         )}
         {verdict && verdict.color in VERDICT_STYLES && <VerdictCard verdict={verdict} />}

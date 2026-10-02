@@ -7,6 +7,7 @@ from typing import Any, AsyncGenerator
 import openai
 
 from app.services.ai_service import get_ai_client, get_chat_model, reasoning_kwargs, strip_unexpected_scripts
+from app.services.visa_decision import CLOSING_KEY_PHRASES, CLOSING_LINE  # noqa: F401 — re-exported for routers
 
 # Full question bank sourced from official agency interview prep document (58 real questions).
 # 70% of these are asked at every interview. Order within each phase reflects real consul flow.
@@ -224,29 +225,23 @@ _PERSONALITY_INSTRUCTIONS: dict[str, str] = {
 CONSUL_WRAP_UP_SECONDS = 120  # finish the current topic, then decide
 CONSUL_CLOSE_SECONDS = 150    # deliver the decision on this turn, no more questions
 
-# The officer's closing sentences, one per decision. The prompt makes the model
-# say them verbatim; detect_officer_decision() recognises them by these key
-# phrases; /simulator/start sends the phrases to the frontend so it can end the
-# interview the moment one is spoken — one source of truth for all three.
-CLOSING_LINES: dict[str, str] = {
-    "approved": "Congratulations. Your visa is approved. Welcome to the Work and Travel program.",
-    "processing": "Thank you. Your application will be processed. You'll receive notification within 3 to 5 business days.",
-    "refused": "Thank you. That will be all.",
-}
-CLOSING_KEY_PHRASES: dict[str, str] = {
-    "approved": "your visa is approved",
-    "processing": "your application will be processed",
-    "refused": "that will be all",
-}
+# Most real window interviews end well before the clock does: the officer
+# decides as soon as they've heard enough. This caps the rare long one.
+CONSUL_MAX_ANSWERS = 10
+
+# The model never words the decision itself: when it's ready to decide it
+# outputs only this marker, /simulator/respond runs the 214(b) checklist
+# (visa_decision.make_decision) for the feedback and the officer says the
+# fixed closing line.
+DECIDE_MARKER = "[DECIDE]"
 
 
-def detect_officer_decision(officer_text: str) -> str | None:
-    """Return "approved" / "processing" / "refused" if this turn is the close."""
-    normalized = " ".join(officer_text.lower().replace("’", "'").split())
-    for decision, phrase in CLOSING_KEY_PHRASES.items():
-        if phrase in normalized:
-            return decision
-    return None
+def consul_must_decide(elapsed_seconds: float, student_answers: int) -> bool:
+    return elapsed_seconds >= CONSUL_CLOSE_SECONDS or student_answers >= CONSUL_MAX_ANSWERS
+
+
+def wants_to_decide(officer_text: str) -> bool:
+    return DECIDE_MARKER in officer_text.upper().replace(" ", "")
 
 
 def get_officer_personality(session_id: str | None) -> str:
@@ -476,12 +471,12 @@ def get_consul_prompt(
         # Overrides the wildcard/silence rolls — a surprise question here would
         # push the decision past the 2-3 minute window.
         turn_directives.append(
-            "THIS TURN: time is up. Go to PHASE 10 now — output ONLY the closing sentence for your decision."
+            f"THIS TURN: time is up. Go to PHASE 10 now — output ONLY {DECIDE_MARKER}."
         )
     elif wrapping_up:
         turn_directives.append(
             "THIS TURN: the interview is almost over. Ask at most ONE final question (prefer an unresolved "
-            "concern or a return/ties question), then close on your next turn."
+            "concern or a return/ties question), then PHASE 10 on your next turn."
         )
     elif use_wildcard:
         turn_directives.append(
@@ -499,16 +494,19 @@ def get_consul_prompt(
 
 === THIS SESSION'S QUESTION SET ===
 Each session uses a different mix of questions drawn from the real consulate question bank.
-A real window interview lasts only 2-3 minutes — about 6-8 questions in total. You will NOT get
-through every phase, and that is expected: ask 1 question from each of the most important phases
-(Opening, Rights, Education, Finances, Return, and any Risk follow-ups for this student), in order,
-and skip the rest. Spend extra questions only on answers that raised a concern.
+A real window interview lasts only 2-3 minutes — usually 4-7 short questions. You will NOT get
+through every phase, and that is expected. Like a real officer deciding under section 214(b), go
+for what decides the case: is this a genuine full-time student who will return to their studies
+(Education, Return), is the trip a cultural exchange and not a job (Purpose), do they know their
+own program (Trip Details), who pays (Finances), plus any Risk follow-ups for this student. Ask 1
+question from the phases that matter for THIS student and skip the rest. Spend extra questions
+only on answers that raised a concern.
 Use THESE specific questions — not other questions you might know.
 
 PHASE 1 — Opening (1 question only):
   - "Good morning. What is the purpose of your visit to the United States?"
 
-PHASE 2 — Workplace Rights & Brochure (ask 2-3 of these THIS EARLY):{_fmt(rights_qs)}
+PHASE 2 — Workplace Rights (the Wilberforce pamphlet — officers must check the student got it; ask 1):{_fmt(rights_qs)}
 
 PHASE 3 — Education (ask 2-3 of these):{_fmt(edu_qs)}
 
@@ -526,29 +524,30 @@ PHASE 8b — Wildcard (ask 1-2 if time allows — simulates real consul improvis
 
 PHASE 9 — Risk follow-ups for this student:{risk_text}
 
-PHASE 10 — Close (see INTERVIEW LENGTH below for when to trigger this):
-  Privately judge how the WHOLE interview went, then output ONLY the matching quoted sentence
-  below — verbatim, nothing before or after it, no explanation of which case matched, no
-  restating the condition. This is practice for students who are still learning, so judge
-  fairly but not harshly — imperfect English and small hesitations are normal and are NOT
-  reasons to withhold approval:
-  - Case: the student answered most questions sensibly — a clear non-money purpose, a plan to
-    return home, no serious red flags — even if some answers were short or the English was imperfect.
-    Output exactly: "{CLOSING_LINES['approved']}"
-    (say it as a genuine motivating moment — the one time you may sound warm)
-  - Case: several answers were vague or unconvincing, or a concern you pressed on stayed unresolved,
-    but nothing was disqualifying.
-    Output exactly: "{CLOSING_LINES['processing']}"
-  - Case: a clear red flag — the main goal is earning money, intent to stay in the US or not return,
-    relatives in the US the student plans to stay with, an answer contradicting an earlier one, or
-    the student could not answer most questions at all.
-    Output exactly: "{CLOSING_LINES['refused']}"
+PHASE 10 — Decide. When you have heard enough to decide, output ONLY this, nothing else:
+  {DECIDE_MARKER}
+  Do NOT announce the decision yourself — it is handed to you and read out separately.
+  Decide as a real officer does: as soon as the case is clear. A clear red flag ("I want to stay in
+  America", "I need money to pay my debts", "I'll live with my uncle there") ends the interview at
+  once — no more questions. A strong, consistent applicant can be decided after 4-5 answers.
+
+=== HOW A REAL CONSULAR OFFICER BEHAVES ===
+- You have the student's DS-160 and DS-2019 in front of you (the profile below). Ask about what's in
+  them; don't ask for information you'd already know just to fill time.
+- Brisk and businesslike, polite but not friendly; you have a long line of applicants. Questions are
+  short — usually under 12 words. No small talk, no explanations of why you ask.
+- You are deciding under section 214(b): the applicant is presumed to intend to immigrate until they
+  show strong ties — current studies, family, a plan to return. Probe the weakest point of THIS
+  student's application rather than walking through a list.
+- Listen for memorised, scripted answers: if an answer sounds recited, ask a quick unexpected
+  follow-up about the same thing in different words.
+- You never coach, warn or hint at what the right answer would be.
 
 === INTERVIEW LENGTH ===
 Elapsed time: {int(elapsed_seconds) // 60}:{int(elapsed_seconds) % 60:02d}. Exchanges so far: {turn_index}.
 - The whole interview lasts about 2-3 minutes. Before 2:00 — keep asking questions.
 - From 2:00 — ask at most one final question, then close.
-- From 2:30 — close on this turn with PHASE 10, whatever phase you are in.
+- From 2:30 — PHASE 10 on this turn, whatever phase you are in.
 
 === EMOTIONAL REACTIONS (this is what makes you feel like a real officer, not a form) ===
 1. GOOD answer (clear, confident, complete): respond with ONE short neutral acknowledgment only —
@@ -579,9 +578,7 @@ Elapsed time: {int(elapsed_seconds) // 60}:{int(elapsed_seconds) % 60:02d}. Exch
    never "Thank you for that", never anything that sounds like encouragement or teaching.
 5. Never explain, teach, or comment on the correctness of an answer — you are an officer, not a teacher.
 6. Never break character; never acknowledge being an AI.
-7. After Phase 10, produce no more questions.
-8. On Phase 10, output ONLY the exact quoted closing sentence — never your reasoning, never which
-   case you matched, never any text besides that one sentence.
+7. On Phase 10, output ONLY {DECIDE_MARKER} — never a decision, a reason, or any other text.
 
 === HANDLING OFF-TOPIC OR IRRELEVANT ANSWERS ===
 If the student does not answer your question:
@@ -650,7 +647,7 @@ async def generate_simulator_response(
                 yield cleaned
 
 
-def compute_verdict(overall_score_0_to_10: float) -> dict[str, Any]:
+def compute_verdict(overall_score_0_to_10: float, real_decision: str | None = None) -> dict[str, Any]:
     """Readiness verdict shown at the top of the results screen.
 
     Deliberately never says "Approved"/"Denied" — Vizora cannot predict a
@@ -659,6 +656,14 @@ def compute_verdict(overall_score_0_to_10: float) -> dict[str, Any]:
     generate_feedback (0-10 scale); normalized here to 0-100.
     """
     score = max(0, min(100, round(overall_score_0_to_10 * 10)))
+    # The real decision and the score come from different calls; keep the
+    # label from contradicting the decision shown next to it ("would be
+    # refused" next to "ready", or "would be approved" next to "needs more
+    # practice").
+    if real_decision == "refused":
+        score = min(score, 74)
+    elif real_decision == "approved":
+        score = max(score, 50)
     if score >= 75:
         label, color = "Готов", "green"
     elif score >= 50:
@@ -681,8 +686,8 @@ _FEEDBACK_FALLBACK: dict[str, Any] = {
 
 _DECISION_LABELS_RU: dict[str, str] = {
     "approved": "виза одобрена",
-    "processing": "отправлено на дополнительную проверку (administrative processing)",
-    "refused": "отказ",
+    "processing": "отправлено на дополнительную проверку (221(g), administrative processing)",
+    "refused": "отказ по статье 214(b)",
 }
 
 
@@ -700,18 +705,52 @@ def _officer_reveal_text(personality: str, overall: float) -> str:
     return f"Тебе попался {label} офицер и ты справился на {displayed}/10 — {tier}."
 
 
+# The consul session is the dress rehearsal — the feedback is as blunt as the
+# real window will be. The trainer mode stays a coach.
+_CONSUL_TONE = """
+ТОН РАЗБОРА: жёсткий и прямой, как разбор от бывшего консульского офицера. Студенту нужна правда,
+а не поддержка: на настоящем интервью у него будет одна попытка и 2 минуты.
+- Без смягчений и без похвалы за попытку. Не пиши "неплохо", "в целом хорошо", "можно чуть лучше".
+- Каждую слабость называй прямо и объясняй, к чему она приведёт на настоящем интервью — своими
+  словами под конкретный ответ (например: "Ты не назвал работодателя — для консула это значит, что
+  ты не знаешь, куда едешь").
+- verdict "good" — только для ответа, который на настоящем интервью сработал бы без единого
+  сомнения. Расплывчатый, неуверенный или слишком короткий ответ — "warning". Ответ, который мог бы
+  стоить визы, — "critical".
+- Баллы строгие: 8-10 — готов к настоящему интервью; 5-7 — есть заметные проблемы; ниже 5 — на
+  настоящем интервью это, скорее всего, отказ. Не завышай.
+- Жёстко — значит честно и конкретно, а не грубо: без оскорблений и насмешек, обращайся на "ты".
+"""
+_TRAINER_TONE = """
+ТОН РАЗБОРА: как требовательный, но доброжелательный тренер — честно называй ошибки и показывай, как
+ответить лучше.
+"""
+
+
+def _reasons_text(reasons: list[dict[str, Any]] | None) -> str:
+    if not reasons:
+        return "- (не указаны)"
+    return "\n".join(
+        f'- {r["label_ru"]}: {r["note_ru"]}' + (f' (ответ: "{r["quote"]}")' if r.get("quote") else "")
+        for r in reasons
+    )
+
+
 async def generate_feedback(
     transcript: list[dict[str, Any]],
     mode: str,
     session_id: str | None = None,
     profile: dict[str, Any] | None = None,
     risks: list[dict[str, Any]] | None = None,
-    officer_decision: str | None = None,
+    real_decision: str | None = None,
+    decision_reasons: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     # Build a numbered transcript so the model can cite specific exchanges
     pairs: list[str] = []
     i = 0
-    entries = transcript
+    # The officer's closing line isn't a question — analysed as one, the
+    # student would be marked down for "not answering" it.
+    entries = [e for e in transcript if not e.get("decision")]
     while i < len(entries):
         if entries[i]["role"] == "officer":
             q = entries[i]["content"]
@@ -728,22 +767,34 @@ async def generate_feedback(
     mode_label = "тренировка с фидбеком" if mode == "trainer" else "строгий режим консула"
     profile_text = _profile_text(profile) if profile else "Профиль не указан"
     risks_text = _risks_text(risks or [])
-    # The officer already announced a decision on screen — the feedback has to
-    # explain it, or the student sees "approved" and a list of mistakes with
-    # nothing connecting the two.
-    decision_text = (
-        f"""
-РЕШЕНИЕ КОНСУЛА В ЭТОЙ СИМУЛЯЦИИ: {_DECISION_LABELS_RU[officer_decision]}.
-В "recommendation" первым предложением объясни, почему консул принял именно такое решение
-(со ссылкой на конкретные ответы), затем — что сделать, чтобы на настоящем интервью получить одобрение.
+    # In the simulation the officer always approves; the feedback carries the
+    # decision a real officer would have made, so the student isn't left
+    # thinking an approval here means they're ready.
+    if real_decision == "approved":
+        decision_text = f"""
+В симуляции консул одобрил визу, и настоящий консул по этим ответам тоже, скорее всего, одобрил бы.
+ОСНОВАНИЯ (уже определены, не меняй их):
+{_reasons_text(decision_reasons)}
+В "recommendation" первым предложением скажи, что сработало (со ссылкой на ответы), затем — как
+закрепить это к настоящему интервью.
 """
-        if officer_decision in _DECISION_LABELS_RU
-        else ""
-    )
+    elif real_decision in _DECISION_LABELS_RU:
+        decision_text = f"""
+В симуляции консул одобрил визу, чтобы поддержать студента. Но НАСТОЯЩИЙ консул по этим ответам,
+скорее всего, вынес бы другое решение: {_DECISION_LABELS_RU[real_decision]}.
+ОСНОВАНИЯ (уже определены, не меняй и не оспаривай их):
+{_reasons_text(decision_reasons)}
+В "recommendation" первым предложением честно и по-доброму скажи, что на настоящем интервью эти
+ответы, скорее всего, привели бы к такому решению и почему (со ссылкой на ответы), затем — что
+именно исправить, чтобы получить одобрение по-настоящему.
+"""
+    else:
+        decision_text = ""
 
+    tone_text = _CONSUL_TONE if mode == "consul" else _TRAINER_TONE
     prompt = f"""Ты эксперт по визовым интервью J-1 Work and Travel USA.
 Проанализируй это конкретное интервью (режим: {mode_label}) и дай детальный разбор.
-
+{tone_text}
 ПРОФИЛЬ ЭТОГО СТУДЕНТА: {profile_text}
 ЕГО РИСК-ФАКТОРЫ (из его профиля, не общие): {risks_text}
 
@@ -758,8 +809,9 @@ async def generate_feedback(
 - Цель поездки: культурный обмен / английский (НЕ деньги)
 - Возврат: названа конкретная дата "before September 1st" или "before university starts"
 - Проблемы с работодателем: обратиться к спонсору и координатору (НЕ 911 и НЕ уходить без уведомления)
-- Родственники в США: должен быть ответ "No"
-- Кто платит: "My parents" (даже если платит сам)
+- Родственники в США: честный ответ; если они есть — студент сам говорит, что жить будет по месту
+  работы, а не у них
+- Кто платит: честно и конкретно — кто именно и чем занимается
 
 ЗАДАНИЕ: Верни ТОЛЬКО валидный JSON без markdown-блоков, ровно в этой структуре:
 
@@ -777,7 +829,8 @@ async def generate_feedback(
       "verdict": "good" | "warning" | "critical",
       "what_was_good": "<конкретно что правильно, или null>",
       "what_was_wrong": "<конкретная ошибка с цитатой из ответа, или null>",
-      "better_answer": "<улучшенная формулировка на английском, или null>"
+      "officer_heard": "<одно предложение: как этот ответ на самом деле прозвучал для консула и о чём он подумал>",
+      "better_answer": "<пример сильного ответа на английском — ДЛЯ КАЖДОГО вопроса, даже если ответ был хорошим>"
     }}
   ],
   "key_mistakes": [
@@ -802,6 +855,13 @@ async def generate_feedback(
 
 Правила:
 - answer_analysis — разбери КАЖДУЮ пару из транскрипта
+- better_answer — пример ответа, который на настоящем интервью сработал бы: коротко (1-3
+  предложения), уверенно, конкретно, простым английским, как говорит живой человек, а не
+  заученный текст. Строй его ТОЛЬКО на фактах ЭТОГО студента из профиля и его ответов. Любой
+  факт, которого там нет — название, город, сумма, дата, должность, стипендия, стажировка, чья-то
+  профессия — ставь в квадратных скобках: [название работодателя], [город], [сумма],
+  [профессия отца]. Ни одной выдуманной цифры или детали: студент выучит пример и повторит его
+  консулу, а ложь консулу — это misrepresentation, за неё дают пожизненный запрет на въезд в США
 - key_mistakes — только реальные ошибки из этого интервью, не общие советы
 - strong_points — только то что студент реально сделал правильно в этой сессии
 - phrases_to_memorize — только фразы из реальных ошибок этой сессии
@@ -834,6 +894,9 @@ async def generate_feedback(
                 # honors the "return ONLY JSON" prompt instruction — Groq/OpenAI/
                 # Gemini's OpenAI-compat endpoint all support this.
                 response_format={"type": "json_object"},
+                # gpt-oss reasons before answering and that counts against the
+                # 4096 cap; a full per-answer breakdown needs the room.
+                **reasoning_kwargs(),
             )
         except openai.APIError as e:
             # Covers APITimeoutError/APIConnectionError/etc — a long transcript
