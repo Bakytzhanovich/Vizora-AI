@@ -130,6 +130,17 @@ class LevelReportingTests(unittest.TestCase):
         self.assertEqual(levels["tested"], 1)
         self.assertEqual(levels["distribution"], {"A1": 0, "A2": 0, "B1": 0, "B2": 1, "C1": 0})
 
+    def test_level_test_counts_as_activity(self):
+        # A student whose only activity is a level test was flagged
+        # "never logged in" and missing from the weekly activity chart.
+        alerts = self.client.get("/api/agency/alerts", headers=self._agency_headers("owner", "admin")).json()
+        tested_alerts = [a["message"] for a in alerts["alerts"] if a["student_id"] == self.ids["tested"]]
+        self.assertNotIn("Ни разу не заходил в систему", tested_alerts)
+        weekly = self.client.get("/api/agency/analytics", headers=self._agency_headers("owner", "admin")).json()
+        # "tested" (yesterday's test) and "untested", who started a test today
+        # and abandoned it — opening the test is activity too.
+        self.assertEqual(sum(d["active_users"] for d in weekly["weekly_activity"]), 2)
+
     def test_manager_sees_only_assigned_students(self):
         res = self.client.get("/api/agency/analytics", headers=self._agency_headers("manager", "manager"))
         self.assertEqual(res.json()["english_levels"]["tested"], 1)

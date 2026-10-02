@@ -5,24 +5,27 @@ import os
 import secrets
 import uuid
 from datetime import datetime
+from urllib.parse import urlencode
 
 import bcrypt
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agency_auth import AgencyCtx, create_member_token, get_current_member, require_admin
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import validate_new_password
 from app.models.agency import Agency, AgencyMember, AgencyStudent
 from app.models.chat import ChatMessage
-from app.models.documents import DocumentProgress
 from app.models.level_test import LevelTest
 from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from app.services.document_progress import document_progress, document_progress_many
 from app.services.level_test_service import LEVEL_TITLES, latest_level_results, level_distribution
 from app.services.roadmap_service import _PROGRESS_WEIGHTS
 from app.services.subscription_service import get_agency_billing_status
@@ -42,11 +45,16 @@ async def _get_student_last_active(db: AsyncSession, user_id: str) -> datetime |
                 SELECT created_at AS ts FROM simulator_sessions WHERE user_id = :uid
                 UNION ALL
                 SELECT updated_at AS ts FROM document_progress WHERE user_id = :uid
-            )
+                UNION ALL
+                SELECT created_at AS ts FROM level_tests WHERE user_id = :uid
+            ) AS activity
         """),
         {"uid": user_id},
     )
-    return result.scalar()
+    last = result.scalar()
+    # Raw SQL bypasses column types: Postgres returns a datetime, SQLite (tests)
+    # an ISO string.
+    return datetime.fromisoformat(last) if isinstance(last, str) else last
 
 
 async def _get_student_readiness(db: AsyncSession, user_id: str) -> int:
@@ -59,26 +67,14 @@ async def _get_student_readiness(db: AsyncSession, user_id: str) -> int:
     completed = {r[0] for r in rows.fetchall()}
     completed.add("profile")
 
-    doc_completed = await db.scalar(
-        select(func.count()).where(
-            DocumentProgress.user_id == user_id,
-            DocumentProgress.completed == True,
-        )
-    )
-    if doc_completed and doc_completed >= 9:
+    if await document_progress(db, user_id) >= 100:
         completed.add("documents")
 
     return sum(w for sid, w in _PROGRESS_WEIGHTS.items() if sid in completed)
 
 
 async def _get_doc_progress_pct(db: AsyncSession, user_id: str) -> int:
-    completed = await db.scalar(
-        select(func.count()).where(
-            DocumentProgress.user_id == user_id,
-            DocumentProgress.completed == True,
-        )
-    )
-    return min(100, round((completed or 0) / 9 * 100))
+    return await document_progress(db, user_id)
 
 
 async def _get_simulator_stats(db: AsyncSession, user_id: str) -> tuple[int, float]:
@@ -145,20 +141,42 @@ class AgencyRegisterBody(BaseModel):
     country: str
     contact_phone: str | None = None
 
+    @field_validator("password")
+    @classmethod
+    def password_rules(cls, v: str) -> str:
+        return validate_new_password(v)
+
 
 class AgencyLoginBody(BaseModel):
     email: EmailStr
     password: str
 
 
+def _normalize_email(v: str) -> str:
+    # Users are stored lowercase (auth.register, Google login). Without this an
+    # agency typing "Aibek@Gmail.com" created a second, empty account next to
+    # the student's real one.
+    return v.strip().lower()
+
+
 class AddStudentBody(BaseModel):
-    email: str
+    email: EmailStr
     name: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return _normalize_email(v)
 
 
 class BulkStudent(BaseModel):
-    email: str
+    email: EmailStr
     name: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return _normalize_email(v)
 
 
 class BulkAddBody(BaseModel):
@@ -318,7 +336,8 @@ async def add_student(
     ctx: AgencyCtx = Depends(get_current_member),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await db.scalar(select(User).where(User.email == body.email))
+    # func.lower also matches accounts created before emails were normalised.
+    user = await db.scalar(select(User).where(func.lower(User.email) == body.email))
     if not user:
         temp_password = secrets.token_urlsafe(12)
         hashed = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
@@ -361,7 +380,7 @@ async def add_student(
     await db.commit()
     await db.refresh(link)
 
-    invite_link = f"http://localhost:3000/login?email={body.email}"
+    invite_link = f"{settings.FRONTEND_URL}/login?{urlencode({'email': body.email})}"
     return {"student_id": user.id, "invite_link": invite_link}
 
 
@@ -375,7 +394,7 @@ async def bulk_add_students(
     assigned_manager = ctx.member_id if ctx.role == "manager" else None
     for s in body.students:
         try:
-            user = await db.scalar(select(User).where(User.email == s.email))
+            user = await db.scalar(select(User).where(func.lower(User.email) == s.email))
             if not user:
                 temp_password = secrets.token_urlsafe(12)
                 hashed = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
@@ -472,13 +491,7 @@ async def list_students(
 
     level_results = await latest_level_results(db, user_ids)
 
-    doc_rows = await db.execute(
-        select(DocumentProgress.user_id, func.count(DocumentProgress.id)).where(
-            DocumentProgress.user_id.in_(user_ids),
-            DocumentProgress.completed == True,
-        ).group_by(DocumentProgress.user_id)
-    )
-    doc_map = {r[0]: min(100, round(r[1] / 9 * 100)) for r in doc_rows.fetchall()}
+    doc_map = await document_progress_many(db, user_ids)
 
     rp_rows = await db.execute(
         select(RoadmapProgress.user_id, RoadmapProgress.step_id).where(
@@ -765,7 +778,8 @@ async def get_analytics(
     weak_topics.sort(key=lambda x: x["avg_score"])
 
     from datetime import timedelta
-    week_start = datetime.utcnow() - timedelta(days=6)
+    # Midnight six days ago, so the oldest bar covers its whole day.
+    week_start = datetime.combine(today - timedelta(days=6), datetime.min.time())
     chat_rows = await db.execute(
         select(ChatMessage.user_id, ChatMessage.created_at).where(
             ChatMessage.user_id.in_(user_ids),
@@ -778,8 +792,14 @@ async def get_analytics(
             SimulatorSession.created_at >= week_start,
         )
     )
+    level_rows = await db.execute(
+        select(LevelTest.user_id, LevelTest.created_at).where(
+            LevelTest.user_id.in_(user_ids),
+            LevelTest.created_at >= week_start,
+        )
+    )
     activity_by_day: dict[str, set[str]] = {}
-    for uid, ts in list(chat_rows.fetchall()) + list(sim_rows2.fetchall()):
+    for uid, ts in list(chat_rows.fetchall()) + list(sim_rows2.fetchall()) + list(level_rows.fetchall()):
         day_key = str(ts.date())
         activity_by_day.setdefault(day_key, set()).add(uid)
 

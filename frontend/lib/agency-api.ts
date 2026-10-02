@@ -119,6 +119,13 @@ export interface EnglishLevelStats {
   distribution: Record<(typeof ENGLISH_LEVELS)[number], number>;
 }
 
+export interface AgencyRisk {
+  type: string;
+  severity: "high" | "medium" | "low" | string;
+  label_ru?: string;
+  advice_ru?: string;
+}
+
 export interface AgencyStudentDetail {
   student: {
     id: string;
@@ -139,7 +146,9 @@ export interface AgencyStudentDetail {
   simulator_sessions: number;
   simulator_avg_score: number;
   simulator_scores: { confidence: number; language: number; content: number };
-  risk_profile: { type: string; level: string; description: string }[];
+  // As stored by risk_service.generate_risk_profile: {risks, overall_risk, …};
+  // an empty list when the student has no profile yet.
+  risk_profile: { risks?: AgencyRisk[]; overall_risk?: string } | AgencyRisk[];
   roadmap_completed: string[];
   last_active: string | null;
   english_test?: {

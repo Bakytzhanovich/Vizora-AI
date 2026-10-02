@@ -64,6 +64,9 @@ export default function StudentDetailPage() {
   if (!data) return null;
   const { student, readiness, documents_pct, simulator_sessions, simulator_avg_score, simulator_scores, risk_profile, roadmap_completed } = data;
   const englishTest = data.english_test ?? null;
+  // The API returns the stored {risks: [...]} object (or [] without a profile);
+  // treating it as an array crashed this whole page on the Risks tab.
+  const risks = Array.isArray(risk_profile) ? risk_profile : risk_profile?.risks ?? [];
   const days = daysUntil(student.interview_date);
 
   return (
@@ -329,24 +332,26 @@ export default function StudentDetailPage() {
       {/* Tab: Риски */}
       {tab === "Риски" && (
         <div className="space-y-3">
-          {risk_profile.length === 0 ? (
+          {risks.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-10 text-center">
               <p className="text-2xl mb-2">✅</p>
-              <p className="text-sm text-gray-500">Профиль рисков ещё не сформирован</p>
+              <p className="text-sm text-gray-500">
+                {Array.isArray(risk_profile) ? "Профиль рисков ещё не сформирован" : "Серьёзных рисков не выявлено"}
+              </p>
             </div>
           ) : (
-            risk_profile.map((risk, i) => (
+            risks.map((risk, i) => (
               <div
                 key={i}
-                className={`rounded-xl border px-5 py-4 ${RISK_COLORS[risk.level] ?? RISK_COLORS.medium}`}
+                className={`rounded-xl border px-5 py-4 ${RISK_COLORS[risk.severity] ?? RISK_COLORS.medium}`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-bold uppercase tracking-wide">
-                    {risk.level === "high" ? "Высокий риск" : risk.level === "medium" ? "Средний риск" : "Низкий риск"}
+                    {risk.severity === "high" ? "Высокий риск" : risk.severity === "medium" ? "Средний риск" : "Низкий риск"}
                   </span>
                 </div>
-                <p className="text-sm font-semibold">{risk.type}</p>
-                <p className="text-sm mt-0.5 opacity-80">{risk.description}</p>
+                <p className="text-sm font-semibold">{risk.label_ru ?? risk.type}</p>
+                {risk.advice_ru && <p className="text-sm mt-0.5 opacity-80">{risk.advice_ru}</p>}
               </div>
             ))
           )}

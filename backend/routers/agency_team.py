@@ -4,19 +4,20 @@ from datetime import datetime, timedelta
 
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agency_auth import AgencyCtx, create_member_token, get_current_member, require_admin
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import validate_new_password
 from app.models.agency import Agency, AgencyMember, AgencyStudent
-from app.models.documents import DocumentProgress
 from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from app.services.document_progress import document_progress
 from app.services.roadmap_service import _PROGRESS_WEIGHTS
 from middleware.rate_limit import limiter
 
@@ -65,13 +66,7 @@ async def _get_readiness(db: AsyncSession, user_id: str) -> int:
         )
     )
     completed = {r[0] for r in rows.fetchall()} | {"profile"}
-    doc_count = await db.scalar(
-        select(func.count()).where(
-            DocumentProgress.user_id == user_id,
-            DocumentProgress.completed == True,
-        )
-    ) or 0
-    if doc_count >= 9:
+    if await document_progress(db, user_id) >= 100:
         completed.add("documents")
     return sum(w for sid, w in _PROGRESS_WEIGHTS.items() if sid in completed)
 
@@ -93,6 +88,11 @@ class JoinBody(BaseModel):
     token: str
     password: str
     name: str
+
+    @field_validator("password")
+    @classmethod
+    def password_rules(cls, v: str) -> str:
+        return validate_new_password(v)
 
 
 class AssignBody(BaseModel):

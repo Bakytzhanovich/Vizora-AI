@@ -17,6 +17,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+def validate_new_password(password: str) -> str:
+    """Rules for any password being set (student, agency owner, manager).
+    Login must not use this — it has to accept whatever an existing account
+    was created with."""
+    if len(password) < 8:
+        raise ValueError("Пароль должен содержать минимум 8 символов")
+    # bcrypt's hard limit is 72 bytes, not characters; past it hashpw raises.
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("Пароль слишком длинный (максимум 72 байта)")
+    return password
+
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
