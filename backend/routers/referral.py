@@ -18,11 +18,11 @@ from app.services.referral_service import (
 
 router = APIRouter(prefix="/referral", tags=["referral"])
 
-APP_URL = getattr(settings, "APP_URL", "http://localhost:3000")
-
 
 def _make_link(code: str) -> str:
-    return f"{APP_URL}/register?ref={code}"
+    # FRONTEND_URL, not an "APP_URL" setting: that field never existed, so the
+    # old getattr fallback sent every referral link to localhost in production.
+    return f"{settings.FRONTEND_URL}/register?ref={code}"
 
 
 @router.get("/my-code")

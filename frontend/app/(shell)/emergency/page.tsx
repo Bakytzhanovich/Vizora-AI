@@ -42,6 +42,9 @@ export default function EmergencyPage() {
   const [answering, setAnswering] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | undefined>(undefined);
+  // Free plan: the backend answers 403 subscription_required. This used to be
+  // swallowed, so tapping a scenario did nothing at all.
+  const [startError, setStartError] = useState<"locked" | "failed" | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem("access_token")) {
@@ -56,6 +59,7 @@ export default function EmergencyPage() {
 
   const handleSelectScenario = useCallback(async (scenarioId: string) => {
     setStartingId(scenarioId);
+    setStartError(null);
     try {
       const res = await apiStartEmergency(scenarioId);
       const matched = scenarios.find((s) => s.id === scenarioId);
@@ -68,8 +72,10 @@ export default function EmergencyPage() {
         totalSteps: res.total_steps,
       });
       setFlowStep("guided");
-    } catch {
-      // fallback: show error inline instead of breaking
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { detail?: { error?: string } } } };
+      const locked = e.response?.status === 403 && e.response?.data?.detail?.error === "subscription_required";
+      setStartError(locked ? "locked" : "failed");
     } finally {
       setStartingId(null);
     }
@@ -171,6 +177,23 @@ export default function EmergencyPage() {
                   {t("desc")}
                 </p>
               </div>
+
+              {startError === "locked" && (
+                <div className="bg-card border border-warning/30 rounded-2xl p-5 mb-4 text-center">
+                  <div className="text-3xl mb-2">🔒</div>
+                  <p className="text-primary font-semibold mb-1">Пошаговый план доступен по подписке</p>
+                  <p className="text-secondary text-sm mb-4">Emergency-помощь открыта на планах СТАНДАРТ и ПРЕМИУМ</p>
+                  <button
+                    onClick={() => router.push("/pricing")}
+                    className="px-6 py-3 rounded-xl bg-accent text-white text-sm font-semibold"
+                  >
+                    Перейти к тарифам
+                  </button>
+                </div>
+              )}
+              {startError === "failed" && (
+                <p className="text-error text-sm text-center mb-4">Не удалось открыть сценарий. Попробуй ещё раз.</p>
+              )}
 
               {/* Scenario list */}
               {loadingScenarios ? (

@@ -409,9 +409,12 @@ export default function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-error font-bold text-base">{t("dashboard:emergency_banner.title")}</span>
-                    <span className="text-[10px] font-bold bg-error/15 text-error px-2 py-0.5 rounded-full">
-                      {t("dashboard:emergency_banner.badge")}
-                    </span>
+                    {/* "Always available" only where it's true — free plan gets a 403 */}
+                    {subscription?.limits.emergency && (
+                      <span className="text-[10px] font-bold bg-error/15 text-error px-2 py-0.5 rounded-full">
+                        {t("dashboard:emergency_banner.badge")}
+                      </span>
+                    )}
                   </div>
                   <p className="text-secondary text-sm">
                     {t("dashboard:emergency_banner.desc")}

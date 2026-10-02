@@ -2,7 +2,9 @@ import json
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,16 +31,19 @@ class LanguageRequest(BaseModel):
 
 
 class OnboardingRequest(BaseModel):
-    name: str
-    university: str
-    course_year: int
-    profession: str
+    # Values match the onboarding steps' options (frontend/components/onboarding/
+    # steps). Risks and the document checklist branch on them, so a free-form
+    # value like english_level="xyz" silently produced a wrong risk profile.
+    name: str = Field(min_length=1, max_length=100)
+    university: str = Field(max_length=200)
+    course_year: int = Field(ge=1, le=10)
+    profession: str = Field(max_length=150)
     interview_date: date | None = None
-    english_level: str
+    english_level: Literal["weak", "medium", "good"]
     travel_history: bool
-    financial_source: str
-    job_offer: str
-    country: str
+    financial_source: Literal["self", "parents", "scholarship"]
+    job_offer: Literal["yes", "in_progress", "no"]
+    country: Literal["KZ", "UZ", "KG", "AM", "other"]
     via_agency: bool
 
     model_config = {"str_strip_whitespace": True}

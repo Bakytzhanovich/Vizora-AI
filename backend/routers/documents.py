@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user_id
 from app.models.documents import DocumentProgress
 from app.models.profile import StudentProfile
+from app.services.document_progress import checklist_inputs
 from app.services.documents_service import (
     COMMON_MISTAKES,
     DS160_STEPS,
@@ -24,15 +25,7 @@ async def _load_profile_dict(db: AsyncSession, user_id: str) -> dict:
     result = await db.execute(
         select(StudentProfile).where(StudentProfile.user_id == user_id)
     )
-    profile = result.scalar_one_or_none()
-    if not profile:
-        return {}
-    return {
-        "financial_source": profile.financial_source,
-        "travel_history": profile.travel_history,
-        "job_offer": profile.job_offer,
-        "country": profile.country,
-    }
+    return checklist_inputs(result.scalar_one_or_none())
 
 
 @router.get("/checklist")
@@ -73,6 +66,10 @@ async def update_checklist(
 ):
     if not body.document_id.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="document_id is required")
+    # Only items on this student's checklist — a stray id would otherwise be
+    # stored and could count toward progress.
+    if body.document_id not in {d["id"] for d in generate_checklist(await _load_profile_dict(db, user_id))}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown document_id")
 
     result = await db.execute(
         select(DocumentProgress).where(
