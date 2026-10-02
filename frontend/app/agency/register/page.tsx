@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { agencyRegister } from "@/lib/agency-api";
 import { track } from "@/lib/analytics";
+import { PasswordInput } from "@/components/agency/PasswordInput";
 import { VizoraMark } from "@/components/VizoraMark";
 
 const COUNTRIES = ["KZ", "RU", "UZ", "KG", "TJ", "AM", "AZ", "GE", "UA", "BY"];
@@ -89,8 +90,8 @@ export default function AgencyRegisterPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Пароль</label>
-              <input
-                type="password"
+              <PasswordInput
+                autoComplete="new-password"
                 value={form.password}
                 onChange={set("password")}
                 placeholder="Минимум 6 символов"

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { agencyLogin } from "@/lib/agency-api";
+import { PasswordInput } from "@/components/agency/PasswordInput";
 import { VizoraMark } from "@/components/VizoraMark";
 
 export default function AgencyLoginPage() {
@@ -61,8 +62,8 @@ export default function AgencyLoginPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Пароль</label>
-              <input
-                type="password"
+              <PasswordInput
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

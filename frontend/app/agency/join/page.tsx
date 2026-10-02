@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { agencyGetJoinInfo, agencyJoin } from "@/lib/agency-api";
+import { PasswordInput } from "@/components/agency/PasswordInput";
 import { VizoraMark } from "@/components/VizoraMark";
 
 function JoinForm() {
@@ -127,8 +128,8 @@ function JoinForm() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Придумай пароль</label>
-              <input
-                type="password"
+              <PasswordInput
+                autoComplete="new-password"
                 value={form.password}
                 onChange={set("password")}
                 placeholder="Минимум 6 символов"
@@ -138,8 +139,8 @@ function JoinForm() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Подтверди пароль</label>
-              <input
-                type="password"
+              <PasswordInput
+                autoComplete="new-password"
                 value={form.confirmPassword}
                 onChange={set("confirmPassword")}
                 placeholder="Повтори пароль"
