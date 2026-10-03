@@ -16,6 +16,7 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [access, setAccess] = useState<{ link: string; password: string | null } | null>(null);
+  const [invited, setInvited] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +24,12 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
     setLoading(true);
     try {
       const res = await agencyAddStudent(email.trim(), name.trim());
-      setAccess({ link: res.invite_link, password: res.password });
-      onAdded();
+      if (res.status === "invited") {
+        setInvited(true);
+      } else {
+        setAccess({ link: res.invite_link, password: res.password });
+        onAdded();
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setError(msg || "Ошибка при добавлении студента");
@@ -49,7 +54,20 @@ export function AddStudentModal({ onClose, onAdded }: Props) {
 
         {/* Body */}
         <div className="px-6 py-5">
-          {!access ? (
+          {invited ? (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
+                У этого студента уже есть аккаунт в Vizora. Мы отправили ему запрос на доступ: студент
+                появится в вашем списке, когда подтвердит его в личном кабинете.
+              </div>
+              <button
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+              >
+                Закрыть
+              </button>
+            </div>
+          ) : !access ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Имя студента</label>

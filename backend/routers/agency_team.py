@@ -5,14 +5,14 @@ from datetime import datetime, timedelta
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agency_auth import AgencyCtx, create_member_token, get_current_member, require_admin
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import validate_new_password
-from app.models.agency import Agency, AgencyMember, AgencyStudent
+from app.models.agency import Agency, AgencyInvite, AgencyMember, AgencyStudent
 from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
@@ -254,6 +254,13 @@ async def deactivate_member(
     for s in students:
         s.assigned_manager_id = None
         db.add(s)
+    # Same for invites still waiting on a student, or accepting one would
+    # hand the student to a deactivated manager.
+    await db.execute(
+        update(AgencyInvite)
+        .where(AgencyInvite.agency_id == ctx.agency_id, AgencyInvite.assigned_manager_id == member_id)
+        .values(assigned_manager_id=None)
+    )
 
     member.status = "deactivated"
     member.invite_token = None

@@ -18,7 +18,7 @@ from app.core.agency_auth import AgencyCtx, create_member_token, get_current_mem
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import hash_password, validate_new_password
-from app.models.agency import Agency, AgencyMember, AgencyStudent
+from app.models.agency import Agency, AgencyInvite, AgencyMember, AgencyStudent
 from app.models.chat import ChatMessage
 from app.models.level_test import LevelTest
 from app.models.profile import StudentProfile
@@ -92,6 +92,21 @@ async def _create_student_account(db: AsyncSession, email: str, name: str, agenc
         via_agency=True,
     ))
     return user, password
+
+
+async def _invite_existing_student(db: AsyncSession, ctx: AgencyCtx, user: User) -> None:
+    """Ask a student who registered on their own to join this agency. Linking
+    them directly would show the agency their profile, risks and results on
+    the strength of an email address alone."""
+    existing = await db.scalar(
+        select(AgencyInvite).where(AgencyInvite.agency_id == ctx.agency_id, AgencyInvite.user_id == user.id)
+    )
+    if not existing:
+        db.add(AgencyInvite(
+            agency_id=ctx.agency_id,
+            user_id=user.id,
+            assigned_manager_id=ctx.member_id if ctx.role == "manager" else None,
+        ))
 
 
 async def _get_student_readiness(db: AsyncSession, user_id: str) -> int:
@@ -388,6 +403,13 @@ async def add_student(
     if existing_link:
         raise HTTPException(status_code=409, detail="Student already linked to this agency")
 
+    # An account this agency didn't create joins only once its owner accepts.
+    # No student_id in that case — the agency has no access to it yet.
+    if password is None and user.password_set_by_agency != ctx.agency_id:
+        await _invite_existing_student(db, ctx, user)
+        await db.commit()
+        return {"student_id": None, "status": "invited", "invite_link": _login_link(body.email), "password": None}
+
     assigned_manager = ctx.member_id if ctx.role == "manager" else None
     link = AgencyStudent(
         agency_id=ctx.agency_id,
@@ -398,9 +420,7 @@ async def add_student(
     await db.commit()
     await db.refresh(link)
 
-    # `password` is null for a student who already had an account — they sign
-    # in with their own.
-    return {"student_id": user.id, "invite_link": _login_link(body.email), "password": password}
+    return {"student_id": user.id, "status": "added", "invite_link": _login_link(body.email), "password": password}
 
 
 @router.post("/students/bulk-add")
@@ -424,7 +444,12 @@ async def bulk_add_students(
                     AgencyStudent.user_id == user.id,
                 )
             )
-            if not existing:
+            if existing:
+                results.append({"email": s.email, "status": "already_linked"})
+            elif password is None and user.password_set_by_agency != ctx.agency_id:
+                await _invite_existing_student(db, ctx, user)
+                results.append({"email": s.email, "status": "invited", "password": None})
+            else:
                 link = AgencyStudent(
                     agency_id=ctx.agency_id,
                     user_id=user.id,
@@ -432,8 +457,6 @@ async def bulk_add_students(
                 )
                 db.add(link)
                 results.append({"email": s.email, "status": "added", "password": password})
-            else:
-                results.append({"email": s.email, "status": "already_linked"})
         except Exception as e:
             results.append({"email": s.email, "status": "error", "detail": str(e)})
 

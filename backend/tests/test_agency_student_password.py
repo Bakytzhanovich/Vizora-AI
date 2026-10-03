@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.core.agency_auth import create_member_token
 from app.core.config import settings
 from app.core.database import Base, get_db
-from app.core.security import hash_password
+from app.core.security import create_access_token, hash_password
 from app.models.agency import Agency, AgencyMember
 from app.models.user import User
 from main import app
@@ -58,7 +58,9 @@ class AgencyStudentPasswordTests(unittest.TestCase):
     async def _seed(cls) -> dict:
         async with cls.sessionmaker() as s:
             existing = User(email="own@x.com", password_hash=hash_password("Students-own-1"))
-            s.add(existing)
+            invitee = User(email="invitee@x.com", password_hash=hash_password("Invitee-own-1"))
+            other = User(email="other@x.com", password_hash=hash_password("Other-own-1"))
+            s.add_all([existing, invitee, other])
             agency_a = Agency(name="A", email="a@x.com", password_hash="x", country="KZ")
             agency_b = Agency(name="B", email="b@x.com", password_hash="x", country="KZ")
             s.add_all([agency_a, agency_b])
@@ -67,7 +69,7 @@ class AgencyStudentPasswordTests(unittest.TestCase):
             owner_b = AgencyMember(agency_id=agency_b.id, role="admin", name="B", email="b@x.com", status="active")
             s.add_all([owner_a, owner_b])
             await s.commit()
-            return {"agency_a": agency_a.id, "agency_b": agency_b.id, "owner_a": owner_a.id, "owner_b": owner_b.id}
+            return {"own": existing.id, "invitee": invitee.id, "other": other.id, "agency_a": agency_a.id, "agency_b": agency_b.id, "owner_a": owner_a.id, "owner_b": owner_b.id}
 
     def _headers(self, agency: str) -> dict:
         token = create_member_token(self.ids[f"agency_{agency}"], self.ids[f"owner_{agency}"], "admin")
@@ -84,18 +86,59 @@ class AgencyStudentPasswordTests(unittest.TestCase):
         self.assertEqual(len(password), 10)
         self.assertEqual(self._login("new@x.com", password), 200)
 
-    def test_existing_account_gets_no_password_and_cant_be_reset(self):
+    def _student_headers(self, who: str) -> dict:
+        return {"Authorization": f"Bearer {create_access_token(self.ids[who])}"}
+
+    def test_existing_account_is_invited_not_linked(self):
         res = self.client.post("/api/agency/students/add", headers=self._headers("a"),
                                json={"email": "own@x.com", "name": "Own"})
         self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()["status"], "invited")
         self.assertIsNone(res.json()["password"])
-        student_id = res.json()["student_id"]
+        self.assertIsNone(res.json()["student_id"])
 
-        detail = self.client.get(f"/api/agency/students/{student_id}", headers=self._headers("a")).json()
-        self.assertFalse(detail["can_issue_password"])
-        reset = self.client.post(f"/api/agency/students/{student_id}/password", headers=self._headers("a"))
-        self.assertEqual(reset.status_code, 403)
+        detail = self.client.get(f"/api/agency/students/{self.ids['own']}", headers=self._headers("a"))
+        self.assertEqual(detail.status_code, 404)
+        reset = self.client.post(f"/api/agency/students/{self.ids['own']}/password", headers=self._headers("a"))
+        self.assertEqual(reset.status_code, 404)
         self.assertEqual(self._login("own@x.com", "Students-own-1"), 200)
+
+    def test_student_accepting_an_invite_links_them(self):
+        self.client.post("/api/agency/students/add", headers=self._headers("a"),
+                         json={"email": "invitee@x.com", "name": "Invitee"})
+        invites = self.client.get("/api/profile/agency-invites", headers=self._student_headers("invitee")).json()
+        self.assertEqual([i["agency_name"] for i in invites["invites"]], ["A"])
+
+        # Someone else can't accept it for them.
+        stolen = self.client.post(f"/api/profile/agency-invites/{invites['invites'][0]['id']}/accept",
+                                  headers=self._student_headers("other"))
+        self.assertEqual(stolen.status_code, 404)
+
+        accepted = self.client.post(f"/api/profile/agency-invites/{invites['invites'][0]['id']}/accept",
+                                    headers=self._student_headers("invitee"))
+        self.assertEqual(accepted.status_code, 200)
+        detail = self.client.get(f"/api/agency/students/{self.ids['invitee']}", headers=self._headers("a")).json()
+        self.assertFalse(detail["can_issue_password"])
+        # Linked with consent still doesn't let the agency take over the account.
+        reset = self.client.post(f"/api/agency/students/{self.ids['invitee']}/password", headers=self._headers("a"))
+        self.assertEqual(reset.status_code, 403)
+        left = self.client.get("/api/profile/agency-invites", headers=self._student_headers("invitee")).json()
+        self.assertEqual(left["invites"], [])
+
+    def test_declined_invite_gives_no_access(self):
+        self.client.post("/api/agency/students/add", headers=self._headers("b"),
+                         json={"email": "other@x.com", "name": "Other"})
+        # Adding twice doesn't stack up invites.
+        self.client.post("/api/agency/students/add", headers=self._headers("b"),
+                         json={"email": "other@x.com", "name": "Other"})
+        invites = self.client.get("/api/profile/agency-invites", headers=self._student_headers("other")).json()["invites"]
+        self.assertEqual(len(invites), 1)
+
+        declined = self.client.post(f"/api/profile/agency-invites/{invites[0]['id']}/decline",
+                                    headers=self._student_headers("other"))
+        self.assertEqual(declined.status_code, 200)
+        detail = self.client.get(f"/api/agency/students/{self.ids['other']}", headers=self._headers("b"))
+        self.assertEqual(detail.status_code, 404)
 
     def test_new_password_replaces_the_old_one(self):
         res = self.client.post("/api/agency/students/add", headers=self._headers("a"),
@@ -114,8 +157,9 @@ class AgencyStudentPasswordTests(unittest.TestCase):
         linked = self.client.post("/api/agency/students/add", headers=self._headers("b"),
                                   json={"email": "shared@x.com", "name": "Shared"})
         self.assertIsNone(linked.json()["password"])
+        self.assertEqual(linked.json()["status"], "invited")
         reset = self.client.post(f"/api/agency/students/{created['student_id']}/password", headers=self._headers("b"))
-        self.assertEqual(reset.status_code, 403)
+        self.assertEqual(reset.status_code, 404)  # only invited, not linked
         self.assertEqual(self._login("shared@x.com", created["password"]), 200)
 
     def test_unlinked_student_is_not_found(self):
@@ -132,6 +176,7 @@ class AgencyStudentPasswordTests(unittest.TestCase):
         by_email = {r["email"]: r for r in res["results"]}
         self.assertEqual(self._login("bulk1@x.com", by_email["bulk1@x.com"]["password"]), 200)
         self.assertIsNone(by_email["own@x.com"]["password"])
+        self.assertEqual(by_email["own@x.com"]["status"], "invited")
 
 
 if __name__ == "__main__":

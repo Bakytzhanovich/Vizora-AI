@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, String, UniqueConstraint
 
 from app.core.database import Base
 
@@ -66,3 +66,22 @@ class AgencyStudent(Base):
     assigned_manager_id = Column(String(36), ForeignKey("agency_members.id"), nullable=True)
     added_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     status = Column(String(20), default="active", nullable=False)
+
+
+class AgencyInvite(Base):
+    """An agency asking to follow a student who already has an account.
+
+    It becomes an AgencyStudent link only once the student accepts: the link
+    shows the agency the student's profile, risk profile and results, and
+    knowing someone's email must not be enough for that.
+    """
+
+    __tablename__ = "agency_invites"
+    __table_args__ = (UniqueConstraint("agency_id", "user_id", name="uq_agency_invites_agency_user"),)
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    agency_id = Column(String(36), ForeignKey("agencies.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    # Carried over to the link on accept, same as a direct add by a manager.
+    assigned_manager_id = Column(String(36), ForeignKey("agency_members.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

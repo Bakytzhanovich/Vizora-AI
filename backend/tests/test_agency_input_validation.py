@@ -83,11 +83,13 @@ class AgencyInputValidationTests(unittest.TestCase):
         res = self.client.post("/api/agency/students/add", headers=self.headers,
                                json={"email": "  Aibek@Gmail.com ", "name": "Aibek"})
         self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()["status"], "invited")
         self.assertEqual(self._count_users("aibek@gmail.com"), 1)
-        # Same person again, different case — already linked.
+        # Same person again, different case — still the one existing account.
         res = self.client.post("/api/agency/students/add", headers=self.headers,
                                json={"email": "AIBEK@gmail.com", "name": "Aibek"})
-        self.assertEqual(res.status_code, 409)
+        self.assertEqual(res.json()["status"], "invited")
+        self.assertEqual(self._count_users("aibek@gmail.com"), 1)
 
     def test_bulk_add_normalizes_email(self):
         res = self.client.post("/api/agency/students/bulk-add", headers=self.headers, json={"students": [

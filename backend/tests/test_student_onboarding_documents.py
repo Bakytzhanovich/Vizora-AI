@@ -109,6 +109,9 @@ class StudentOnboardingDocumentsTests(unittest.TestCase):
         }).json()
         agency_headers = {"Authorization": f"Bearer {agency['agency_token']}"}
         self.client.post("/api/agency/students/add", headers=agency_headers, json={"email": email, "name": "Тест"})
+        # The student registered on their own, so the agency sees them only after they accept.
+        invite = self.client.get("/api/profile/agency-invites", headers=headers).json()["invites"][0]
+        self.client.post(f"/api/profile/agency-invites/{invite['id']}/accept", headers=headers)
         listed = self.client.get("/api/agency/students", headers=agency_headers).json()["students"][0]
         detail = self.client.get(f"/api/agency/students/{listed['id']}", headers=agency_headers).json()
         self.assertEqual(listed["documents_pct"], student_pct)

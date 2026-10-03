@@ -483,6 +483,23 @@ export interface LeaderboardEntry {
   is_me: boolean;
 }
 
+// An agency asking to follow a student who already had an account — it sees
+// nothing until the student accepts.
+export interface AgencyInvite {
+  id: string;
+  agency_name: string;
+  created_at: string;
+}
+
+export async function apiGetAgencyInvites() {
+  const { data } = await api.get<{ invites: AgencyInvite[] }>("/profile/agency-invites");
+  return data.invites;
+}
+
+export async function apiRespondAgencyInvite(inviteId: string, accept: boolean) {
+  await api.post(`/profile/agency-invites/${inviteId}/${accept ? "accept" : "decline"}`);
+}
+
 export async function apiGetReferralCode() {
   const { data } = await api.get<ReferralCodeResponse>("/referral/my-code");
   return data;

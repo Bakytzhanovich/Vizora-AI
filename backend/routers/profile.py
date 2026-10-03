@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import get_current_user_id
-from app.models.agency import Agency, AgencyStudent
+from app.models.agency import Agency, AgencyInvite, AgencyStudent
 from app.models.profile import StudentProfile
 from app.models.referral import Referral
 from app.models.user import User
@@ -205,3 +205,69 @@ async def get_me(
         "branding": branding,
         "subscription": subscription,
     }
+
+
+# ─── Agency invites ───────────────────────────────────────────────────────────
+# An agency that adds a student who registered on their own gets an invite,
+# not a link (see routers/agency.py add_student). The student decides here.
+
+async def _load_invite(db: AsyncSession, invite_id: str, user_id: str) -> AgencyInvite:
+    invite = await db.get(AgencyInvite, invite_id)
+    if not invite or invite.user_id != user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Приглашение не найдено")
+    return invite
+
+
+@router.get("/agency-invites")
+async def list_agency_invites(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = await db.execute(
+        select(AgencyInvite, Agency.name)
+        .join(Agency, Agency.id == AgencyInvite.agency_id)
+        .where(AgencyInvite.user_id == user_id)
+        .order_by(AgencyInvite.created_at)
+    )
+    return {
+        "invites": [
+            {"id": invite.id, "agency_name": agency_name, "created_at": invite.created_at.isoformat()}
+            for invite, agency_name in rows.all()
+        ]
+    }
+
+
+@router.post("/agency-invites/{invite_id}/accept")
+async def accept_agency_invite(
+    invite_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    invite = await _load_invite(db, invite_id, user_id)
+    already_linked = await db.scalar(
+        select(AgencyStudent).where(
+            AgencyStudent.agency_id == invite.agency_id,
+            AgencyStudent.user_id == user_id,
+        )
+    )
+    if not already_linked:
+        db.add(AgencyStudent(
+            agency_id=invite.agency_id,
+            user_id=user_id,
+            assigned_manager_id=invite.assigned_manager_id,
+        ))
+    await db.delete(invite)
+    await db.commit()
+    return {"success": True}
+
+
+@router.post("/agency-invites/{invite_id}/decline")
+async def decline_agency_invite(
+    invite_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    invite = await _load_invite(db, invite_id, user_id)
+    await db.delete(invite)
+    await db.commit()
+    return {"success": True}

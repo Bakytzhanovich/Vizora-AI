@@ -35,7 +35,7 @@ class AdminRbacTests(unittest.TestCase):
                 yield session
 
         app.dependency_overrides[get_db] = override_get_db
-        cls.client = TestClient(app)
+        cls.client = TestClient(app, base_url="http://localhost")
 
     @classmethod
     def tearDownClass(cls):

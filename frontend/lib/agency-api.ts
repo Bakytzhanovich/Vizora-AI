@@ -285,8 +285,14 @@ export async function agencyGetStudent(studentId: string): Promise<AgencyStudent
 }
 
 export async function agencyAddStudent(email: string, name: string) {
-  // `password` is null when the student already had an account.
-  const { data } = await agencyApi.post<{ student_id: string; invite_link: string; password: string | null }>(
+  // "invited": the student already had an account and appears in the list only
+  // after accepting — no student_id or password until then.
+  const { data } = await agencyApi.post<{
+    student_id: string | null;
+    status: "added" | "invited";
+    invite_link: string;
+    password: string | null;
+  }>(
     "/students/add",
     { email, name }
   );

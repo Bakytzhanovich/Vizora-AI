@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { RiskCard } from "@/components/dashboard/RiskCard";
 import { ModuleCard } from "@/components/dashboard/ModuleCard";
 import { PrepActionCard } from "@/components/dashboard/PrepActionCard";
+import { AgencyInviteBanner } from "@/components/dashboard/AgencyInviteBanner";
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 import { AfterVisaCard } from "@/components/after-visa/AfterVisaCard";
@@ -178,6 +179,8 @@ export default function DashboardPage() {
           <p className="text-secondary">{t("dashboard:no_interview_date")}</p>
         )}
       </motion.div>
+
+      <AgencyInviteBanner />
 
       {/* Main content (mobile: stacks in order below; desktop: 2/3 + 1/3 sidebar) */}
       <div className="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
