@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -24,9 +24,12 @@ class StartRequest(BaseModel):
 
 
 class RespondRequest(BaseModel):
-    session_id: str
-    answer: str
-    step_index: int
+    session_id: str = Field(min_length=1, max_length=100)
+    answer: str = Field(max_length=2000)
+    # Upper-bounded here and against the scenario's real length below: the
+    # handler pads `answers` up to this index, so an unbounded value let any
+    # signed-in user allocate a list big enough to take the process down.
+    step_index: int = Field(ge=0, le=100)
 
 
 class ResolveRequest(BaseModel):
@@ -97,13 +100,16 @@ async def respond_to_step(
     if not scenario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
 
+    total_steps = len(scenario["steps"])
+    if body.step_index >= total_steps:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid step_index")
+
     answers: list[str] = json.loads(session.answers or "[]")
     while len(answers) <= body.step_index:
         answers.append("")
     answers[body.step_index] = body.answer
     session.answers = json.dumps(answers)
 
-    total_steps = len(scenario["steps"])
     next_index = body.step_index + 1
     is_completed = next_index >= total_steps
 
