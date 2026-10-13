@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { VizoraMark } from "@/components/VizoraMark";
 
@@ -63,7 +63,7 @@ export function Footer() {
                 unrelated third-party channel, not ours. Restore once the
                 real channel exists. */}
             <div className="flex items-center gap-3">
-              <motion.a
+              <m.a
                 href="https://instagram.com/vizora_ai"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -77,7 +77,7 @@ export function Footer() {
                   <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
                   <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
                 </svg>
-              </motion.a>
+              </m.a>
             </div>
           </div>
 

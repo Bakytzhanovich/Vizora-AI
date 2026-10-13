@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -32,7 +32,7 @@ function StatCard({
   index: number;
 }) {
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, y: 20 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
@@ -46,7 +46,7 @@ function StatCard({
       <div className="text-xs sm:text-sm text-[#8B8BA7] max-w-[140px] mx-auto leading-tight">
         {stat.label}
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -129,7 +129,7 @@ export function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-          <motion.button
+          <m.button
             onClick={() => router.push("/register")}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
@@ -137,8 +137,8 @@ export function Hero() {
           >
             {t("hero.cta_start")}
             <ArrowRight size={18} />
-          </motion.button>
-          <motion.button
+          </m.button>
+          <m.button
             onClick={() => handleScroll("#how-it-works")}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
@@ -146,11 +146,11 @@ export function Hero() {
           >
             <Play size={16} className="text-[#6C63FF]" />
             {t("hero.cta_demo")}
-          </motion.button>
+          </m.button>
         </div>
 
         {/* Stats row */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.6 }}
@@ -161,24 +161,24 @@ export function Hero() {
               <StatCard key={i} stat={stat} inView={inView} index={i} />
             ))}
           </div>
-        </motion.div>
+        </m.div>
       </div>
 
       {/* Scroll indicator */}
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
         <div className="w-5 h-8 rounded-full border border-[#1E1E2E] flex items-start justify-center pt-1">
-          <motion.div
+          <m.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             className="w-1.5 h-1.5 rounded-full bg-[#6C63FF]"
           />
         </div>
-      </motion.div>
+      </m.div>
     </section>
   );
 }

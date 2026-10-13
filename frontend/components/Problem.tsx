@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { m, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Target, AlertTriangle, Moon } from "lucide-react";
 import { IconTile } from "@/components/ui/IconTile";
@@ -28,7 +28,7 @@ export function Problem() {
     <section ref={ref} className="py-24 lg:py-32 px-4 relative">
       <div className="max-w-6xl mx-auto">
         {/* Label */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
@@ -37,31 +37,31 @@ export function Problem() {
           <span className="text-xs font-semibold text-[#C9A876] uppercase tracking-widest">
             {t("problem.label")}
           </span>
-        </motion.div>
+        </m.div>
 
         {/* Title */}
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.05 }}
           className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-4 tracking-tight"
         >
           {t("problem.title")}
-        </motion.h2>
+        </m.h2>
 
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg max-w-2xl mx-auto mb-14"
         >
           {t("problem.subtitle")}
-        </motion.p>
+        </m.p>
 
         {/* Asymmetric split: big stat card + compact item list */}
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-6 lg:gap-8 items-stretch">
           {/* Left: stat card */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0, x: -20 }}
             animate={inView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.15 }}
@@ -76,12 +76,12 @@ export function Problem() {
                 {statHighlight.label}
               </p>
             </div>
-          </motion.div>
+          </m.div>
 
           {/* Right: compact item list */}
           <div className="flex flex-col gap-3">
             {problems.map((p, i) => (
-              <motion.div
+              <m.div
                 key={i}
                 initial={{ opacity: 0, x: 20 }}
                 animate={inView ? { opacity: 1, x: 0 } : {}}
@@ -100,7 +100,7 @@ export function Problem() {
                     {p.detail}
                   </p>
                 </div>
-              </motion.div>
+              </m.div>
             ))}
           </div>
         </div>

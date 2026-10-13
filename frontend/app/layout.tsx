@@ -12,6 +12,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { I18nInit } from "@/components/I18nInit";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { MotionFeatures } from "@/components/MotionFeatures";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -140,7 +141,7 @@ export default function RootLayout({
             <TelegramAuthHandler />
             <PushNotificationPrompt />
             <PaymentIssueBanner />
-            {children}
+            <MotionFeatures>{children}</MotionFeatures>
             <BottomNav />
           </BrandingProvider>
         </ThemeProvider>

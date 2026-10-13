@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { m, useInView, AnimatePresence } from "framer-motion";
 import { CheckCircle, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { track } from "@/lib/analytics";
@@ -62,7 +62,7 @@ export function EarlyAccess() {
 
       <div className="relative max-w-2xl mx-auto text-center">
         {/* Badge */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={inView ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 0.4 }}
@@ -70,19 +70,19 @@ export function EarlyAccess() {
         >
           <span className="w-2 h-2 bg-[#6C63FF] rounded-full animate-pulse" />
           {t("early_access.badge")}
-        </motion.div>
+        </m.div>
 
         {/* Title */}
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.05 }}
           className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] mb-4 tracking-tight"
         >
           {t("early_access.title")}
-        </motion.h2>
+        </m.h2>
 
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.1 }}
@@ -92,13 +92,13 @@ export function EarlyAccess() {
           <span className="text-[#F0F0FF] font-semibold">50%</span> {t("early_access.subtitle_2")}
           <br />
           {t("early_access.subtitle_3")}
-        </motion.p>
+        </m.p>
 
 
         {/* Form */}
         <AnimatePresence mode="wait">
           {status === "success" ? (
-            <motion.div
+            <m.div
               key="success"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -114,9 +114,9 @@ export function EarlyAccess() {
               <p className="text-[#8B8BA7] text-sm">
                 {t("early_access.success_desc")}
               </p>
-            </motion.div>
+            </m.div>
           ) : (
-            <motion.form
+            <m.form
               key="form"
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -156,18 +156,18 @@ export function EarlyAccess() {
                   className="w-full bg-[#0A0A0F] border border-[#1E1E2E] focus:border-[#6C63FF]/50 text-[#F0F0FF] placeholder-[#8B8BA7]/50 rounded-xl px-4 py-3.5 text-sm outline-none transition-colors duration-200"
                 />
                 {errorMsg && (
-                  <motion.p
+                  <m.p
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="text-[#FF6B6B] text-xs mt-2 text-left"
                   >
                     {errorMsg}
-                  </motion.p>
+                  </m.p>
                 )}
               </div>
 
               {/* Submit button */}
-              <motion.button
+              <m.button
                 type="submit"
                 disabled={status === "loading"}
                 whileHover={status !== "loading" ? { scale: 1.02 } : {}}
@@ -182,22 +182,22 @@ export function EarlyAccess() {
                 ) : (
                   t("early_access.submit")
                 )}
-              </motion.button>
+              </m.button>
 
               {status === "error" && (
-                <motion.p
+                <m.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="text-[#FF6B6B] text-xs mt-3 text-center"
                 >
                   {errorMsg}
-                </motion.p>
+                </m.p>
               )}
 
               <p className="text-[#8B8BA7]/60 text-xs mt-4">
                 {t("early_access.no_spam")}
               </p>
-            </motion.form>
+            </m.form>
           )}
         </AnimatePresence>
       </div>

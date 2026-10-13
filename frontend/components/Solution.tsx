@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { m, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Bot, Mic, FileText, Target } from "lucide-react";
 import { IconTile } from "@/components/ui/IconTile";
@@ -39,7 +39,7 @@ export function Solution() {
 
       <div className="max-w-6xl mx-auto relative">
         {/* Label */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
@@ -48,31 +48,31 @@ export function Solution() {
           <span className="text-xs font-semibold text-[#6C63FF] uppercase tracking-widest">
             {t("solution.label")}
           </span>
-        </motion.div>
+        </m.div>
 
         {/* Title */}
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.05 }}
           className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
         >
           {t("solution.title")}
-        </motion.h2>
+        </m.h2>
 
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg mb-14"
         >
           {t("solution.subtitle")}
-        </motion.p>
+        </m.p>
 
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((f, i) => (
-            <motion.div
+            <m.div
               key={i}
               initial={{ opacity: 0, y: 30 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -113,12 +113,12 @@ export function Solution() {
                   ))}
                 </ul>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
 
         {/* Profile risk preview */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.5 }}
@@ -152,7 +152,7 @@ export function Solution() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

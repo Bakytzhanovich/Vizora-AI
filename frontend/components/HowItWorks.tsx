@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { m, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { UserCircle, Target, Mic, Plane, Sparkles } from "lucide-react";
 import { IconTile } from "@/components/ui/IconTile";
@@ -26,7 +26,7 @@ export function HowItWorks() {
     <section id="how-it-works" ref={ref} className="py-24 lg:py-32 px-4 relative">
       <div className="max-w-6xl mx-auto">
         {/* Label */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
@@ -35,26 +35,26 @@ export function HowItWorks() {
           <span className="text-xs font-semibold text-[#9C8BFF] uppercase tracking-widest">
             {t("how_it_works.label")}
           </span>
-        </motion.div>
+        </m.div>
 
         {/* Title */}
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.05 }}
           className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-4 tracking-tight"
         >
           {t("how_it_works.title")}
-        </motion.h2>
+        </m.h2>
 
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg max-w-xl mx-auto mb-16"
         >
           {t("how_it_works.subtitle")}
-        </motion.p>
+        </m.p>
 
         {/* Asymmetric: vertical timeline + reserved product preview */}
         <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-10 lg:gap-12 items-start">
@@ -65,7 +65,7 @@ export function HowItWorks() {
 
             <div className="flex flex-col gap-8">
               {steps.map((step, i) => (
-                <motion.div
+                <m.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
                   animate={inView ? { opacity: 1, y: 0 } : {}}
@@ -93,24 +93,24 @@ export function HowItWorks() {
                       {step.detail}
                     </p>
                   </div>
-                </motion.div>
+                </m.div>
               ))}
             </div>
           </div>
 
           {/* Reserved space for a real product screenshot/video */}
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.3 }}
             className="lg:sticky lg:top-24"
           >
             <ProductPreviewPlaceholder />
-          </motion.div>
+          </m.div>
         </div>
 
         {/* Bottom quote */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.7 }}
@@ -123,7 +123,7 @@ export function HowItWorks() {
               {t("how_it_works.quote_text")}
             </p>
           </div>
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );

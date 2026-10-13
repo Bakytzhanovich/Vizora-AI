@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { m, useInView } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Clock, BarChart3, Trophy } from "lucide-react";
 import { IconTile } from "@/components/ui/IconTile";
@@ -60,7 +60,7 @@ export function Agencies() {
 
       <div className="relative max-w-6xl mx-auto">
         {/* Label */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5 }}
@@ -69,30 +69,30 @@ export function Agencies() {
           <span className="text-xs font-semibold text-[#9C8BFF] uppercase tracking-widest">
             {t("agencies.label")}
           </span>
-        </motion.div>
+        </m.div>
 
         {/* Title */}
-        <motion.h2
+        <m.h2
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.05 }}
           className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F0F0FF] text-center mb-3 tracking-tight"
         >
           {t("agencies.title")}
-        </motion.h2>
+        </m.h2>
 
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.1 }}
           className="text-[#8B8BA7] text-center text-base sm:text-lg mb-14"
         >
           {t("agencies.subtitle")}
-        </motion.p>
+        </m.p>
 
         {/* Benefits — horizontal stat strip instead of a third card-grid
             pattern (Solution section already owns that layout language) */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 20 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.15 }}
@@ -111,10 +111,10 @@ export function Agencies() {
               </div>
             ))}
           </div>
-        </motion.div>
+        </m.div>
 
         {/* Pricing table */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 30 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.5 }}
@@ -152,25 +152,25 @@ export function Agencies() {
               </ul>
             </div>
           ))}
-        </motion.div>
+        </m.div>
 
         {/* CTA — same violet brand button as everywhere else, outline
             variant so it still reads as distinct from the primary hero CTA */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 16 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.7 }}
           className="flex justify-center"
         >
-          <motion.button
+          <m.button
             onClick={handleScroll}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             className="border border-[#6C63FF]/40 hover:border-[#6C63FF] text-[#9C8BFF] font-bold px-8 py-4 rounded-xl bg-[#6C63FF]/5 hover:bg-[#6C63FF]/10 text-sm transition-all duration-200"
           >
             {t("agencies.cta")}
-          </motion.button>
-        </motion.div>
+          </m.button>
+        </m.div>
       </div>
     </section>
   );

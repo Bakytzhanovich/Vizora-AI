@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { VizoraMark } from "@/components/VizoraMark";
@@ -48,7 +48,7 @@ export function Navbar() {
 
   return (
     <>
-      <motion.nav
+      <m.nav
         initial={{ y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -61,7 +61,7 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <motion.a
+            <m.a
               href="#"
               onClick={(e) => {
                 e.preventDefault();
@@ -75,7 +75,7 @@ export function Navbar() {
                 Vizora{" "}
                 <span className="text-[#6C63FF]">AI</span>
               </span>
-            </motion.a>
+            </m.a>
 
             {/* Desktop nav links */}
             <div className="hidden md:flex items-center gap-8">
@@ -93,22 +93,22 @@ export function Navbar() {
             {/* CTA */}
             <div className="hidden md:flex items-center gap-3">
               <LanguageSwitcher />
-              <motion.button
+              <m.button
                 onClick={() => router.push("/login")}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="text-[#8B8BA7] hover:text-[#F0F0FF] text-sm font-medium px-4 py-2 rounded-xl transition-colors duration-200"
               >
                 {t("nav.login")}
-              </motion.button>
-              <motion.button
+              </m.button>
+              <m.button
                 onClick={() => router.push("/register")}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="bg-[#6C63FF] hover:bg-[#7C75FF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-[#6C63FF]/20"
               >
                 {t("nav.register")}
-              </motion.button>
+              </m.button>
             </div>
 
             {/* Mobile hamburger */}
@@ -121,12 +121,12 @@ export function Navbar() {
             </button>
           </div>
         </div>
-      </motion.nav>
+      </m.nav>
 
       {/* Mobile menu */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -159,7 +159,7 @@ export function Navbar() {
                 {t("nav.register")}
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </>
