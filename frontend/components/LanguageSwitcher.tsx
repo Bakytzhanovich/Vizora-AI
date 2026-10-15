@@ -9,8 +9,9 @@ const LANGUAGES: { code: SupportedLanguage; label: string }[] = [
   { code: "kz", label: "ҚАЗ" },
 ];
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ variant = "dark" }: { variant?: "dark" | "light" }) {
   const { i18n } = useTranslation();
+  const inactive = variant === "light" ? "text-[#4A5578] hover:text-[#1E1B4B]" : "text-gray-400 hover:text-white";
 
   const switchLanguage = (lang: SupportedLanguage) => {
     setStoredLanguage(lang);
@@ -23,15 +24,13 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-1 bg-border rounded-lg p-1">
+    <div className={`flex items-center gap-1 rounded-lg p-1 ${variant === "light" ? "bg-[#ECEBFF]" : "bg-border"}`}>
       {LANGUAGES.map((lang) => (
         <button
           key={lang.code}
           onClick={() => switchLanguage(lang.code)}
           className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
-            i18n.language === lang.code
-              ? "bg-accent text-white"
-              : "text-gray-400 hover:text-white"
+            i18n.language === lang.code ? "bg-accent text-white" : inactive
           }`}
         >
           {lang.label}

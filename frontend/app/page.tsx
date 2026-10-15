@@ -1,14 +1,33 @@
-import { Navbar } from "@/components/Navbar";
-import { Hero } from "@/components/Hero";
-import { Problem } from "@/components/Problem";
-import { Solution } from "@/components/Solution";
-import { HowItWorks } from "@/components/HowItWorks";
-import { Agencies } from "@/components/Agencies";
-import { EarlyAccess } from "@/components/EarlyAccess";
-import { Footer } from "@/components/Footer";
+import { Manrope } from "next/font/google";
+import { LandingNav } from "@/components/landing/LandingNav";
+import { ShowcaseHero } from "@/components/landing/ShowcaseHero";
+import { AfterVisaSection, AgencySection, FeaturesSection, FinalCta } from "@/components/landing/ShowcaseSections";
+import { PricingPlans, type LandingPrices } from "@/components/landing/PricingPlans";
+import { LandingFooter } from "@/components/landing/LandingFooter";
+
+const manrope = Manrope({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 // TODO: update to real domain once purchased (ТЗ-030)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+async function getPrices(): Promise<LandingPrices | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/payments/plans`, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const data: { plans: { id: string; prices_kzt: { monthly: number } }[] } = await res.json();
+    const monthly = (id: string) => data.plans.find((p) => p.id === id)?.prices_kzt.monthly;
+    const standard = monthly("standard");
+    const premium = monthly("premium");
+    return standard !== undefined && premium !== undefined ? { standard, premium } : null;
+  } catch {
+    return null;
+  }
+}
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -26,7 +45,7 @@ const jsonLd = {
         "@type": "Offer",
         price: "0",
         priceCurrency: "KZT",
-        description: "Ранний доступ — бесплатно",
+        description: "Бесплатный тариф: 3 тренировки интервью с AI-тренером",
       },
       audience: {
         "@type": "Audience",
@@ -89,23 +108,27 @@ const jsonLd = {
   ],
 };
 
-export default function Home() {
+export default async function Home() {
+  const prices = await getPrices();
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="min-h-screen bg-[#0D0B14] overflow-x-hidden">
-        <Navbar />
-        <Hero />
-        <Problem />
-        <Solution />
-        <HowItWorks />
-        <Agencies />
-        <EarlyAccess />
-        <Footer />
-      </main>
+      <div className={`${manrope.className} min-h-screen overflow-x-hidden bg-[#F5F5FF] text-[#1E1B4B]`}>
+        <LandingNav />
+        <main>
+          <ShowcaseHero />
+          <FeaturesSection />
+          <AfterVisaSection />
+          <PricingPlans prices={prices} />
+          <AgencySection />
+          <FinalCta />
+        </main>
+        <LandingFooter />
+      </div>
     </>
   );
 }
