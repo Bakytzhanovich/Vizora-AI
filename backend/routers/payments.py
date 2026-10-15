@@ -5,18 +5,21 @@ running kaspi-service."""
 
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user_id
 from app.models.agency import Agency
+from app.models.payment_request import PaymentRequest
 from app.models.profile import StudentProfile
 from app.models.simulator import SimulatorSession
 from app.models.subscription_event import SubscriptionEvent
@@ -69,6 +72,7 @@ async def list_plans():
         ],
         "upgrade_discount_code": UPGRADE_DISCOUNT_CODE,
         "upgrade_discount_rate": UPGRADE_DISCOUNT_RATE,
+        "payment_mode": settings.PAYMENT_MODE,
     }
 
 
@@ -143,17 +147,14 @@ async def create_payment(
     if body.billing_period not in ("monthly", "yearly"):
         raise HTTPException(status_code=400, detail="billing_period must be 'monthly' or 'yearly'")
 
+    if settings.PAYMENT_MODE == "manual":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Use /payments/manual-requests")
+
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    access = await get_user_access(user, db)
-
-    amount = PLAN_PRICES_KZT[body.plan][body.billing_period]
-    discount_applied = False
-    if body.discount_code == UPGRADE_DISCOUNT_CODE and access["plan"] == "free":
-        amount = round(amount * (1 - UPGRADE_DISCOUNT_RATE))
-        discount_applied = True
+    amount, discount_applied = await _checkout_amount(user, body.plan, body.billing_period, body.discount_code, db)
 
     order_id = str(uuid.uuid4())
     result = await _create_kaspi_payment_or_502(
@@ -183,6 +184,19 @@ async def create_payment(
         "discount_applied": discount_applied,
         "mock_mode": kaspi_pay_client.is_mock_mode(),
     }
+
+
+async def _checkout_amount(
+    user: User, plan: str, billing_period: str, discount_code: str | None, db: AsyncSession
+) -> tuple[int, bool]:
+    """Price for a student checkout, with the one-time upgrade discount for
+    FREE users. Shared by the Kaspi QR checkout and manual invoice requests."""
+    amount = PLAN_PRICES_KZT[plan][billing_period]
+    if discount_code == UPGRADE_DISCOUNT_CODE:
+        access = await get_user_access(user, db)
+        if access["plan"] == "free":
+            return round(amount * (1 - UPGRADE_DISCOUNT_RATE)), True
+    return amount, False
 
 
 def _period_length(billing_period: str) -> timedelta:
@@ -452,7 +466,7 @@ async def mock_complete_payment(
     that learned a payment_id (e.g. from watching network traffic) could
     activate someone else's pending checkout for free.
     """
-    if not kaspi_pay_client.is_mock_mode():
+    if not kaspi_pay_client.is_mock_mode() or settings.PAYMENT_MODE == "manual":
         raise HTTPException(status_code=404, detail="Not found")
     result = await _apply_successful_payment(payment_id, db, expected_user_id=user_id)
     return {"received": True, **result}
@@ -473,3 +487,90 @@ async def payment_status(
     }
 
 
+
+
+# ─── Manual Kaspi invoice requests (PAYMENT_MODE=manual) ───
+
+
+class ManualPaymentRequestBody(BaseModel):
+    plan: str
+    billing_period: str = "monthly"
+    phone: str
+    discount_code: str | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def normalize_phone(cls, v: str) -> str:
+        # Kaspi accounts are on Kazakhstan mobile numbers: accept +7 / 8 / 7
+        # prefixes with any separators and store the 7XXXXXXXXXX form the
+        # owner types into Kaspi Pay.
+        digits = re.sub(r"\D", "", v)
+        if len(digits) == 11 and digits[0] in "78":
+            digits = "7" + digits[1:]
+        elif len(digits) == 10:
+            digits = "7" + digits
+        if not re.fullmatch(r"7[0-9]{10}", digits):
+            raise ValueError("Phone must be a Kazakhstan number, e.g. +7 701 123 45 67")
+        return digits
+
+
+def _manual_request_out(req: PaymentRequest) -> dict:
+    return {
+        "id": req.id,
+        "plan": req.plan,
+        "billing_period": req.billing_period,
+        "amount": int(req.amount),
+        "phone": req.phone,
+        "status": req.status,
+        "created_at": req.created_at,
+        "resolved_at": req.resolved_at,
+    }
+
+
+@router.post("/manual-requests", status_code=status.HTTP_201_CREATED)
+async def create_manual_request(
+    body: ManualPaymentRequestBody,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    if settings.PAYMENT_MODE != "manual":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Use /payments/create-payment")
+    if body.plan not in ("standard", "premium"):
+        raise HTTPException(status_code=400, detail=f"Unknown plan: {body.plan}")
+    if body.billing_period not in ("monthly", "yearly"):
+        raise HTTPException(status_code=400, detail="billing_period must be 'monthly' or 'yearly'")
+
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    amount, _ = await _checkout_amount(user, body.plan, body.billing_period, body.discount_code, db)
+
+    # One open request per student: picking another plan or fixing the phone
+    # updates it instead of piling up requests the owner would have to sort out.
+    req = await db.scalar(
+        select(PaymentRequest).where(PaymentRequest.user_id == user_id, PaymentRequest.status == "pending")
+    )
+    if req:
+        req.plan, req.billing_period, req.amount, req.phone = body.plan, body.billing_period, amount, body.phone
+    else:
+        req = PaymentRequest(
+            user_id=user_id, plan=body.plan, billing_period=body.billing_period, amount=amount, phone=body.phone
+        )
+        db.add(req)
+    await db.commit()
+    await db.refresh(req)
+    return _manual_request_out(req)
+
+
+@router.get("/manual-requests/current")
+async def current_manual_request(
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """The student's open request, or null — drives the "waiting for the
+    Kaspi invoice" state on /pricing and /profile."""
+    req = await db.scalar(
+        select(PaymentRequest).where(PaymentRequest.user_id == user_id, PaymentRequest.status == "pending")
+    )
+    return {"request": _manual_request_out(req) if req else None}

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings
 
@@ -69,6 +70,14 @@ class Settings(BaseSettings):
     # kaspi-service's own TOKEN_SECRET_KEY) — we never decrypt it ourselves,
     # just pass it through.
     KASPI_SERVICE_URL: str = ""
+    # How students pay for Standard/Premium. "manual": they leave their Kaspi
+    # phone, the owner sends a remote invoice from Kaspi Pay for business and
+    # approves the request in the admin panel (models/payment_request.py).
+    # "kaspi": automatic QR checkout through kaspi-service above. Manual is
+    # the default because without a working kaspi-service the automatic flow
+    # falls back to mock mode, where /payments/mock-complete lets any student
+    # activate a plan without paying.
+    PAYMENT_MODE: Literal["manual", "kaspi"] = "manual"
     KASPI_TOKEN_SN: str = ""
     KASPI_VTOKEN_SECRET: str = ""
     KASPI_PROFILE_ID: str = ""

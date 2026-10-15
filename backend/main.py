@@ -41,6 +41,7 @@ import app.models.push_subscription  # noqa: F401
 import app.models.subscription_event  # noqa: F401
 import app.models.security_log  # noqa: F401
 import app.models.level_test  # noqa: F401
+import app.models.payment_request  # noqa: F401
 from app.models.user import User
 from routers.auth import router as auth_router
 from routers.profile import router as profile_router
