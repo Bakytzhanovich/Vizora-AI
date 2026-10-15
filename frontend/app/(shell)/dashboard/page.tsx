@@ -29,9 +29,9 @@ const restModuleIcons = [MessageCircle, Mic, FileText];
 const restModuleKeys = ["chat", "simulator", "documents"] as const;
 
 const riskColors: Record<string, string> = {
-  high: "#FF6B6B",
-  medium: "#F59E0B",
-  low: "#00D4AA",
+  high: "error",
+  medium: "warning",
+  low: "teal",
 };
 
 export default function DashboardPage() {
@@ -149,12 +149,16 @@ export default function DashboardPage() {
               {t("common:nav.logout")}
             </button>
           </div>
-          <LanguageSwitcher />
-          <ThemeSwitcher />
+          {/* On phones these live on /profile — four 44px controls next to
+              the logo don't fit in a 360px header. */}
+          <div className="hidden sm:flex items-center gap-2">
+            <LanguageSwitcher />
+            <ThemeSwitcher />
+          </div>
           <button
             onClick={() => setShowLogoutConfirm(true)}
             aria-label={t("common:nav.logout")}
-            className="md:hidden p-2 rounded-lg bg-border hover:bg-border-hover text-secondary hover:text-primary transition-colors"
+            className="md:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-border hover:bg-border-hover text-secondary hover:text-primary transition-colors"
           >
             <LogOut size={16} />
           </button>
@@ -218,13 +222,13 @@ export default function DashboardPage() {
               >
                 <span
                   className="w-8 h-8 rounded-[10px] border flex items-center justify-center shrink-0"
-                  style={{ color: riskColor, background: `${riskColor}1E`, borderColor: `${riskColor}40` }}
+                  style={{ color: `rgb(var(--color-${riskColor}))`, background: `rgb(var(--color-${riskColor}) / 0.12)`, borderColor: `rgb(var(--color-${riskColor}) / 0.25)` }}
                 >
                   <AlertTriangle size={15} />
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-primary text-sm font-semibold">{t("dashboard:risk_profile")}</span>
-                  <span className="text-xs font-medium" style={{ color: riskColor }}>
+                  <span className="text-xs font-medium" style={{ color: `rgb(var(--color-${riskColor}))` }}>
                     {t("dashboard:risk_summary", {
                       level: t(`dashboard:risk_${overallRisk}` as const),
                       count: topRisks.length,
@@ -318,7 +322,7 @@ export default function DashboardPage() {
               </span>
               <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:referral_card.title")}</span>
               {(referralStats?.totalActive ?? 0) > 0 && (
-                <span className="text-[10px] font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
                   {referralStats!.totalActive}{" "}
                   {referralStats!.totalActive > 1 ? t("dashboard:referral_card.friend_plural") : t("dashboard:referral_card.friend_singular")}
                 </span>
@@ -414,7 +418,7 @@ export default function DashboardPage() {
                     <span className="text-error font-bold text-base">{t("dashboard:emergency_banner.title")}</span>
                     {/* "Always available" only where it's true — free plan gets a 403 */}
                     {subscription?.limits.emergency && (
-                      <span className="text-[10px] font-bold bg-error/15 text-error px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold bg-error/15 text-error px-2 py-0.5 rounded-full">
                         {t("dashboard:emergency_banner.badge")}
                       </span>
                     )}

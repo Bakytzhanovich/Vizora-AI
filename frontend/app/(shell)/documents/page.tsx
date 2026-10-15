@@ -120,7 +120,8 @@ export default function DocumentsPage() {
           <div className="flex items-center gap-3 py-4">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-secondary hover:text-primary transition-colors"
+              aria-label={t("common.back", { ns: "common" })}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
@@ -136,7 +137,7 @@ export default function DocumentsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
+                className={`flex min-h-11 items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
                   activeTab === tab.id
                     ? "border-accent text-primary"
                     : "border-transparent text-secondary hover:text-primary"

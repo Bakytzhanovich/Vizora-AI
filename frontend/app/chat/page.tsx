@@ -176,7 +176,8 @@ export default function ChatPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-secondary hover:text-primary transition-colors"
+              aria-label={t("common.back", { ns: "common" })}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>
@@ -260,7 +261,7 @@ export default function ChatPage() {
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="shrink-0 text-xs text-secondary border border-border rounded-full px-3 py-1.5 hover:border-accent hover:text-primary transition-all"
+                  className="shrink-0 min-h-11 text-xs text-secondary border border-border rounded-full px-3 py-1.5 hover:border-accent hover:text-primary transition-all"
                 >
                   {q}
                 </button>

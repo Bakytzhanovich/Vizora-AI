@@ -87,7 +87,8 @@ export default function ProfilePage() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-secondary hover:text-primary transition-colors"
+            aria-label={t("common.back", { ns: "common" })}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
@@ -160,7 +161,7 @@ export default function ProfilePage() {
                   </ul>
                   <button
                     onClick={() => router.push("/pricing")}
-                    className="w-full mt-4 bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                    className="w-full mt-4 min-h-11 bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
                   >
                     <Sparkles size={15} />
                     {t("dashboard:upgrade_banner.cta", { price: formatKzt(standardPriceKzt) })}

@@ -31,7 +31,7 @@ export function TranscriptItem({ entry, index, mode }: Props) {
       </div>
 
       <div className={`max-w-[85%] ${isOfficer ? "" : "items-end flex flex-col"}`}>
-        <span className="text-secondary text-[10px] mb-1 px-1">
+        <span className="text-secondary text-xs mb-1 px-1">
           {isOfficer ? (mode === "consul" ? t("transcript.officer") : t("transcript.trainer")) : t("transcript.you")}
         </span>
         <div

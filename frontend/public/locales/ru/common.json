@@ -28,7 +28,11 @@
     "days": "дней",
     "sessions": "сессий",
     "of": "из",
-    "powered_by": "Powered by Vizora AI"
+    "powered_by": "Powered by Vizora AI",
+    "theme_dark": "Тёмная тема",
+    "theme_light": "Светлая тема",
+    "voice_input": "Голосовой ввод",
+    "send": "Отправить"
   },
   "errors": {
     "generic": "Что-то пошло не так. Попробуй ещё раз.",

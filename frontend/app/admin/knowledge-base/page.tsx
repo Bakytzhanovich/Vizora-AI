@@ -116,18 +116,18 @@ function KnowledgeBaseContent() {
   const totalEntries = scraperStatus?.knowledge_base_size ?? total;
 
   return (
-    <div className="font-mono text-[#F0F0FF]">
+    <div className="font-mono text-primary">
       <div className="max-w-7xl">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-[#8B8BA7] text-sm">Всего записей: {totalEntries}</p>
+            <p className="text-secondary text-sm">Всего записей: {totalEntries}</p>
           </div>
           <button
             onClick={triggerScraper}
             disabled={runLoading}
-            className="bg-[#6C63FF] hover:bg-[#5a52e0] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            className="bg-accent hover:bg-[#5a52e0] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
           >
             {runLoading ? "Запускаем..." : "▶ Запустить парсинг сейчас"}
           </button>
@@ -140,20 +140,20 @@ function KnowledgeBaseContent() {
             { key: "по данным агентств", label: "Агентства", color: "border-blue-700/40" },
             { key: "по опыту студентов (не официальная информация)", label: "Студенты", color: "border-yellow-700/40" },
           ].map(({ key, label, color }) => (
-            <div key={key} className={`bg-[#13131A] border ${color} rounded-xl p-4`}>
+            <div key={key} className={`bg-card border ${color} rounded-xl p-4`}>
               <div className="text-2xl font-bold">{stats[key] ?? 0}</div>
-              <div className="text-[#8B8BA7] text-xs mt-1">{label}</div>
+              <div className="text-secondary text-xs mt-1">{label}</div>
             </div>
           ))}
         </div>
 
         {/* Scraper status */}
         {scraperStatus && (
-          <div className="bg-[#13131A] border border-[#1E1E2E] rounded-xl p-4 mb-6">
-            <h2 className="text-sm font-bold text-[#8B8BA7] uppercase tracking-wide mb-3">Планировщик парсинга</h2>
+          <div className="bg-card border border-border rounded-xl p-4 mb-6">
+            <h2 className="text-sm font-bold text-secondary uppercase tracking-wide mb-3">Планировщик парсинга</h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-[#8B8BA7]">Следующий запуск: </span>
+                <span className="text-secondary">Следующий запуск: </span>
                 <span>{scraperStatus.next_scheduled_run
                   ? new Date(scraperStatus.next_scheduled_run).toLocaleString("ru")
                   : "не запланирован"}</span>
@@ -161,11 +161,11 @@ function KnowledgeBaseContent() {
               {scraperStatus.last_run && (
                 <>
                   <div>
-                    <span className="text-[#8B8BA7]">Последний: </span>
+                    <span className="text-secondary">Последний: </span>
                     <span className={STATUS_COLORS[scraperStatus.last_run.status] ?? "text-white"}>
                       {scraperStatus.last_run.status}
                     </span>
-                    <span className="text-[#8B8BA7] ml-2">
+                    <span className="text-secondary ml-2">
                       ({scraperStatus.last_run.new_entries_added} новых)
                     </span>
                   </div>
@@ -182,11 +182,11 @@ function KnowledgeBaseContent() {
 
         {/* Recent runs */}
         {runs.length > 0 && (
-          <div className="bg-[#13131A] border border-[#1E1E2E] rounded-xl p-4 mb-6">
-            <h2 className="text-sm font-bold text-[#8B8BA7] uppercase tracking-wide mb-3">История запусков</h2>
+          <div className="bg-card border border-border rounded-xl p-4 mb-6">
+            <h2 className="text-sm font-bold text-secondary uppercase tracking-wide mb-3">История запусков</h2>
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-[#8B8BA7] text-left">
+                <tr className="text-secondary text-left">
                   <th className="pb-2">Дата</th>
                   <th className="pb-2">Статус</th>
                   <th className="pb-2">Источников</th>
@@ -196,7 +196,7 @@ function KnowledgeBaseContent() {
               </thead>
               <tbody>
                 {runs.map((r) => (
-                  <tr key={r.id} className="border-t border-[#1E1E2E]">
+                  <tr key={r.id} className="border-t border-border">
                     <td className="py-1.5">{new Date(r.started_at).toLocaleString("ru")}</td>
                     <td className={`py-1.5 ${STATUS_COLORS[r.status] ?? ""}`}>{r.status}</td>
                     <td className="py-1.5">{r.sources_scraped}</td>
@@ -214,7 +214,7 @@ function KnowledgeBaseContent() {
           <select
             value={filterCategory}
             onChange={(e) => { setFilterCategory(e.target.value); setPage(0); }}
-            className="bg-[#13131A] border border-[#1E1E2E] rounded-lg px-3 py-2 text-sm text-[#F0F0FF] outline-none"
+            className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-primary outline-none"
           >
             <option value="">Все категории</option>
             {["visa_j1","documents","visa_interview","taxes","life_usa","program","program_basics","ssn"].map(c => (
@@ -224,30 +224,30 @@ function KnowledgeBaseContent() {
           <select
             value={filterTrust}
             onChange={(e) => { setFilterTrust(e.target.value); setPage(0); }}
-            className="bg-[#13131A] border border-[#1E1E2E] rounded-lg px-3 py-2 text-sm text-[#F0F0FF] outline-none"
+            className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-primary outline-none"
           >
             <option value="">Все источники</option>
             <option value="официальный источник">Официальные</option>
             <option value="по данным агентств">Агентства</option>
             <option value="по опыту студентов (не официальная информация)">Студенты</option>
           </select>
-          <button onClick={loadData} className="border border-[#1E1E2E] rounded-lg px-3 py-2 text-sm text-[#8B8BA7] hover:text-white transition-colors">
+          <button onClick={loadData} className="border border-border rounded-lg px-3 py-2 text-sm text-secondary hover:text-white transition-colors">
             Обновить
           </button>
-          <span className="ml-auto text-[#8B8BA7] text-sm self-center">
+          <span className="ml-auto text-secondary text-sm self-center">
             {total} записей
           </span>
         </div>
 
         {/* Entries table */}
         {loading ? (
-          <div className="text-center text-[#8B8BA7] py-20">Загрузка...</div>
+          <div className="text-center text-secondary py-20">Загрузка...</div>
         ) : (
           <div className="space-y-2">
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="bg-[#13131A] border border-[#1E1E2E] rounded-xl overflow-hidden"
+                className="bg-card border border-border rounded-xl overflow-hidden"
               >
                 <div
                   className="flex items-start gap-3 p-4 cursor-pointer hover:bg-[#1a1a24] transition-colors"
@@ -255,7 +255,7 @@ function KnowledgeBaseContent() {
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-[#8B8BA7] bg-[#0A0A0F] px-2 py-0.5 rounded">
+                      <span className="text-xs text-secondary bg-bg px-2 py-0.5 rounded">
                         {entry.category}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded border ${TRUST_COLORS[entry.trust_level] ?? "text-gray-400"}`}>
@@ -271,7 +271,7 @@ function KnowledgeBaseContent() {
                     </div>
                     <p className="text-sm font-medium truncate">{entry.question}</p>
                     {expandedId !== entry.id && (
-                      <p className="text-xs text-[#8B8BA7] truncate mt-0.5">{entry.answer}</p>
+                      <p className="text-xs text-secondary truncate mt-0.5">{entry.answer}</p>
                     )}
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -292,15 +292,15 @@ function KnowledgeBaseContent() {
                   </div>
                 </div>
                 {expandedId === entry.id && (
-                  <div className="px-4 pb-4 border-t border-[#1E1E2E] pt-3">
-                    <p className="text-sm text-[#F0F0FF] mb-2">{entry.answer}</p>
-                    <div className="flex gap-4 text-xs text-[#8B8BA7]">
+                  <div className="px-4 pb-4 border-t border-border pt-3">
+                    <p className="text-sm text-primary mb-2">{entry.answer}</p>
+                    <div className="flex gap-4 text-xs text-secondary">
                       {entry.source_url && (
                         <a
                           href={entry.source_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#6C63FF] hover:underline truncate max-w-[400px]"
+                          className="text-accent hover:underline truncate max-w-[400px]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {entry.source_url}
@@ -321,17 +321,17 @@ function KnowledgeBaseContent() {
             <button
               disabled={page === 0}
               onClick={() => setPage((p) => p - 1)}
-              className="border border-[#1E1E2E] rounded-lg px-4 py-2 text-sm disabled:opacity-30 hover:border-[#6C63FF] transition-colors"
+              className="border border-border rounded-lg px-4 py-2 text-sm disabled:opacity-30 hover:border-accent transition-colors"
             >
               ← Пред
             </button>
-            <span className="self-center text-sm text-[#8B8BA7]">
+            <span className="self-center text-sm text-secondary">
               {page + 1} / {Math.ceil(total / PAGE_SIZE)}
             </span>
             <button
               disabled={(page + 1) * PAGE_SIZE >= total}
               onClick={() => setPage((p) => p + 1)}
-              className="border border-[#1E1E2E] rounded-lg px-4 py-2 text-sm disabled:opacity-30 hover:border-[#6C63FF] transition-colors"
+              className="border border-border rounded-lg px-4 py-2 text-sm disabled:opacity-30 hover:border-accent transition-colors"
             >
               След →
             </button>

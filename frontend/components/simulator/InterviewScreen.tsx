@@ -311,7 +311,8 @@ export function InterviewScreen({ mode, sessionId, openingQuestion, closingPhras
       <div className="shrink-0 bg-bg/90 backdrop-blur border-b border-border px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={onBack} className="text-secondary hover:text-primary transition-colors">
+            <button onClick={onBack} aria-label={t("common.back", { ns: "common" })}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors">
               <ArrowLeft size={20} />
             </button>
             <span className="text-primary font-semibold text-sm">

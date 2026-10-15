@@ -145,7 +145,7 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
         </div>
       </div>
 
-      <p className="text-secondary/60 text-[11px] text-center mt-2 px-4 leading-relaxed">
+      <p className="text-secondary/60 text-xs text-center mt-2 px-4 leading-relaxed">
         Это оценка твоей готовности к практике, а не прогноз решения консула
       </p>
     </div>
@@ -362,7 +362,7 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
                 </div>
               ))}
             </div>
-            <p className="text-secondary/60 text-[11px] mt-4">{t("decision.reasons_note")}</p>
+            <p className="text-secondary/60 text-xs mt-4">{t("decision.reasons_note")}</p>
           </div>
         )}
         {verdict && verdict.color in VERDICT_STYLES && <VerdictCard verdict={verdict} />}

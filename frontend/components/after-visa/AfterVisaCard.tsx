@@ -48,7 +48,7 @@ export function AfterVisaCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-teal font-bold text-base">{t("after_visa_card.title")}</span>
-            <span className="text-[10px] font-bold bg-teal/15 text-teal px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold bg-teal/15 text-teal px-2 py-0.5 rounded-full">
               {t("after_visa_card.unlocked_badge")}
             </span>
           </div>

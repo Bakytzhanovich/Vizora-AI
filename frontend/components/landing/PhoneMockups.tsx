@@ -38,7 +38,7 @@ export function HeroPhones() {
             <span>{t("showcase.phone.question_meta")}</span>
           </div>
           <div className="rounded-[18px] bg-[#F1F3FA] p-3.5">
-            <p className="mb-1 text-[11px] font-bold text-[#6B7393]">{t("showcase.phone.consul")}</p>
+            <p className="mb-1 text-xs font-bold text-[#6B7393]">{t("showcase.phone.consul")}</p>
             <p lang="en" className="text-base font-bold leading-snug text-[#1E1B4B]">Who is paying for your trip?</p>
           </div>
           <div className="max-w-[85%] self-end rounded-[18px_18px_6px_18px] bg-[#4C46D8] px-3.5 py-3">

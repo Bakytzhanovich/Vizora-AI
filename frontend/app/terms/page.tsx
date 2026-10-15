@@ -41,7 +41,7 @@ export default function TermsPage() {
           Базовый тариф FREE доступен бесплатно и постоянно, без ограничения по времени. Платные
           тарифы (СТАНДАРТ, ПРЕМИУМ) снимают ограничения по числу симуляций интервью и открывают
           дополнительные функции — актуальные цены указаны на странице{" "}
-          <a href="/pricing" className="text-[#9C8BFF] hover:underline">
+          <a href="/pricing" className="text-accent-light hover:underline">
             /pricing
           </a>
           . Оплата обрабатывается через Kaspi Pay; реквизиты карты Vizora AI не хранит.

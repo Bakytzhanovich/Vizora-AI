@@ -60,7 +60,7 @@ export function WhiteLabelPreview({ name, logoUrl, primaryColor, isWhiteLabel = 
       </div>
 
       {/* Powered by */}
-      <p className="text-[10px] text-secondary/40 text-right mt-2">Powered by Vizora AI</p>
+      <p className="text-xs text-secondary/40 text-right mt-2">Powered by Vizora AI</p>
     </div>
   );
 }

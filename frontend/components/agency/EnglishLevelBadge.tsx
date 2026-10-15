@@ -13,7 +13,7 @@ export function EnglishLevelBadge({ test }: { test?: { level: string; tested_at:
     <div>
       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${levelTone(test.level)}`}>{test.level}</span>
       {test.tested_at && (
-        <span className="block text-[11px] text-gray-400 mt-0.5">
+        <span className="block text-xs text-gray-400 mt-0.5">
           {new Date(test.tested_at).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
         </span>
       )}

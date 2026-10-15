@@ -59,6 +59,7 @@ export function ChatInput({ onSend, disabled = false }: Props) {
       <div className="relative group">
         <button
           disabled
+          aria-label={t("common.voice_input", { ns: "common" })}
           className="w-11 h-11 rounded-xl bg-card border border-border flex items-center justify-center text-secondary opacity-50 cursor-not-allowed"
         >
           <Mic size={18} />
@@ -71,6 +72,7 @@ export function ChatInput({ onSend, disabled = false }: Props) {
       <button
         onClick={handleSend}
         disabled={disabled || !value.trim()}
+        aria-label={t("common.send", { ns: "common" })}
         className="w-11 h-11 rounded-xl bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all duration-200 shrink-0"
       >
         <Send size={16} />

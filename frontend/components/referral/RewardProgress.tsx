@@ -77,13 +77,13 @@ export function RewardProgress({ totalActive, tiers, rewards }: RewardProgressPr
           return (
             <div key={tier.reward_type} className="flex flex-col items-center gap-0.5">
               <span
-                className={`text-[10px] font-bold ${
+                className={`text-xs font-bold ${
                   earned ? "text-warning" : "text-secondary"
                 }`}
               >
                 {tier.referrals_needed}
               </span>
-              <span className={`text-[9px] text-center max-w-[52px] leading-tight ${earned ? "text-warning" : "text-secondary/60"}`}>
+              <span className={`text-xs text-center max-w-[64px] leading-tight ${earned ? "text-warning" : "text-secondary/60"}`}>
                 {TIER_LABELS[tier.reward_type] ?? tier.reward_type}
               </span>
             </div>

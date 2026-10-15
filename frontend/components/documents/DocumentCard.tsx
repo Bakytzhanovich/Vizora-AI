@@ -42,7 +42,7 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
         <button
           onClick={() => !disabled && onToggle(doc.id, !doc.completed)}
           disabled={disabled}
-          className={`shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-all ${
+          className={`relative before:absolute before:-inset-3 before:content-[''] shrink-0 w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center transition-all ${
             doc.completed
               ? "bg-teal border-teal"
               : "border-secondary hover:border-accent"
@@ -63,7 +63,7 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
               {doc.name}
             </span>
             {isRisk && !doc.completed && (
-              <span className="text-[10px] font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded">
+              <span className="text-xs font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded">
                 {t("risk_badge")}
               </span>
             )}
@@ -78,7 +78,7 @@ export function DocumentCard({ doc, onToggle, disabled }: Props) {
           {/* Tips toggle */}
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1 mt-1.5 text-accent text-xs hover:text-accent-light transition-colors"
+            className="flex min-h-11 items-center gap-1 -my-1.5 text-accent text-xs hover:text-accent-light transition-colors"
           >
             <span>💡</span>
             <span>{expanded ? t("hide_tip") : t("show_tip")}</span>

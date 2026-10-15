@@ -26,7 +26,7 @@ export function ReferralStats({ totalInvited, totalRegistered, totalActive }: Re
           className="bg-card border border-border rounded-xl p-3 text-center"
         >
           <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-          <p className="text-secondary text-[11px] mt-0.5 leading-tight">{s.label}</p>
+          <p className="text-secondary text-xs mt-0.5 leading-tight">{s.label}</p>
         </motion.div>
       ))}
     </div>

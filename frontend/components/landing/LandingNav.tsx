@@ -11,12 +11,11 @@ export function LandingNav() {
   const { t } = useTranslation("landing");
   const [open, setOpen] = useState(false);
 
-  // Section ids match the ones the shared Navbar links to from /blog and the
-  // legal pages (/#students, /#how-it-works, /#agencies).
+  // Absolute "/#..." so the same nav works on /blog and the legal pages too.
   const links = [
-    { href: "#how-it-works", label: t("showcase.nav.features") },
-    { href: "#agencies", label: t("showcase.nav.agencies") },
-    { href: "#pricing", label: t("showcase.nav.pricing") },
+    { href: "/#how-it-works", label: t("showcase.nav.features") },
+    { href: "/#agencies", label: t("showcase.nav.agencies") },
+    { href: "/#pricing", label: t("showcase.nav.pricing") },
     { href: "/blog", label: t("showcase.nav.blog") },
   ];
 

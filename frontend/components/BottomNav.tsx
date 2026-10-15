@@ -40,7 +40,7 @@ export function BottomNav() {
               className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 min-w-0"
             >
               <Icon size={22} className={active ? "text-accent" : "text-secondary"} strokeWidth={active ? 2.5 : 2} />
-              <span className={`text-[10px] font-medium truncate max-w-full px-1 ${active ? "text-accent" : "text-secondary"}`}>
+              <span className={`text-xs font-medium leading-tight text-center max-w-full px-0.5 break-words ${active ? "text-accent" : "text-secondary"}`}>
                 {t(`nav.${key}`)}
               </span>
             </button>

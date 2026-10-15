@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
 import { SectionContent } from "@/components/after-visa/SectionContent";
@@ -23,6 +24,7 @@ const CHAT_LINKS: Record<string, string> = {
 
 export default function AfterVisaModulePage() {
   const router = useRouter();
+  const { t } = useTranslation("common");
   const params = useParams();
   const moduleId = params.module_id as string;
 
@@ -127,7 +129,8 @@ export default function AfterVisaModulePage() {
           <div className="flex items-center gap-3 mb-3">
             <button
               onClick={() => router.push("/after-visa")}
-              className="text-secondary hover:text-primary transition-colors"
+              aria-label={t("common.back")}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>

@@ -144,7 +144,8 @@ export default function EmergencyPage() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="text-secondary hover:text-primary transition-colors"
+            aria-label={t("common.back", { ns: "common" })}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
           >
             <ArrowLeft size={20} />
           </button>

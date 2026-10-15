@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Unbounded } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { BrandingProvider } from "@/context/BrandingContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -14,21 +14,11 @@ import { PageViewTracker } from "@/components/PageViewTracker";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { MotionFeatures } from "@/components/MotionFeatures";
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
-  weight: ["400", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
-  variable: "--font-inter",
-});
-
-// Distinct heading face so H1/H2 don't read as the same generic Inter/
-// shadcn-default grotesque as body text — chosen for full Cyrillic support
-// (most "characterful" display fonts on Google Fonts are Latin-only).
-const unbounded = Unbounded({
-  subsets: ["latin", "cyrillic"],
-  weight: ["600", "700", "800"],
-  display: "swap",
-  variable: "--font-heading",
+  variable: "--font-sans",
 });
 
 // TODO: update to real domain once purchased (ТЗ-030)
@@ -110,18 +100,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={`${inter.variable} ${unbounded.variable}`} suppressHydrationWarning>
+    <html lang="ru" className={manrope.variable} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#0A0A0F" />
+        <meta name="theme-color" content="#F5F5FF" />
         <link rel="preconnect" href={API_URL} crossOrigin="anonymous" />
         {/* Sets data-theme from localStorage before first paint — without this,
-            a user who picked "light" would see a flash of the dark default
+            a user who picked "dark" would see a flash of the light default
             (CSS vars in :root) on every load, since ThemeProvider only runs
             client-side after hydration. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("vizora_theme");if(t==="light"){document.documentElement.setAttribute("data-theme","light");var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#FFFFFF");}}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("vizora_theme");if(t==="dark"){document.documentElement.setAttribute("data-theme","dark");var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#0A0A0F");}}catch(e){}`,
           }}
         />
         {/* Telegram Mini App SDK — loaded after hydration so a slow/throttled

@@ -7,9 +7,9 @@ import { AlertTriangle, Lock } from "lucide-react";
 import type { RiskItem } from "@/lib/api";
 
 const severityConfig = {
-  high: { color: "#FF6B6B", bg: "bg-error/10", border: "border-error/20", key: "risk_high" },
-  medium: { color: "#F59E0B", bg: "bg-warning/10", border: "border-warning/20", key: "risk_medium" },
-  low: { color: "#00D4AA", bg: "bg-teal/10", border: "border-teal/20", key: "risk_low" },
+  high: { color: "error", bg: "bg-error/10", border: "border-error/20", key: "risk_high" },
+  medium: { color: "warning", bg: "bg-warning/10", border: "border-warning/20", key: "risk_medium" },
+  low: { color: "teal", bg: "bg-teal/10", border: "border-teal/20", key: "risk_low" },
 };
 
 interface Props {
@@ -32,13 +32,13 @@ export function RiskCard({ risk, index, locked = false }: Props) {
       transition={{ delay: 0.1 * index }}
       className={`flex items-start gap-3 px-4 py-3.5 rounded-xl border ${cfg.bg} ${cfg.border}`}
     >
-      <AlertTriangle size={18} className="mt-0.5 shrink-0" style={{ color: cfg.color }} />
+      <AlertTriangle size={18} className="mt-0.5 shrink-0" style={{ color: `rgb(var(--color-${cfg.color}))` }} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className="text-primary text-sm font-semibold">{risk.label_ru}</span>
           <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ color: cfg.color, background: `${cfg.color}18` }}
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{ color: `rgb(var(--color-${cfg.color}))`, background: `rgb(var(--color-${cfg.color}) / 0.09)` }}
           >
             {t(cfg.key)}
           </span>

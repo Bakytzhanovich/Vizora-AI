@@ -59,7 +59,7 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
                 {step.title}
               </p>
               {isCurrent && (
-                <span className="shrink-0 text-[10px] font-bold text-accent bg-accent/15 px-1.5 py-0.5 rounded-full">
+                <span className="shrink-0 text-xs font-bold text-accent bg-accent/15 px-1.5 py-0.5 rounded-full">
                   СЕЙЧАС
                 </span>
               )}
@@ -70,7 +70,7 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
             )}
 
             {isCompleted && step.completed_at && (
-              <p className="text-teal text-[11px] mt-1.5">
+              <p className="text-teal text-xs mt-1.5">
                 ✓ Выполнено {new Date(step.completed_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
               </p>
             )}
@@ -85,7 +85,7 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
                   <button
                     onClick={() => onMarkComplete(step.id)}
                     disabled={updating}
-                    className="mt-3 text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50 flex items-center gap-1"
+                    className="mt-1 min-h-11 text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50 flex items-center gap-1"
                   >
                     {updating ? "Сохраняем..." : "Отметить выполненным ✓"}
                   </button>

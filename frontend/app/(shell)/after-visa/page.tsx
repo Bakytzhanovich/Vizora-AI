@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
 import { ModuleGrid } from "@/components/after-visa/ModuleGrid";
@@ -15,6 +16,7 @@ interface ApiErrorShape {
 
 export default function AfterVisaPage() {
   const router = useRouter();
+  const { t } = useTranslation("common");
   const [data, setData] = useState<AfterVisaModulesResponse | null>(null);
   const [subscriptionLocked, setSubscriptionLocked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,8 @@ export default function AfterVisaPage() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-secondary hover:text-primary transition-colors"
+            aria-label={t("common.back")}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
           >
             <ArrowLeft size={20} />
           </button>

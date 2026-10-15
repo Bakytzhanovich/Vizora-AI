@@ -363,7 +363,7 @@ function PageList({ pages, total }: { pages: Array<{ url: string; count: number;
           </span>
         </div>
       ))}
-      <p className="pt-1 text-[10px] text-[#81889B]">Всего визитов за 30 дней: {total}</p>
+      <p className="pt-1 text-xs text-[#81889B]">Всего визитов за 30 дней: {total}</p>
     </div>
   );
 }
@@ -414,7 +414,7 @@ function SourceList({
           </span>
         </div>
       ))}
-      <p className="pt-1 text-[10px] text-[#81889B]">
+      <p className="pt-1 text-xs text-[#81889B]">
         {totalLabel}: {total}
       </p>
     </div>
@@ -640,7 +640,7 @@ function EnglishLevelsPanel({ levels }: { levels: NonNullable<AdminOverview["eng
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#242837]">
                   <div className="h-full rounded-full bg-emerald-400" style={{ width: `${pct}%` }} />
                 </div>
-                <p className="mt-1 text-[11px] text-[#81889B]">{pct}%</p>
+                <p className="mt-1 text-xs text-[#81889B]">{pct}%</p>
               </div>
             );
           })}
@@ -833,7 +833,7 @@ function AnalyticsSection({ data }: { data: AdminAnalytics }) {
                     title={`${total} actions`}
                   />
                 </div>
-                <span className="text-[10px] text-[#81889B]">
+                <span className="text-xs text-[#81889B]">
                   {new Date(item.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })}
                 </span>
               </div>

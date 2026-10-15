@@ -25,7 +25,7 @@ export function AlertCard({ alert }: Props) {
         <p className="text-xs text-gray-600 mt-0.5">{alert.message}</p>
       </div>
       <span
-        className={`ml-auto shrink-0 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+        className={`ml-auto shrink-0 text-xs font-bold uppercase px-2 py-0.5 rounded-full ${
           isCritical ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
         }`}
       >

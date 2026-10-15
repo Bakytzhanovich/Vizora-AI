@@ -42,7 +42,7 @@ export function ScenarioCard({ scenario, index, onClick, loading }: ScenarioCard
               {scenario.title}
             </span>
             <span
-              className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+              className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
                 scenario.urgency === "critical"
                   ? "bg-error/15 text-error"
                   : scenario.urgency === "high"

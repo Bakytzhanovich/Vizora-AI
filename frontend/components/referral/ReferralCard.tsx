@@ -29,7 +29,7 @@ export function ReferralCard({ totalActive = 0, nextTierNeeded }: ReferralCardPr
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-primary font-semibold text-sm">{t("referral_card.title")}</span>
             {totalActive > 0 && (
-              <span className="text-[10px] font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
+              <span className="text-xs font-bold bg-warning/15 text-warning px-2 py-0.5 rounded-full">
                 {totalActive} {totalActive > 1 ? t("referral_card.friend_plural") : t("referral_card.friend_singular")}
               </span>
             )}

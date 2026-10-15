@@ -13,7 +13,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "dark",
+  theme: "light",
   setTheme: () => {},
   toggleTheme: () => {},
 });
@@ -23,13 +23,13 @@ function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", theme === "light" ? "#FFFFFF" : "#0A0A0F");
+    ?.setAttribute("content", theme === "light" ? "#F5F5FF" : "#0A0A0F");
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Dark is the product default — matches the value already baked into
+  // Light is the product default — matches the value already baked into
   // globals.css :root, so there's no flash before this effect runs.
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);

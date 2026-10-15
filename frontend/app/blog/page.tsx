@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { LandingNav } from "@/components/landing/LandingNav";
+import { LandingFooter } from "@/components/landing/LandingFooter";
 import { getAllPosts, getPostsByCategory, CATEGORY_LABELS, type BlogCategory, type BlogPost } from "@/lib/blog";
 
 export const metadata: Metadata = {
@@ -24,14 +24,14 @@ function PostCard({ post }: { post: BlogPost }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="block bg-[#13131A] border border-[#1E1E2E] hover:border-[#6C63FF]/40 rounded-2xl p-6 transition-colors duration-200"
+      className="block bg-card border border-border hover:border-accent/40 rounded-2xl p-6 transition-colors duration-200"
     >
-      <span className="inline-block text-xs font-semibold text-[#9C8BFF] bg-[#6C63FF]/10 border border-[#6C63FF]/30 rounded-full px-3 py-1 mb-4">
+      <span className="inline-block text-xs font-semibold text-accent-light bg-accent/10 border border-accent/30 rounded-full px-3 py-1 mb-4">
         {CATEGORY_LABELS[post.category]}
       </span>
-      <h2 className="text-xl font-bold text-[#F0F0FF] mb-2 leading-snug">{post.title}</h2>
-      <p className="text-[#8B8BA7] text-sm leading-relaxed mb-4">{post.description}</p>
-      <time dateTime={post.date} className="text-xs text-[#8B8BA7]/70">
+      <h2 className="text-xl font-bold text-primary mb-2 leading-snug">{post.title}</h2>
+      <p className="text-secondary text-sm leading-relaxed mb-4">{post.description}</p>
+      <time dateTime={post.date} className="text-xs text-secondary/70">
         {post.date}
       </time>
     </Link>
@@ -51,13 +51,13 @@ export default function BlogIndexPage({
   const isUpcomingCategory = activeTab !== "all" && posts.length === 0;
 
   return (
-    <main className="min-h-screen bg-[#0A0A0F]">
-      <Navbar />
-      <div className="max-w-4xl mx-auto px-4 pt-32 pb-24">
-        <h1 className="text-4xl sm:text-5xl font-bold text-[#F0F0FF] tracking-tight mb-4">
+    <main className="min-h-screen bg-bg">
+      <LandingNav />
+      <div className="max-w-4xl mx-auto px-4 pt-12 pb-24">
+        <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight mb-4">
           Блог Vizora AI
         </h1>
-        <p className="text-[#8B8BA7] text-lg mb-10 max-w-2xl">
+        <p className="text-secondary text-lg mb-10 max-w-2xl">
           Разбираем вопросы консула, причины отказов и подготовку к визовому интервью.
         </p>
 
@@ -72,8 +72,8 @@ export default function BlogIndexPage({
                 href={href}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors duration-200 ${
                   isActive
-                    ? "bg-[#6C63FF] text-white"
-                    : "bg-[#13131A] border border-[#1E1E2E] text-[#8B8BA7] hover:text-[#F0F0FF]"
+                    ? "bg-accent text-white"
+                    : "bg-card border border-border text-secondary hover:text-primary"
                 }`}
               >
                 {tab.label}
@@ -83,15 +83,15 @@ export default function BlogIndexPage({
         </div>
 
         {isUpcomingCategory ? (
-          <div className="bg-[#13131A] border border-[#1E1E2E] rounded-2xl p-10 text-center">
-            <p className="text-[#F0F0FF] font-semibold mb-2">Скоро появится</p>
-            <p className="text-[#8B8BA7] text-sm">
+          <div className="bg-card border border-border rounded-2xl p-10 text-center">
+            <p className="text-primary font-semibold mb-2">Скоро появится</p>
+            <p className="text-secondary text-sm">
               Направление {CATEGORY_LABELS[activeTab as BlogCategory]} ещё не запущено — статьи
               появятся здесь автоматически.
             </p>
           </div>
         ) : posts.length === 0 ? (
-          <p className="text-[#8B8BA7]">Пока нет статей.</p>
+          <p className="text-secondary">Пока нет статей.</p>
         ) : (
           <div className="grid sm:grid-cols-2 gap-5">
             {posts.map((post) => (
@@ -100,7 +100,7 @@ export default function BlogIndexPage({
           </div>
         )}
       </div>
-      <Footer />
+      <LandingFooter />
     </main>
   );
 }

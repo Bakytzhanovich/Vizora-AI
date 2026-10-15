@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 
 import { ReferralLinkBox } from "@/components/referral/ReferralLinkBox";
@@ -27,6 +28,7 @@ const HOW_IT_WORKS = [
 
 export default function ReferralPage() {
   const router = useRouter();
+  const { t } = useTranslation("common");
   const [data, setData] = useState<ReferralCodeResponse | null>(null);
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,8 @@ export default function ReferralPage() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-secondary hover:text-primary transition-colors"
+            aria-label={t("common.back")}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
           >
             <ArrowLeft size={20} />
           </button>
@@ -146,7 +149,7 @@ export default function ReferralPage() {
           <div className="flex flex-col gap-2.5">
             {HOW_IT_WORKS.map((step, i) => (
               <div key={i} className="flex items-start gap-3">
-                <span className="shrink-0 w-5 h-5 rounded-full bg-accent/15 text-accent text-[11px] font-bold flex items-center justify-center mt-0.5">
+                <span className="shrink-0 w-5 h-5 rounded-full bg-accent/15 text-accent text-xs font-bold flex items-center justify-center mt-0.5">
                   {i + 1}
                 </span>
                 <p className="text-secondary text-sm">{step}</p>

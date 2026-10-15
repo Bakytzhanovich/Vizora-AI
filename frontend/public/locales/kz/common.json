@@ -28,7 +28,11 @@
     "days": "күн",
     "sessions": "сеанс",
     "of": "ішінен",
-    "powered_by": "Vizora AI негізінде"
+    "powered_by": "Vizora AI негізінде",
+    "theme_dark": "Қараңғы тақырып",
+    "theme_light": "Ашық тақырып",
+    "voice_input": "Дауыспен енгізу",
+    "send": "Жіберу"
   },
   "errors": {
     "generic": "Бірдеңе дұрыс болмады. Қайталап көр.",

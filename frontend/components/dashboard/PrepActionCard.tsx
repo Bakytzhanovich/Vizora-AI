@@ -30,7 +30,7 @@ export function PrepActionCard({ progress, href }: Props) {
 
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-3">
-          <span className="inline-flex items-center gap-1.5 text-accent-light text-[11px] font-bold uppercase tracking-wide">
+          <span className="inline-flex items-center gap-1.5 text-accent-light text-xs font-bold uppercase tracking-wide">
             <Map size={13} strokeWidth={2} />
             {t("prep_plan_label")}
           </span>

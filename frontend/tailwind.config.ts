@@ -40,11 +40,11 @@ const config: Config = {
         warning: withOpacity("--color-warning"),
       } as unknown as Record<string, string>,
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        heading: ["var(--font-heading)", "var(--font-inter)", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        heading: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       backgroundImage: {
-        "accent-gradient": "linear-gradient(135deg, #6C63FF 0%, #9C8BFF 100%)",
+        "accent-gradient": "linear-gradient(135deg, #4C46D8 0%, #6C63FF 100%)",
         "teal-gradient": "linear-gradient(135deg, #00D4AA 0%, #00B894 100%)",
         "hero-glow":
           "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(108,99,255,0.3), transparent)",
@@ -52,7 +52,7 @@ const config: Config = {
       boxShadow: {
         "accent-glow": "0 0 40px rgba(108,99,255,0.15)",
         "teal-glow": "0 0 40px rgba(0,212,170,0.15)",
-        card: "0 4px 24px rgba(0,0,0,0.4)",
+        card: "0 4px 24px rgba(30,27,75,0.08)",
       },
       animation: {
         "fade-in-up": "fadeInUp 0.6s ease-out forwards",

@@ -342,7 +342,7 @@ export default function StudentDetailPage() {
                   );
                 })}
               </div>
-              <p className="text-[11px] text-gray-400 mt-4">
+              <p className="text-xs text-gray-400 mt-4">
                 Примерный уровень по разговорной речи. Для визового интервью обычно достаточно B1.
               </p>
             </div>

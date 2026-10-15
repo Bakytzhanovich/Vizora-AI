@@ -22,7 +22,7 @@ export function DS160Guide({ steps }: Props) {
         {steps.map((s) => (
           <div
             key={s.step}
-            className="w-7 h-7 rounded-full bg-border flex items-center justify-center text-[10px] text-secondary font-medium"
+            className="w-7 h-7 rounded-full bg-border flex items-center justify-center text-xs text-secondary font-medium"
           >
             {s.step}
           </div>

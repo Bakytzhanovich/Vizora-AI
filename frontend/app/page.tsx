@@ -1,15 +1,9 @@
-import { Manrope } from "next/font/google";
 import { LandingNav } from "@/components/landing/LandingNav";
 import { ShowcaseHero } from "@/components/landing/ShowcaseHero";
 import { AfterVisaSection, AgencySection, FeaturesSection, FinalCta } from "@/components/landing/ShowcaseSections";
 import { PricingPlans, type LandingPrices } from "@/components/landing/PricingPlans";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
-const manrope = Manrope({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
 
 // TODO: update to real domain once purchased (ТЗ-030)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
@@ -117,7 +111,7 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className={`${manrope.className} min-h-screen overflow-x-hidden bg-[#F5F5FF] text-[#1E1B4B]`}>
+      <div className="min-h-screen overflow-x-hidden bg-[#F5F5FF] text-[#1E1B4B]">
         <LandingNav />
         <main>
           <ShowcaseHero />

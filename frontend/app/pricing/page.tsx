@@ -117,7 +117,7 @@ function PricingContent() {
       <div className="max-w-5xl mx-auto">
         <button
           onClick={() => (window.history.length > 1 ? router.back() : router.push(isAuthenticated ? "/dashboard" : "/"))}
-          className="flex items-center gap-1.5 text-secondary hover:text-primary text-sm mb-6 transition-colors"
+          className="flex min-h-11 items-center gap-1.5 text-secondary hover:text-primary text-sm mb-3 transition-colors"
         >
           <ArrowLeft size={16} />
           {t("common:common.back")}
@@ -134,7 +134,7 @@ function PricingContent() {
           <div className="inline-flex bg-card border border-border rounded-xl p-1">
             <button
               onClick={() => setBillingPeriod("monthly")}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              className={`min-h-11 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
                 billingPeriod === "monthly" ? "bg-accent text-white" : "text-secondary"
               }`}
             >
@@ -142,7 +142,7 @@ function PricingContent() {
             </button>
             <button
               onClick={() => setBillingPeriod("yearly")}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              className={`min-h-11 px-4 py-3 rounded-lg text-sm font-semibold transition-colors ${
                 billingPeriod === "yearly" ? "bg-accent text-white" : "text-secondary"
               }`}
             >

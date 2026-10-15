@@ -37,7 +37,7 @@ export function ModuleCard({ icon: Icon, title, locked = true, href, index, feat
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <span className="text-primary font-semibold text-base">{title}</span>
-            <span className="text-[10px] font-bold bg-accent/20 text-accent-light px-2 py-0.5 rounded-full">
+            <span className="text-xs font-bold bg-accent/20 text-accent-light px-2 py-0.5 rounded-full">
               {t("recommended_badge")}
             </span>
           </div>

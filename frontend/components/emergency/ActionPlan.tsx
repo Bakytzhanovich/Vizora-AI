@@ -67,7 +67,7 @@ export function ActionPlan({
               transition={{ delay: i * 0.06 }}
               className="flex gap-3 text-sm text-secondary leading-relaxed"
             >
-              <span className="shrink-0 w-5 h-5 rounded-full bg-error/15 text-error text-[10px] font-bold flex items-center justify-center mt-0.5">
+              <span className="shrink-0 w-5 h-5 rounded-full bg-error/15 text-error text-xs font-bold flex items-center justify-center mt-0.5">
                 {i + 1}
               </span>
               <span>{step}</span>

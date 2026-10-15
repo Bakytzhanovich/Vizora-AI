@@ -89,7 +89,7 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
               </p>
               {cfg.badge && isCurrent && (
                 <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{ color: cfg.accent, backgroundColor: `${cfg.accent}20` }}
                 >
                   {cfg.badge}
@@ -97,7 +97,7 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
               )}
               {cfg.badge && isCompleted && (
                 <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{ color: cfg.accent, backgroundColor: `${cfg.accent}20` }}
                 >
                   {cfg.badge}
@@ -130,7 +130,7 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
                   <button
                     onClick={() => onMarkComplete(step.id)}
                     disabled={updating}
-                    className="mt-3 text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50"
+                    className="mt-1 min-h-11 flex items-center text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50"
                   >
                     {updating ? "Сохраняем..." : "Отметить выполненным ✓"}
                   </button>

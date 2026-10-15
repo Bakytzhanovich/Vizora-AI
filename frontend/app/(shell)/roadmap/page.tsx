@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { RoadmapProgress } from "@/components/roadmap/RoadmapProgress";
@@ -56,6 +57,7 @@ function Confetti({ onDone }: { onDone: () => void }) {
 
 export default function RoadmapPage() {
   const router = useRouter();
+  const { t } = useTranslation("common");
   const [steps, setSteps] = useState<RoadmapStepData[]>([]);
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -167,7 +169,8 @@ export default function RoadmapPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
-              className="text-secondary hover:text-primary transition-colors"
+              aria-label={t("common.back")}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
             </button>

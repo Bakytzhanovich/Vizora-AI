@@ -22,7 +22,7 @@ export function ActionButton({ stepId }: Props) {
   return (
     <button
       onClick={() => router.push(action.href)}
-      className="mt-3 text-xs font-semibold text-accent hover:text-accent-light transition-colors flex items-center gap-1"
+      className="mt-1 min-h-11 text-xs font-semibold text-accent hover:text-accent-light transition-colors flex items-center gap-1"
     >
       {action.label}
     </button>

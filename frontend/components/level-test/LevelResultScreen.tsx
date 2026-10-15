@@ -54,7 +54,7 @@ export function LevelResultScreen({ result, onRetry, onBack }: Props) {
             {CEFR.map((lvl, i) => (
               <div key={lvl} className="flex-1">
                 <div className={`h-2 rounded-full ${i <= reached ? "bg-accent" : "bg-border"}`} />
-                <p className={`text-[10px] mt-1 ${i === reached ? "text-accent font-bold" : "text-secondary"}`}>{lvl}</p>
+                <p className={`text-xs mt-1 ${i === reached ? "text-accent font-bold" : "text-secondary"}`}>{lvl}</p>
               </div>
             ))}
           </div>
@@ -65,7 +65,7 @@ export function LevelResultScreen({ result, onRetry, onBack }: Props) {
               {t("level_test.finished_early_note", { count: result.question_count })}
             </p>
           )}
-          <p className="text-secondary/60 text-[11px] mt-4">{t("level_test.disclaimer")}</p>
+          <p className="text-secondary/60 text-xs mt-4">{t("level_test.disclaimer")}</p>
         </div>
 
         {/* Criteria */}

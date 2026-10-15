@@ -37,7 +37,7 @@ export function ReferralLinkBox({ code, link }: ReferralLinkBoxProps) {
       {/* Code display */}
       <div className="flex items-center gap-3 bg-bg border border-border rounded-xl px-4 py-3 mb-3">
         <div className="flex-1 min-w-0">
-          <p className="text-secondary text-[10px] mb-0.5">Код</p>
+          <p className="text-secondary text-xs mb-0.5">Код</p>
           <p className="text-accent font-bold text-lg tracking-widest">{code}</p>
           <p className="text-secondary text-xs truncate mt-0.5">{link}</p>
         </div>

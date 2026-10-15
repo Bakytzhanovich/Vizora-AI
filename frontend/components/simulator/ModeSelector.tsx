@@ -35,7 +35,8 @@ export function ModeSelector({ onStart, isLoading }: Props) {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <button
           onClick={() => router.push("/dashboard")}
-          className="text-secondary hover:text-primary transition-colors mb-4"
+          aria-label={t("common.back", { ns: "common" })}
+              className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors mb-1"
         >
           <ArrowLeft size={20} />
         </button>
@@ -71,7 +72,7 @@ export function ModeSelector({ onStart, isLoading }: Props) {
             </ul>
             <button
               onClick={(e) => { e.stopPropagation(); setSelectedMode("trainer"); }}
-              className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+              className={`w-full min-h-11 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
                 selectedMode === "trainer"
                   ? "bg-accent text-white border-accent"
                   : "border-accent text-accent hover:bg-accent/10"
@@ -104,7 +105,7 @@ export function ModeSelector({ onStart, isLoading }: Props) {
             </ul>
             <button
               onClick={(e) => { e.stopPropagation(); setSelectedMode("consul"); }}
-              className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              className={`w-full min-h-11 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                 selectedMode === "consul"
                   ? "bg-accent text-white"
                   : "bg-accent text-white hover:bg-accent-hover"
@@ -130,7 +131,7 @@ export function ModeSelector({ onStart, isLoading }: Props) {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h2 className="text-primary font-bold">{t("level_test.title")}</h2>
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-teal border border-teal/30 bg-teal/10 rounded-full px-2 py-0.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-teal border border-teal/30 bg-teal/10 rounded-full px-2 py-0.5">
                   {t("level_test.free_badge")}
                 </span>
               </div>
@@ -156,7 +157,7 @@ export function ModeSelector({ onStart, isLoading }: Props) {
               <button
                 key={d.value}
                 onClick={() => setDifficulty(d.value)}
-                className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${
+                className={`flex-1 min-h-11 py-3 rounded-xl text-xs font-medium transition-all ${
                   difficulty === d.value
                     ? "bg-accent text-white"
                     : "bg-bg text-secondary hover:text-primary"

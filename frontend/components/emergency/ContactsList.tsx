@@ -31,7 +31,7 @@ export function ContactsList({ contacts }: ContactsListProps) {
           >
             <div className="flex items-start justify-between gap-2 mb-1">
               <span className="text-primary font-semibold text-sm">{contact.name}</span>
-              <span className={`text-[10px] font-bold shrink-0 ${style.labelColor}`}>
+              <span className={`text-xs font-bold shrink-0 ${style.labelColor}`}>
                 {t(`contact_priority.${contact.priority}` as const, { defaultValue: t("contact_priority.secondary") })}
               </span>
             </div>

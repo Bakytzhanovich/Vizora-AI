@@ -213,7 +213,7 @@ export default function LoginPage() {
         <div className="text-center mt-4">
           <Link
             href="/agency/login"
-            className="inline-flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors border border-border rounded-lg px-3 py-1.5"
+            className="inline-flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors border border-border rounded-lg min-h-11 px-4 py-2.5"
           >
             <Building2 size={13} />
             Войти как агентство

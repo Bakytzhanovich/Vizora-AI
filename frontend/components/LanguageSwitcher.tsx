@@ -29,7 +29,8 @@ export function LanguageSwitcher({ variant = "dark" }: { variant?: "dark" | "lig
         <button
           key={lang.code}
           onClick={() => switchLanguage(lang.code)}
-          className={`px-3 py-1 rounded-md text-sm font-medium transition-all duration-200 ${
+          aria-pressed={i18n.language === lang.code}
+          className={`flex min-h-11 min-w-11 items-center justify-center rounded-md px-3 text-sm font-medium transition-all duration-200 ${
             i18n.language === lang.code ? "bg-accent text-white" : inactive
           }`}
         >
