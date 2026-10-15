@@ -8,6 +8,7 @@ import { ArrowLeft, Check, Lock, GraduationCap, Star, Lightbulb } from "lucide-r
 import { useAuth } from "@/hooks/useAuth";
 import { apiGetPlans, apiGetSocialProof, type Plan } from "@/lib/api";
 import { CheckoutModal } from "@/components/pricing/CheckoutModal";
+import { ManualCheckoutModal } from "@/components/pricing/ManualCheckoutModal";
 
 const CONSUMER_PLAN_IDS = ["free", "standard", "premium"];
 
@@ -26,6 +27,7 @@ function PricingContent() {
   const { isAuthenticated, subscription } = useAuth();
 
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [paymentMode, setPaymentMode] = useState<"manual" | "kaspi">("manual");
   const [socialProof, setSocialProof] = useState<{ student_count: number; average_score: number | null } | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,7 @@ function PricingContent() {
     Promise.all([apiGetPlans(), apiGetSocialProof()])
       .then(([p, sp]) => {
         setPlans(p.plans.filter((pl) => CONSUMER_PLAN_IDS.includes(pl.id)));
+        setPaymentMode(p.payment_mode);
         setSocialProof(sp);
       })
       .catch(() => setError("Не удалось загрузить тарифы"))
@@ -286,12 +289,25 @@ function PricingContent() {
       {checkoutPlan && (() => {
         const plan = plans.find((p) => p.id === checkoutPlan);
         if (!plan) return null;
+        const amountLabel =
+          formatKzt(plan.prices_kzt[billingPeriod]) + (billingPeriod === "monthly" ? t("per_month") : t("per_year"));
+        if (paymentMode === "manual") {
+          return (
+            <ManualCheckoutModal
+              plan={plan.id}
+              planLabel={t(`plan_names.${plan.id}`)}
+              billingPeriod={billingPeriod}
+              amountLabel={amountLabel}
+              onClose={() => setCheckoutPlan(null)}
+            />
+          );
+        }
         return (
           <CheckoutModal
             plan={plan.id}
             planLabel={t(`plan_names.${plan.id}`)}
             billingPeriod={billingPeriod}
-            amountLabel={formatKzt(plan.prices_kzt[billingPeriod]) + (billingPeriod === "monthly" ? t("per_month") : t("per_year"))}
+            amountLabel={amountLabel}
             onClose={() => setCheckoutPlan(null)}
             onActivated={handleActivated}
           />

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import case, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -22,11 +23,15 @@ from app.models.early_access import EarlyAccessEmail
 from app.models.emergency import EmergencySession
 from app.models.knowledge_base import KnowledgeBase, ScraperRun
 from app.models.level_test import LevelTest
+from app.models.payment_request import PaymentRequest
 from app.models.profile import StudentProfile
 from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
+from app.models.subscription_event import SubscriptionEvent
 from app.models.user import User
 from app.services.level_test_service import latest_level_results, level_distribution
+from app.services.push_service import _send_to_user
+from routers.payments import PLAN_NAMES_RU, _apply_successful_payment
 from app.core.security import get_current_user
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
@@ -1072,3 +1077,108 @@ async def delete_entry(
     await db.delete(entry)
     await db.commit()
     return {"deleted": entry_id}
+
+
+# ─── Manual Kaspi invoice payments ───
+
+
+@router.get("/payment-requests")
+async def list_payment_requests(
+    status_filter: str = Query("pending", alias="status", pattern="^(pending|approved|cancelled|all)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
+        select(PaymentRequest, User.email, StudentProfile.name)
+        .join(User, User.id == PaymentRequest.user_id)
+        .outerjoin(StudentProfile, StudentProfile.user_id == PaymentRequest.user_id)
+        .order_by(PaymentRequest.created_at.desc())
+        .limit(200)
+    )
+    if status_filter != "all":
+        query = query.where(PaymentRequest.status == status_filter)
+    rows = (await db.execute(query)).all()
+    return {
+        "requests": [
+            {
+                "id": req.id,
+                "user_id": req.user_id,
+                "email": email,
+                "name": name,
+                "plan": req.plan,
+                "billing_period": req.billing_period,
+                "amount": int(req.amount),
+                "phone": req.phone,
+                "status": req.status,
+                "created_at": req.created_at,
+                "resolved_at": req.resolved_at,
+            }
+            for req, email, name in rows
+        ]
+    }
+
+
+async def _get_pending_request(request_id: str, db: AsyncSession) -> PaymentRequest:
+    req = await db.get(PaymentRequest, request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Payment request not found")
+    if req.status != "pending":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Request is already {req.status}")
+    return req
+
+
+@router.post("/payment-requests/{request_id}/approve")
+async def approve_payment_request(
+    request_id: str,
+    acting_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """The owner saw the Kaspi invoice paid: record it as a checkout under a
+    "manual:" id and activate it through the same path as an automatic Kaspi
+    payment, so the period math (keeping unused paid days) stays in one place."""
+    req = await _get_pending_request(request_id, db)
+    payment_id = f"manual:{req.id}"
+    db.add(
+        SubscriptionEvent(
+            user_id=req.user_id,
+            event_type="checkout_created",
+            plan=req.plan,
+            billing_period=req.billing_period,
+            amount=req.amount,
+            currency="kzt",
+            kaspi_payment_id=payment_id,
+        )
+    )
+    req.status = "approved"
+    req.resolved_at = datetime.utcnow()
+    req.resolved_by = acting_admin.id
+    try:
+        await db.commit()
+    except IntegrityError:
+        # A second click raced the first one to the unique kaspi_payment_id.
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request is already approved")
+
+    result = await _apply_successful_payment(payment_id, db)
+
+    plan_name = PLAN_NAMES_RU.get(req.plan, req.plan)
+    try:
+        await _send_to_user(db, req.user_id, "Оплата получена", f"Тариф «{plan_name}» активирован", url="/profile")
+    except Exception:
+        # Push is best-effort; the plan is already active and visible in the app.
+        pass
+
+    return {"status": "approved", "activation": result}
+
+
+@router.post("/payment-requests/{request_id}/cancel")
+async def cancel_payment_request(
+    request_id: str,
+    acting_admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    req = await _get_pending_request(request_id, db)
+    req.status = "cancelled"
+    req.resolved_at = datetime.utcnow()
+    req.resolved_by = acting_admin.id
+    await db.commit()
+    return {"status": "cancelled"}

@@ -633,8 +633,36 @@ export async function apiGetPlans() {
     plans: Plan[];
     upgrade_discount_code: string;
     upgrade_discount_rate: number;
+    payment_mode: "manual" | "kaspi";
   }>("/payments/plans");
   return data;
+}
+
+// Manual Kaspi invoice: the student leaves their Kaspi phone, the owner sends
+// a remote invoice and grants access from the admin panel once it's paid.
+export interface ManualPaymentRequest {
+  id: string;
+  plan: string;
+  billing_period: "monthly" | "yearly";
+  amount: number;
+  phone: string;
+  status: "pending" | "approved" | "cancelled";
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export async function apiCreateManualPaymentRequest(
+  plan: string,
+  billing_period: "monthly" | "yearly",
+  phone: string
+) {
+  const { data } = await api.post<ManualPaymentRequest>("/payments/manual-requests", { plan, billing_period, phone });
+  return data;
+}
+
+export async function apiGetManualPaymentRequest() {
+  const { data } = await api.get<{ request: ManualPaymentRequest | null }>("/payments/manual-requests/current");
+  return data.request;
 }
 
 export async function apiGetSocialProof() {

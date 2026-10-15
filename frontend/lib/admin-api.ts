@@ -207,3 +207,31 @@ export interface AdminSystem {
     error_message: string | null;
   } | null;
 }
+
+export interface AdminPaymentRequest {
+  id: string;
+  user_id: string;
+  email: string;
+  name: string | null;
+  plan: string;
+  billing_period: "monthly" | "yearly";
+  amount: number;
+  phone: string;
+  status: "pending" | "approved" | "cancelled";
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export function getAdminPaymentRequests(status: "pending" | "approved" | "cancelled" | "all") {
+  return adminFetch<{ requests: AdminPaymentRequest[] }>(`/admin/payment-requests?status=${status}`);
+}
+
+export async function approveAdminPaymentRequest(id: string) {
+  const { data } = await api.post<{ status: string }>(`/admin/payment-requests/${id}/approve`);
+  return data;
+}
+
+export async function cancelAdminPaymentRequest(id: string) {
+  const { data } = await api.post<{ status: string }>(`/admin/payment-requests/${id}/cancel`);
+  return data;
+}
