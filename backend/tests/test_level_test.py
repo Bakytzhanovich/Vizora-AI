@@ -141,19 +141,21 @@ class AssessTestTests(unittest.TestCase):
         with patch("app.services.level_test_service._json_completion", fake_completion):
             return asyncio.run(assess_test(turns))
 
-    def test_model_decides_within_one_step_of_the_sustained_level(self):
+    def test_level_combines_the_three_criteria(self):
         _, turns = _run_path(["A2", "B1", "B1", "B1", "B1", "B1"])
-        reply = {"level": "B2", "fluency": "C2", "accuracy": "B1", "vocabulary": "B2", "grammar": "A1",
+        # Each criterion stays within one step of the sustained B1.
+        reply = {"fluency": "C2", "vocabulary": "B2", "grammar": "A1",
                  "summary_ru": "s", "strengths": ["a"], "improve": ["b"], "visa_note_ru": "v"}
         result = self._assess(turns, reply)
-        self.assertEqual(result["level"], "B2")
-        self.assertEqual(result["level_title"], "Upper-Intermediate")
-        self.assertEqual(result["criteria"], {"fluency": "B2", "accuracy": "B1", "vocabulary": "B2", "grammar": "A2"})
+        self.assertEqual(result["criteria"], {"fluency": "B2", "vocabulary": "B2", "grammar": "A2"})
+        self.assertEqual(result["level"], "B1")
+        self.assertEqual(result["level_title"], "Intermediate")
         self.assertEqual(result["summary_ru"], "s")
 
     def test_inflated_model_level_is_capped(self):
         _, turns = _run_path(["A1", "A1"])
-        self.assertEqual(self._assess(turns, {"level": "C1"})["level"], "A2")
+        reply = {"fluency": "C1", "vocabulary": "C1", "grammar": "C1"}
+        self.assertEqual(self._assess(turns, reply)["level"], "A2")
 
     def test_failed_model_call_falls_back_to_the_sustained_levels(self):
         _, turns = _run_path(["B2"] * 8)
@@ -176,18 +178,22 @@ class AssessAnswerRulesTests(unittest.TestCase):
             return asyncio.run(assess_answer("q", "A2", "a", "spoken"))
 
     def test_smooth_delivery_doesnt_lift_the_level_above_what_was_said(self):
-        result = self._assess({"full_sentences": 4, "fluency": "B2", "accuracy": "B1", "vocabulary": "A2",
-                               "grammar": "A2", "overall": "B1"})
+        result = self._assess({"full_sentences": 4, "fluency": "B2", "vocabulary": "A2", "grammar": "A2"})
         self.assertEqual(result["overall"], "A2")
 
     def test_no_sentence_at_all_is_a1(self):
-        result = self._assess({"full_sentences": 0, "fluency": "A2", "accuracy": "A2", "vocabulary": "A2",
-                               "grammar": "A2", "overall": "A2"})
+        result = self._assess({"full_sentences": 0, "fluency": "A2", "vocabulary": "A2", "grammar": "A2"})
         self.assertEqual(result["overall"], "A1")
         self.assertEqual(result["levels"]["grammar"], "A1")
 
     def test_no_level_means_the_answer_isnt_recorded(self):
-        self.assertIsNone(self._assess({"overall": "fluent"}))
+        self.assertIsNone(self._assess({"fluency": "fluent", "grammar": "good"}))
+
+    def test_one_weak_criterion_pulls_the_answer_down(self):
+        result = self._assess({"full_sentences": 3, "fluency": "A2", "vocabulary": "B1", "grammar": "B1"})
+        self.assertEqual(result["overall"], "B1")  # (1 + 2 + 2) / 3 = 1.67 → B1
+        result = self._assess({"full_sentences": 3, "fluency": "A1", "vocabulary": "A2", "grammar": "B1"})
+        self.assertEqual(result["overall"], "A2")
 
 
 async def _fake_assess(question, level, answer, speech, previous_questions=None, next_question_level=None,

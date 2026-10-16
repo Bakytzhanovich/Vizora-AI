@@ -87,6 +87,9 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
       await new Promise<void>((resolve) => {
         audio.onended = () => { URL.revokeObjectURL(url); resolve(); };
         audio.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        // stopSpeech() pauses rather than ends, so the student can cut the
+        // tester off and answer.
+        audio.onpause = () => resolve();
         audio.play().catch(() => resolve());
       });
     } catch {
@@ -147,6 +150,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
 
   const handleMicClick = useCallback(async () => {
     if (voiceState === "idle") {
+      stopSpeech();
       try {
         await recorderRef.current.startRecording();
         recordStartRef.current = Date.now();
@@ -170,6 +174,14 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
         headers: { Authorization: `Bearer ${getToken()}` },
         body: form,
       });
+      // 400 is a too-short recording; anything else is the server or the
+      // speech provider, which "didn't hear you" would misreport.
+      if (!res.ok) {
+        console.error("level-test transcribe failed", res.status);
+        setError(t(res.status === 400 ? "level_test.not_heard" : "level_test.error"));
+        setVoiceState("idle");
+        return;
+      }
       const data = await res.json();
       const text: string = data.text || "";
       if (text) {
@@ -179,7 +191,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
         setVoiceState("idle");
       }
     } catch {
-      setError(t("level_test.not_heard"));
+      setError(t("level_test.error"));
       setVoiceState("idle");
     }
   }, [voiceState, submitAnswer, t]);
@@ -265,20 +277,20 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
         </div>
       )}
       <div className="shrink-0 bg-bg/90 backdrop-blur border-b border-border px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={handleExit}
               disabled={isFinishing}
-              className="flex items-center gap-1 text-secondary hover:text-primary transition-colors text-sm disabled:opacity-50"
+              className="shrink-0 flex items-center gap-1 text-secondary hover:text-primary transition-colors text-sm disabled:opacity-50"
             >
               <ArrowLeft size={20} />
               <span className="hidden sm:inline">{t("level_test.exit")}</span>
             </button>
             <span className="text-primary font-semibold text-sm truncate">🎯 {t("level_test.title")}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-secondary text-xs tabular-nums">
+          <div className="shrink-0 flex items-center gap-3">
+            <span className="text-secondary text-xs tabular-nums whitespace-nowrap">
               {t("level_test.question_of", { n: questionNumber, max: maxQuestions })}
             </span>
             <button
@@ -291,7 +303,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
               onClick={() => setConfirm("finish")}
               disabled={!canFinish}
               title={answered === 0 ? t("level_test.finish_hint") : undefined}
-              className="text-xs text-accent border border-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40 disabled:hover:bg-transparent"
+              className="whitespace-nowrap text-xs text-accent border border-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40 disabled:hover:bg-transparent"
             >
               {t("level_test.finish")}
             </button>
@@ -344,7 +356,11 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
           {error && <p className="text-error text-xs text-center mb-2">{error}</p>}
           {hasMic ? (
             <div className="flex flex-col items-center gap-2">
-              <VoiceButton state={voiceState} onClick={handleMicClick} disabled={isBusy && voiceState === "idle"} />
+              <VoiceButton
+                state={voiceState}
+                onClick={handleMicClick}
+                disabled={(isWaiting || isFinishing) && voiceState === "idle"}
+              />
               <button
                 onClick={() => setHasMic(false)}
                 className="text-secondary text-xs hover:text-primary transition-colors"

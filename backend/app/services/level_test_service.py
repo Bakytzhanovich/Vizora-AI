@@ -42,13 +42,14 @@ QUESTIONS_PER_LEVEL = 2
 EXPECTED_QUESTIONS = QUESTIONS_PER_LEVEL * len(LEVELS)  # shown as the progress total
 MAX_QUESTIONS = EXPECTED_QUESTIONS + 2  # room for a couple of refusals
 
-CRITERIA = ("fluency", "accuracy", "vocabulary", "grammar")
+CRITERIA = ("fluency", "vocabulary", "grammar")
 
 # Fallbacks and topic examples — normally the next question is written by the
 # model as a follow-up to what the student just said (see assess_answer).
 QUESTION_BANK: dict[str, list[str]] = {
     "A2": [
-        "Tell me a little about yourself — where are you from, and what do you do?",
+        "Where are you from?",
+        "Do you study or work?",
         "What does a typical weekday look like for you?",
         "What's your favourite place in your city, and what do you do there?",
         "What do you like doing with your friends in your free time?",
@@ -93,10 +94,7 @@ USA_QUESTIONS: dict[str, str] = {
 
 FIRST_QUESTION = QUESTION_BANK["A2"][0]
 
-INTRO = (
-    "Hi! Let's have a short chat so I can see your English level. "
-    "Just answer naturally — there are no wrong answers. "
-)
+INTRO = "Hi! Let's chat a little so I can hear your English. "
 OUTRO = "Thank you, that was a great conversation! Let's see your results."
 
 LEVEL_TITLES: dict[str, str] = {
@@ -198,6 +196,16 @@ def clamp_level(level: Any, anchor: str) -> str:
     return CEFR[max(base - 1, min(base + 1, idx))]
 
 
+def combine_levels(levels: dict[str, Any]) -> int | None:
+    """CEFR index of the criteria averaged, a half rounded down — the level is
+    fluency, vocabulary and grammar together, so one weak criterion pulls it
+    down and one strong one can't carry it."""
+    found = [i for v in levels.values() if (i := cefr_index(v)) is not None]
+    if not found:
+        return None
+    return (2 * sum(found) + len(found) - 1) // (2 * len(found))
+
+
 def profile_bucket(final_level: str) -> str:
     return _PROFILE_BUCKET[final_level.rstrip("+")]
 
@@ -280,20 +288,18 @@ C1–C2: fluent, well-argued speech, rich vocabulary, rare errors.
        occasional slips.
   C2 — near-native precision and ease, practically no errors.
 
-THE FOUR CRITERIA (each one a CEFR level A1, A2, B1, B2, C1 or C2):
+THE THREE CRITERIA (each one a CEFR level A1, A2, B1, B2, C1 or C2):
 - fluency: how the speech flows — answer length (one-word answers vs developed answers), pauses,
   fillers, speaking rate. Use the MEASURED audio facts. Roughly, for a learner: under ~70 words per
   minute or several long pauses in a short answer is A1–A2; ~80–120 with some pauses while searching
   for words is B1–B2; ~120+ with pauses only to think about content and long developed answers is C1–C2.
-- accuracy: how often the student makes mistakes and whether they get in the way of meaning.
-  Frequent basic errors (he go, I am agree) — A1–A2; errors mainly in complex grammar — B1–B2;
-  rare slips — C1–C2.
 - vocabulary: range — only basic everyday words (A1–A2), enough to talk about familiar topics with
   some paraphrasing (B1–B2), rich, precise, idiomatic (C1–C2).
-- grammar: RANGE of structures the student USED, not their correctness — Present Simple only (A1–A2),
-  different tenses: past, future, present perfect (B1–B2), complex sentences, conditionals, passive,
-  varied structures (C1–C2). "We was there and swimmed" still uses the past tense — the mistakes
-  count for accuracy, not here.
+- grammar: the structures the student USED and how correctly — Present Simple only, or frequent
+  basic errors (he go, I am agree) (A1–A2); different tenses: past, future, present perfect, errors
+  mainly in complex grammar (B1–B2); complex sentences, conditionals, passive, rare slips (C1–C2).
+  Range matters more than a clean record: "We was there and swimmed" still uses the past tense,
+  which beats error-free Present Simple.
 
 Be strict and honest: a level needs EVIDENCE in what the student said. Don't round up out of
 kindness — an inflated level fails the student at the real visa interview."""
@@ -316,7 +322,9 @@ async def _json_completion(prompt: str, max_tokens: int) -> dict[str, Any] | Non
 
 
 _QUESTION_STYLE = """What a question at each band must demand (so the answer can show that level):
-- A2: concrete everyday facts — routine, places, people, food, free time. Present tense.
+- A2: concrete everyday facts — routine, places, people, food, free time. Present tense. One short
+  question about ONE thing, at most 12 words, everyday words only. After an A1 or not-understood
+  answer, go even simpler: a yes/no or either/or question ("Do you like sport?").
 - B1: a story or plans — a specific past experience, a recent event, future plans, with reasons.
 - B2: an opinion with reasons, a comparison, pros and cons of an everyday-life topic.
 - C1: a hypothetical ("if you could…"), weighing a nuanced claim, defending a position on an abstract issue."""
@@ -339,7 +347,7 @@ async def assess_answer(
     next_question_level: str | None = None,
     next_about_usa: bool = False,
 ) -> dict[str, Any] | None:
-    """Judge one answer on the four criteria, react to it, and draft the next
+    """Judge one answer on the three criteria, react to it, and draft the next
     question at `next_question_level` — one call, so the conversation stays quick.
 
     Returns None when the model call fails or returns no usable level. There's
@@ -377,12 +385,10 @@ DROPS non-English words — Kazakh or Russian names of dishes, places and people
 gap where such a word belongs ("My favorite food is because it's our national food") is a
 transcription artefact, not a mistake: never list or penalise the gap.
 
-STEP 3 — levels from that evidence: "fluency", "accuracy", "vocabulary", "grammar" (null for fluency
-on a typed answer), then "overall" — the level this answer shows as a whole. Judge the language,
-not the question: a rich answer to an easy question shows a high level; a short or simple answer to
-a hard question shows a low one. "overall" rests on what the student can say — grammar and
-vocabulary — and is never above the higher of those two: smooth delivery of Present-Simple-only
-sentences is still A2. For "not_understood" give A1. For "refused" give anything.
+STEP 3 — levels from that evidence: "fluency", "vocabulary", "grammar" (null for fluency on a typed
+answer). Judge the language, not the question: a rich answer to an easy question shows a high level;
+a short or simple answer to a hard question shows a low one. For "not_understood" give A1 for each.
+For "refused" give anything.
 
 STEP 4 — "reaction": a short natural spoken reaction in English (3-10 words), like a friendly
 conversation partner reacting to what they actually said. If "refused", acknowledge it lightly
@@ -404,16 +410,16 @@ religion, politics, health and family money.
 
 Return ONLY JSON:
 {{"answer_type": "...", "full_sentences": n, "structures": [...], "errors": [...], "fluency": "..." or null,
-"accuracy": "...", "vocabulary": "...", "grammar": "...", "overall": "...",
+"vocabulary": "...", "grammar": "...",
 "reaction": "...", "next_question": "..."}}"""
     data = await _json_completion(prompt, max_tokens=2500)
     if not data:
         return None
     answer_type = data.get("answer_type") if data.get("answer_type") in ("answer", "refused", "not_understood") else "answer"
-    overall = cefr_index(data.get("overall"))
+    levels = {k: CEFR[i] for k in CRITERIA if (i := cefr_index(data.get(k))) is not None}
+    overall = combine_levels(levels)
     if overall is None and answer_type != "refused":
         return None
-    levels = {k: CEFR[i] for k in CRITERIA if (i := cefr_index(data.get(k))) is not None}
     # What the student can say caps the level — fluent delivery of simple
     # sentences doesn't make them B1. Enforced here, not left to the prompt.
     said = [CEFR.index(levels[k]) for k in ("grammar", "vocabulary") if k in levels]
@@ -461,29 +467,30 @@ def _turn_for_prompt(i: int, t: dict[str, Any]) -> str:
 
 
 async def assess_test(turns: list[dict[str, Any]]) -> dict[str, Any]:
-    """The final result: the model judges the whole conversation, the level is
-    kept within one step of the sustained level, and if the model call fails
-    the sustained levels are used as they are."""
+    """The final result: the model judges each criterion over the whole
+    conversation, kept within one step of the student's sustained level on that
+    criterion, and the level is the three criteria combined. If the model call
+    fails the sustained levels are used as they are."""
     counted = scored(turns)
     anchor = sustained_level(turns)
     spoken = any(t.get("spoken") for t in counted)
     prompt = f"""Ты экзаменатор по английскому. Студент из Казахстана прошёл устный разговорный тест.
-Определи его уровень по тому, КАК ОН ГОВОРИТ, — по всем ответам вместе.
+Оцени три критерия — беглость, словарный запас, грамматику — по тому, КАК ОН ГОВОРИТ, по всем
+ответам вместе. Итоговый уровень посчитаем из этих трёх оценок.
 
 {LEVEL_GUIDE}
 
 ОТВЕТЫ (транскрипт речи; по каждому — что было измерено по аудио и как оценён этот ответ):
 {chr(10).join(_turn_for_prompt(i, t) for i, t in enumerate(counted, 1))}
 
-Ориентир по ответам: устойчивый уровень студента — {anchor}. Итог — это уровень, на котором студент
+Ориентир по ответам: устойчивый уровень студента — {anchor}. Оценка — это уровень, на котором студент
 говорит стабильно, а не его лучший ответ: первые вопросы простые и высокий уровень показать не дают,
 а один удачный ответ ещё не уровень.
 {"" if spoken else "Все ответы набраны текстом — беглость не оценивай, верни для fluency null."}
 
 Верни ТОЛЬКО JSON:
 {{
-  "level": "<A1|A2|B1|B2|C1|C2>",
-  "fluency": "<уровень или null>", "accuracy": "<уровень>", "vocabulary": "<уровень>", "grammar": "<уровень>",
+  "fluency": "<A1|A2|B1|B2|C1|C2 или null>", "vocabulary": "<уровень>", "grammar": "<уровень>",
   "summary_ru": "<2 предложения простыми словами: что студент уже умеет и чего пока не хватает до следующего уровня>",
   "strengths": ["<конкретная сильная сторона со ссылкой на его ответ>", "..."],
   "improve": ["<конкретно что подтянуть и как тренировать>", "..."],
@@ -492,7 +499,6 @@ async def assess_test(turns: list[dict[str, Any]]) -> dict[str, Any]:
 По 2-3 пункта в strengths и improve. Без общих советов — только по его ответам."""
     data = await _json_completion(prompt, max_tokens=2500) or {}
 
-    level = clamp_level(data.get("level"), anchor) if data else anchor
     criteria: dict[str, str | None] = {}
     for key in CRITERIA:
         own = sustained_criterion(turns, key)
@@ -502,6 +508,8 @@ async def assess_test(turns: list[dict[str, Any]]) -> dict[str, Any]:
             criteria[key] = None
         else:
             criteria[key] = clamp_level(data.get(key), own) if data else own
+    combined = combine_levels(criteria)
+    level = CEFR[combined] if combined is not None else anchor
     summary = {
         "summary_ru": str(data.get("summary_ru") or _FALLBACK_SUMMARY["summary_ru"]),
         "strengths": [str(x) for x in data.get("strengths") or []][:3],

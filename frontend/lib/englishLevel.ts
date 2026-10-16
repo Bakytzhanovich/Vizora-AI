@@ -3,16 +3,16 @@
 
 export const CEFR = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 
-// Results since the CEFR rubric rate each criterion as a level ("B1");
-// earlier ones stored 0-10 scores on a different set of criteria.
-export const CRITERIA = ["fluency", "accuracy", "vocabulary", "grammar"] as const;
-const LEGACY_CRITERIA = ["grammar", "vocabulary", "coherence", "development", "fluency"] as const;
+// Current results rate fluency, vocabulary and grammar as CEFR levels ("B1").
+// Stored older results also have "accuracy" (CEFR) or 0-10 scores on
+// coherence/development, so the keys come from the result itself.
+const CRITERIA_ORDER = ["fluency", "vocabulary", "grammar", "accuracy", "coherence", "development"] as const;
 
 export type CriterionValue = string | number | null;
 export type Criteria = Record<string, CriterionValue>;
 
 export function criteriaKeys(criteria: Criteria): readonly string[] {
-  return "accuracy" in criteria ? CRITERIA : LEGACY_CRITERIA;
+  return CRITERIA_ORDER.filter((key) => key in criteria);
 }
 
 /** Share of the bar to fill, 0-1. */
