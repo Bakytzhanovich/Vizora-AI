@@ -69,10 +69,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/profile/me`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await fetch("/api/profile/me", { headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) return;
       const data = await res.json();
       if (data.branding) {
