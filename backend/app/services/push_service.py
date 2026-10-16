@@ -64,6 +64,20 @@ async def _send_to_user(db: AsyncSession, user_id: str, title: str, body: str, u
         await send_push(sub, title, body, url)
 
 
+async def notify_admins(title: str, body: str, url: str) -> None:
+    """Push to every platform admin who enabled notifications. Best-effort:
+    runs after the response, so a push failure must not surface anywhere."""
+    try:
+        async with AsyncSessionLocal() as db:
+            subs = (await db.execute(
+                select(PushSubscription).join(User, User.id == PushSubscription.user_id).where(User.role == "admin")
+            )).scalars().all()
+        for sub in subs:
+            await send_push(sub, title, body, url)
+    except Exception:
+        logger.warning("Admin push failed", exc_info=True)
+
+
 async def send_interview_3day_reminders(db: AsyncSession) -> None:
     target_date = date.today() + timedelta(days=3)
     has_session_subq = (

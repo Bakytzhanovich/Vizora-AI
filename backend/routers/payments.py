@@ -9,7 +9,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -25,6 +25,7 @@ from app.models.simulator import SimulatorSession
 from app.models.subscription_event import SubscriptionEvent
 from app.models.user import User
 from app.services import kaspi_pay_client
+from app.services.push_service import notify_admins
 from app.services.subscription_service import AGENCY_PLANS, PAID_PLANS, PLAN_LIMITS, get_user_access
 
 logger = logging.getLogger(__name__)
@@ -530,6 +531,7 @@ def _manual_request_out(req: PaymentRequest) -> dict:
 @router.post("/manual-requests", status_code=status.HTTP_201_CREATED)
 async def create_manual_request(
     body: ManualPaymentRequestBody,
+    background_tasks: BackgroundTasks,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
@@ -558,6 +560,15 @@ async def create_manual_request(
             user_id=user_id, plan=body.plan, billing_period=body.billing_period, amount=amount, phone=body.phone
         )
         db.add(req)
+        # Only for a new request: the owner has to send an invoice, and a
+        # student who changes the plan or phone on an open one is already listed.
+        amount_text = f"{amount:,}".replace(",", " ")
+        background_tasks.add_task(
+            notify_admins,
+            "Новая заявка на оплату",
+            f"{user.email} · {PLAN_NAMES_RU.get(body.plan, body.plan)} · {amount_text} ₸ · +{body.phone}",
+            "/admin/payments",
+        )
     await db.commit()
     await db.refresh(req)
     return _manual_request_out(req)

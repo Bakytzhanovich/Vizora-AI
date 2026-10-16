@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -106,6 +107,19 @@ class ManualPaymentTests(unittest.TestCase):
     def test_unsigned_webhook_is_rejected_without_kaspi_service(self):
         res = self.client.post("/api/payments/webhook", json={"paymentId": "manual:x", "event": "payment.success"})
         self.assertEqual(res.status_code, 401)
+
+    def test_admins_get_one_push_per_new_request(self):
+        sent = []
+
+        async def record(title, body, url):
+            sent.append((title, body, url))
+
+        with patch("routers.payments.notify_admins", record):
+            self._request("canceller")
+            self._request("canceller", plan="premium")  # edits the open request
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0][2], "/admin/payments")
+        self.assertIn("+77011234567", sent[0][1])
 
     def test_phone_is_normalized_and_validated(self):
         self.assertEqual(self._request("student", phone="8 (777) 000 11 22")["phone"], "77770001122")
