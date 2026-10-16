@@ -1,4 +1,4 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = ""; // same origin — next.config.mjs proxies /api to the backend
 
 interface TrackPayload {
   event: string;

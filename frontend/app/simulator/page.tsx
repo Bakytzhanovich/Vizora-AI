@@ -15,7 +15,7 @@ import { track } from "@/lib/analytics";
 import { useAuth } from "@/hooks/useAuth";
 import { apiGetPlans } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = ""; // same origin — next.config.mjs proxies /api to the backend
 
 type Step = "mode_select" | "interview" | "results" | "level_test" | "level_result";
 

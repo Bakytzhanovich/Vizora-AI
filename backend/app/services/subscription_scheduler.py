@@ -1,4 +1,5 @@
-"""APScheduler jobs resetting usage counters: sessions monthly, FAQ daily.
+"""APScheduler job resetting the daily FAQ counter. The monthly simulator
+session counter resets lazily in subscription_service.get_user_access.
 
 Mirrors scraper/scheduler.py and app/services/push_scheduler.py's structure.
 """
@@ -22,13 +23,6 @@ def get_scheduler() -> AsyncIOScheduler:
     return _scheduler
 
 
-async def reset_monthly_sessions() -> None:
-    async with AsyncSessionLocal() as db:
-        await db.execute(text("UPDATE users SET sessions_used_this_month = 0"))
-        await db.commit()
-    logger.info("Monthly simulator session counters reset")
-
-
 async def reset_daily_faq() -> None:
     async with AsyncSessionLocal() as db:
         await db.execute(
@@ -44,15 +38,6 @@ def start_subscription_scheduler() -> AsyncIOScheduler:
         return scheduler
 
     scheduler.add_job(
-        reset_monthly_sessions,
-        trigger="cron",
-        day=1,
-        hour=0,
-        id="monthly_session_reset",
-        replace_existing=True,
-        misfire_grace_time=3600,
-    )
-    scheduler.add_job(
         reset_daily_faq,
         trigger="cron",
         hour=0,
@@ -62,7 +47,7 @@ def start_subscription_scheduler() -> AsyncIOScheduler:
     )
 
     scheduler.start()
-    logger.info("Subscription scheduler started: monthly sessions (day=1 00:00), daily FAQ (00:00) Almaty time")
+    logger.info("Subscription scheduler started: daily FAQ reset (00:00 Almaty time)")
     return scheduler
 
 

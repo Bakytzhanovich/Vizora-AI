@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 import bcrypt
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -74,7 +74,10 @@ async def _create_student_account(db: AsyncSession, email: str, name: str, agenc
     """New student account with a generated password, returned once so the
     agency can pass it on — it's never stored in plain text."""
     password = _generate_student_password()
-    user = User(email=email, password_hash=hash_password(password), password_set_by_agency=agency_id)
+    # bcrypt takes ~0.25 s of CPU; inline it would stall every other request
+    # for the whole length of a bulk import.
+    password_hash = await asyncio.to_thread(hash_password, password)
+    user = User(email=email, password_hash=password_hash, password_set_by_agency=agency_id)
     set_free_plan(user)
     db.add(user)
     await db.flush()
@@ -213,7 +216,7 @@ def _normalize_email(v: str) -> str:
 
 class AddStudentBody(BaseModel):
     email: EmailStr
-    name: str
+    name: str = Field(max_length=100)
 
     @field_validator("email")
     @classmethod
@@ -223,7 +226,7 @@ class AddStudentBody(BaseModel):
 
 class BulkStudent(BaseModel):
     email: EmailStr
-    name: str
+    name: str = Field(max_length=100)
 
     @field_validator("email")
     @classmethod
@@ -232,7 +235,7 @@ class BulkStudent(BaseModel):
 
 
 class BulkAddBody(BaseModel):
-    students: list[BulkStudent]
+    students: list[BulkStudent] = Field(max_length=200)
 
 
 class UpdateSettingsBody(BaseModel):
@@ -432,6 +435,9 @@ async def bulk_add_students(
     results = []
     assigned_manager = ctx.member_id if ctx.role == "manager" else None
     for s in body.students:
+        # A savepoint per row: one failing row rolls back only itself, not
+        # the rows before it and the final commit.
+        savepoint = await db.begin_nested()
         try:
             user = await db.scalar(select(User).where(func.lower(User.email) == s.email))
             password = None
@@ -457,7 +463,9 @@ async def bulk_add_students(
                 )
                 db.add(link)
                 results.append({"email": s.email, "status": "added", "password": password})
+            await savepoint.commit()
         except Exception as e:
+            await savepoint.rollback()
             results.append({"email": s.email, "status": "error", "detail": str(e)})
 
     await db.commit()

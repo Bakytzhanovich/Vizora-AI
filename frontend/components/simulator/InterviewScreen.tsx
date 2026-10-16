@@ -11,7 +11,7 @@ import type { FeedbackData } from "./ResultsScreen";
 import { TrialSessionEndedModal } from "./TrialSessionEndedModal";
 import { OfficerDecision, OfficerDecisionCard, isOfficerDecision } from "./OfficerDecisionCard";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = ""; // same origin — next.config.mjs proxies /api to the backend
 
 function makeId() {
   return Math.random().toString(36).slice(2);

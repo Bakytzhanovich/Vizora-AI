@@ -16,7 +16,7 @@ import { useBranding } from "@/hooks/useBranding";
 import { track } from "@/lib/analytics";
 import { fetchWithAuth } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = ""; // same origin — next.config.mjs proxies /api to the backend
 
 interface Message {
   id: string;

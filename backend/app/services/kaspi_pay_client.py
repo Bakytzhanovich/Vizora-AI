@@ -22,7 +22,7 @@ is deliberately no separate on/off flag for this (a prior version of this
 file had a KASPI_MOCK_MODE setting that could drift from the credentials and
 silently disable webhook signature verification; see git history). Mock mode
 simulates the flow entirely in-process so the rest of the monetization system
-(access control, webhooks, DB updates) can be built and tested end to end
+(access control, mock completion, DB updates) can be built and tested end to end
 without a running kaspi-service.
 
 payment_id is always Kaspi's own QrOperationId (never something we invent) —
@@ -192,9 +192,11 @@ def verify_webhook_signature(raw_body: bytes, signature: str | None) -> bool:
     """Verifies the webhook kaspi-service sends (kaspi-service/src/polling.js
     sendWebhook — HMAC-SHA256 over the raw body, header `sha256=<hex>`,
     secret from a webhooks.json entry that must equal KASPI_WEBHOOK_SECRET).
-    Mock mode always accepts."""
+    Mock mode rejects everything: with no kaspi-service nothing legitimate
+    sends webhooks, and accepting unsigned ones would let anyone mark any
+    pending checkout as paid."""
     if is_mock_mode():
-        return True
+        return False
     if not settings.KASPI_WEBHOOK_SECRET or not signature:
         return False
     if not signature.startswith("sha256="):

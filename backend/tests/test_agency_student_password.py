@@ -2,6 +2,7 @@ import asyncio
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -12,6 +13,7 @@ from app.core.database import Base, get_db
 from app.core.security import create_access_token, hash_password
 from app.models.agency import Agency, AgencyMember
 from app.models.user import User
+import routers.agency as agency_router
 from main import app
 from middleware.rate_limit import limiter
 
@@ -177,6 +179,30 @@ class AgencyStudentPasswordTests(unittest.TestCase):
         self.assertEqual(self._login("bulk1@x.com", by_email["bulk1@x.com"]["password"]), 200)
         self.assertIsNone(by_email["own@x.com"]["password"])
         self.assertEqual(by_email["own@x.com"]["status"], "invited")
+
+    def test_bulk_add_failing_row_doesnt_lose_the_others(self):
+        create = agency_router._create_student_account
+
+        async def failing_for_bad(db, email, name, agency_id):
+            if email == "bad@x.com":
+                db.add(User(email="own@x.com", password_hash="x"))  # duplicate email
+                await db.flush()
+            return await create(db, email, name, agency_id)
+
+        with patch.object(agency_router, "_create_student_account", failing_for_bad):
+            res = self.client.post("/api/agency/students/bulk-add", headers=self._headers("a"), json={"students": [
+                {"email": "before@x.com", "name": "Before"}, {"email": "bad@x.com", "name": "Bad"},
+                {"email": "after@x.com", "name": "After"},
+            ]})
+        self.assertEqual(res.status_code, 200)
+        statuses = {r["email"]: r["status"] for r in res.json()["results"]}
+        self.assertEqual(statuses, {"before@x.com": "added", "bad@x.com": "error", "after@x.com": "added"})
+        self.assertEqual(self._login("after@x.com", res.json()["results"][2]["password"]), 200)
+
+    def test_bulk_add_is_capped(self):
+        students = [{"email": f"cap{i}@x.com", "name": "C"} for i in range(201)]
+        res = self.client.post("/api/agency/students/bulk-add", headers=self._headers("a"), json={"students": students})
+        self.assertEqual(res.status_code, 422)
 
 
 if __name__ == "__main__":

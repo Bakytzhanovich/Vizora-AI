@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = ""; // same origin — next.config.mjs proxies /api to the backend
 
 export interface TelegramWebApp {
   initData: string;

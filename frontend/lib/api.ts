@@ -2,7 +2,7 @@ import axios from "axios";
 
 import type { Attribution } from "@/lib/attribution";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE_URL = ""; // same origin — next.config.mjs proxies /api to the backend
 
 export const api = axios.create({
   baseURL: `${BASE_URL}/api`,

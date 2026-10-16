@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { Criteria } from "@/lib/englishLevel";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE_URL = ""; // same origin — next.config.mjs proxies /api to the backend
 
 export const agencyApi = axios.create({
   baseURL: `${BASE_URL}/api/agency`,

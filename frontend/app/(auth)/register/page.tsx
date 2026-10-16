@@ -39,7 +39,7 @@ export default function RegisterPage() {
     if (code) {
       setRefCode(code.toUpperCase());
       // Try to fetch referrer name
-      const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const BASE = ""; // same origin — next.config.mjs proxies /api to the backend
       fetch(`${BASE}/api/referral/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer preview" },

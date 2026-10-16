@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.core.database import Base, get_db
+from app.core.agency_auth import create_member_token
 from app.core.security import create_access_token, hash_password
+from app.models.agency import Agency, AgencyMember
 from app.models.user import User
 from main import app
 from middleware.rate_limit import limiter
@@ -63,8 +65,13 @@ class ManualPaymentTests(unittest.TestCase):
             users["renewer"].subscription_plan = "standard"
             users["renewer"].subscription_period_end = datetime.utcnow() + timedelta(days=10)
             s.add_all(users.values())
+            agency = Agency(name="A", email="agency@x.com", password_hash="x", country="KZ")
+            s.add(agency)
+            await s.flush()
+            member = AgencyMember(agency_id=agency.id, role="admin", name="A", email="agency@x.com", status="active")
+            s.add(member)
             await s.commit()
-            return {name: u.id for name, u in users.items()}
+            return {**{name: u.id for name, u in users.items()}, "agency": agency.id, "agency_member": member.id}
 
     def _headers(self, who: str) -> dict:
         return {"Authorization": f"Bearer {create_access_token(self.ids[who])}"}
@@ -87,6 +94,18 @@ class ManualPaymentTests(unittest.TestCase):
         self.assertEqual(create.status_code, 409)
         mock = self.client.post("/api/payments/mock-complete/anything", headers=self._headers("student"))
         self.assertEqual(mock.status_code, 404)
+
+    def test_agency_cannot_pay_itself_in_manual_mode(self):
+        headers = {"Authorization": f"Bearer {create_member_token(self.ids['agency'], self.ids['agency_member'], 'admin')}"}
+        create = self.client.post("/api/agency/billing/create-payment", headers=headers,
+                                  json={"plan": "agency_partner", "billing_period": "monthly"})
+        self.assertEqual(create.status_code, 409)
+        mock = self.client.post("/api/agency/billing/mock-complete/anything", headers=headers)
+        self.assertEqual(mock.status_code, 404)
+
+    def test_unsigned_webhook_is_rejected_without_kaspi_service(self):
+        res = self.client.post("/api/payments/webhook", json={"paymentId": "manual:x", "event": "payment.success"})
+        self.assertEqual(res.status_code, 401)
 
     def test_phone_is_normalized_and_validated(self):
         self.assertEqual(self._request("student", phone="8 (777) 000 11 22")["phone"], "77770001122")

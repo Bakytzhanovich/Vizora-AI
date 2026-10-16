@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agency_auth import AgencyCtx, require_admin
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.subscription_event import SubscriptionEvent
 from app.services import kaspi_pay_client
@@ -38,6 +39,11 @@ async def create_agency_payment(
         raise HTTPException(status_code=400, detail=f"Unknown agency plan: {body.plan}")
     if body.billing_period not in ("monthly", "yearly"):
         raise HTTPException(status_code=400, detail="billing_period must be 'monthly' or 'yearly'")
+    # Without kaspi-service this would be a mock checkout the agency can
+    # "pay" itself through /mock-complete — the same reason students are
+    # moved to manual invoices.
+    if settings.PAYMENT_MODE == "manual":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Agency plans are activated manually")
 
     amount = PLAN_PRICES_KZT[body.plan][body.billing_period]
 
@@ -78,7 +84,7 @@ async def mock_complete_agency_payment(
 ):
     """Dev-only: simulates a successful Kaspi webhook without a real Kaspi
     sandbox. 404s outside mock mode so this can never fire in production."""
-    if not kaspi_pay_client.is_mock_mode():
+    if not kaspi_pay_client.is_mock_mode() or settings.PAYMENT_MODE == "manual":
         raise HTTPException(status_code=404, detail="Not found")
     result = await _apply_successful_payment(payment_id, db, expected_agency_id=ctx.agency_id)
     return {"received": True, **result}

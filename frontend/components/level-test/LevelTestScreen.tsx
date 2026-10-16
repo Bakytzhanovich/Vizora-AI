@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Check, GraduationCap, SendHorizontal, Volume2, VolumeX } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { VoiceButton, VoiceState } from "@/components/simulator/VoiceButton";
 import { VoiceRecorder } from "@/lib/voice";
 import type { LevelResult } from "./LevelResultScreen";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = ""; // same origin — next.config.mjs proxies /api to the backend
 
 // Long enough to hear the closing line before the results replace the chat.
 const OUTRO_MIN_DISPLAY_MS = 1500;
@@ -31,6 +31,14 @@ type Confirm = "exit" | "finish" | null;
 
 function makeId() {
   return Math.random().toString(36).slice(2);
+}
+
+function TesterAvatar() {
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+      <GraduationCap size={17} />
+    </span>
+  );
 }
 
 export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, onBack }: Props) {
@@ -234,7 +242,7 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
   };
 
   return (
-    <div className="flex flex-col h-screen bg-bg">
+    <div className="flex flex-col h-[100dvh] bg-bg">
       {confirm && (
         <div
           className="fixed inset-0 z-50 bg-bg/90 backdrop-blur flex items-center justify-center px-4"
@@ -276,86 +284,114 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
           </div>
         </div>
       )}
-      <div className="shrink-0 bg-bg/90 backdrop-blur border-b border-border px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={handleExit}
-              disabled={isFinishing}
-              className="shrink-0 flex items-center gap-1 text-secondary hover:text-primary transition-colors text-sm disabled:opacity-50"
-            >
-              <ArrowLeft size={20} />
-              <span className="hidden sm:inline">{t("level_test.exit")}</span>
-            </button>
-            <span className="text-primary font-semibold text-sm truncate">🎯 {t("level_test.title")}</span>
-          </div>
-          <div className="shrink-0 flex items-center gap-3">
-            <span className="text-secondary text-xs tabular-nums whitespace-nowrap">
+      <header className="shrink-0 border-b border-border bg-bg/90 backdrop-blur pt-[env(safe-area-inset-top)]">
+        <div className="max-w-2xl mx-auto flex h-14 items-center gap-1 px-2">
+          <button
+            onClick={handleExit}
+            disabled={isFinishing}
+            aria-label={t("level_test.exit")}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors disabled:opacity-50"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-primary text-[15px] font-semibold leading-tight">{t("level_test.short_title")}</p>
+            <p className="text-secondary text-xs tabular-nums">
               {t("level_test.question_of", { n: questionNumber, max: maxQuestions })}
-            </span>
-            <button
-              onClick={() => setAudioEnabled((v) => !v)}
-              className="text-secondary hover:text-primary transition-colors"
-            >
-              {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
-            <button
-              onClick={() => setConfirm("finish")}
-              disabled={!canFinish}
-              title={answered === 0 ? t("level_test.finish_hint") : undefined}
-              className="whitespace-nowrap text-xs text-accent border border-accent/30 px-3 py-1.5 rounded-lg hover:bg-accent/10 transition-all disabled:opacity-40 disabled:hover:bg-transparent"
-            >
-              {t("level_test.finish")}
-            </button>
+            </p>
           </div>
+          <button
+            onClick={() => setAudioEnabled((v) => !v)}
+            aria-label={t(audioEnabled ? "level_test.sound_off" : "level_test.sound_on")}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
+          >
+            {audioEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+          </button>
+          <button
+            onClick={() => setConfirm("finish")}
+            disabled={!canFinish}
+            title={answered === 0 ? t("level_test.finish_hint") : undefined}
+            className="mr-1 h-9 shrink-0 whitespace-nowrap rounded-lg bg-accent/10 px-3 text-sm font-medium text-accent hover:bg-accent/15 transition-colors disabled:opacity-40 disabled:hover:bg-accent/10"
+          >
+            {t("level_test.finish")}
+          </button>
         </div>
-        <div className="max-w-2xl mx-auto mt-2 h-1 rounded-full bg-border overflow-hidden">
-          <motion.div
-            className="h-full bg-accent"
-            animate={{ width: `${Math.min(100, ((questionNumber - 1) / maxQuestions) * 100)}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className="max-w-2xl mx-auto">
-          {messages.map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex mb-3 ${m.role === "tester" ? "justify-start" : "justify-end"}`}
-            >
-              <div
-                className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed ${
-                  m.role === "tester"
-                    ? "bg-card border border-border text-primary rounded-2xl rounded-tl-sm"
-                    : "bg-accent text-white rounded-2xl rounded-tr-sm"
-                }`}
-              >
-                {m.content}
-              </div>
-            </motion.div>
+        <div className="max-w-2xl mx-auto flex gap-1 px-4 pb-3">
+          {Array.from({ length: maxQuestions }, (_, i) => (
+            <span
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < questionNumber - 1 ? "bg-accent" : "bg-border"}`}
+            />
           ))}
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 py-5">
+        <div className="max-w-2xl mx-auto">
+          {answered === 0 && (
+            <div className="mb-5 rounded-2xl border border-border bg-card p-4">
+              <p className="text-primary text-sm font-semibold mb-2.5">{t("level_test.how_title")}</p>
+              <ul className="space-y-2">
+                {(t("level_test.how_items", { returnObjects: true }) as string[]).map((item) => (
+                  <li key={item} className="flex gap-2.5 text-secondary text-sm leading-snug">
+                    <Check size={16} className="mt-0.5 shrink-0 text-accent" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {messages.map((m, i) =>
+            m.role === "tester" ? (
+              <motion.div key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex gap-2.5">
+                <TesterAvatar />
+                <div className="min-w-0 max-w-[85%]">
+                  <div className="rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 text-primary text-[15px] leading-relaxed">
+                    {m.content}
+                  </div>
+                  {isPlaying && i === messages.length - 1 && (
+                    <p className="mt-1.5 flex items-center gap-1.5 pl-1 text-accent text-xs">
+                      <Volume2 size={14} className="animate-pulse" />
+                      {t("level_test.speaking")}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-4 flex justify-end">
+                <div className="max-w-[80%] rounded-2xl rounded-tr-md bg-accent px-4 py-3 text-white text-[15px] leading-relaxed">
+                  {m.content}
+                </div>
+              </motion.div>
+            ),
+          )}
           {isWaiting && (
-            <div className="flex mb-3">
-              <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-2.5 text-secondary text-sm animate-pulse">
-                …
+            <div className="mb-4 flex gap-2.5">
+              <TesterAvatar />
+              <div className="flex items-center gap-1 rounded-2xl rounded-tl-md border border-border bg-card px-4 py-4">
+                {[0, 1, 2].map((d) => (
+                  <motion.span
+                    key={d}
+                    className="h-1.5 w-1.5 rounded-full bg-secondary"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: d * 0.2 }}
+                  />
+                ))}
               </div>
             </div>
           )}
           {isFinishing && (
-            <p className="text-secondary text-xs text-center mt-4 animate-pulse">{t("level_test.calculating")}</p>
+            <p className="text-secondary text-sm text-center mt-4 animate-pulse">{t("level_test.calculating")}</p>
           )}
           <div ref={bottomRef} />
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border bg-bg px-4 py-4">
+      <div className="shrink-0 border-t border-border bg-card px-4 pt-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="max-w-2xl mx-auto">
-          {error && <p className="text-error text-xs text-center mb-2">{error}</p>}
+          {error && <p className="text-error text-sm text-center mb-3">{error}</p>}
           {hasMic ? (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center">
               <VoiceButton
                 state={voiceState}
                 onClick={handleMicClick}
@@ -363,13 +399,14 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
               />
               <button
                 onClick={() => setHasMic(false)}
-                className="text-secondary text-xs hover:text-primary transition-colors"
+                className="min-h-11 px-3 text-secondary text-sm hover:text-primary transition-colors"
               >
                 {t("interview.no_mic")}
               </button>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex gap-2 pb-1">
+              {/* 16px text: iOS Safari zooms the page into smaller inputs on focus. */}
               <input
                 type="text"
                 value={textInput}
@@ -377,14 +414,15 @@ export function LevelTestScreen({ testId, openingMessage, maxQuestions, onDone, 
                 onKeyDown={(e) => e.key === "Enter" && !isBusy && handleTextSubmit()}
                 placeholder={t("interview.type_placeholder")}
                 disabled={isBusy}
-                className="flex-1 bg-card border border-border focus:border-accent/50 rounded-xl px-4 py-3 text-primary placeholder-secondary text-sm outline-none transition-colors disabled:opacity-50"
+                className="min-w-0 flex-1 bg-bg border border-border focus:border-accent/50 rounded-xl px-4 py-3 text-primary placeholder-secondary text-base outline-none transition-colors disabled:opacity-50"
               />
               <button
                 onClick={handleTextSubmit}
                 disabled={isBusy || !textInput.trim()}
-                className="bg-accent hover:bg-accent-hover disabled:opacity-40 text-white px-4 rounded-xl font-semibold text-sm transition-all"
+                aria-label={t("level_test.send")}
+                className="flex w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-40"
               >
-                →
+                <SendHorizontal size={20} />
               </button>
             </div>
           )}

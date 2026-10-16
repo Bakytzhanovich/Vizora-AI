@@ -10,6 +10,7 @@ forward (see routers/payments.py).
 """
 
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,6 +80,10 @@ FEATURE_KEYS = {
 }
 
 
+def _current_month() -> date:
+    return datetime.now(ZoneInfo("Asia/Almaty")).date().replace(day=1)
+
+
 def set_free_plan(user: User) -> None:
     """Every new account starts here — permanently, unless they subscribe.
     Called from every registration path (register, Google, Telegram)."""
@@ -106,6 +111,15 @@ async def get_user_access(user: User, db: AsyncSession) -> dict:
     result: dict = {"plan": plan, "limits": limits, "period_end": user.subscription_period_end}
 
     if limits.get("simulator_sessions_per_month") is not None:
+        # Reset on the first request of a new month rather than by a midnight
+        # job: an in-memory scheduler skips the job for good if the process is
+        # restarting or asleep at that minute, leaving a paying student at
+        # "15/15 used" for the whole month.
+        month = _current_month()
+        if user.sessions_month != month:
+            user.sessions_used_this_month = 0
+            user.sessions_month = month
+            await db.commit()
         result["sessions_used"] = user.sessions_used_this_month
         result["sessions_limit"] = limits["simulator_sessions_per_month"]
         result["sessions_ok"] = user.sessions_used_this_month < limits["simulator_sessions_per_month"]

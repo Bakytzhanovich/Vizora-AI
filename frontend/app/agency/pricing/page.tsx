@@ -20,12 +20,15 @@ export default function AgencyPricingPage() {
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualNote, setManualNote] = useState(false);
 
   useEffect(() => {
     Promise.all([agencyGetMe(), apiGetPlans()])
       .then(([meData, plansData]) => {
         setMe(meData);
         setPlans(plansData.plans.filter((p) => AGENCY_PLAN_IDS.includes(p.id)));
+        setManualMode(plansData.payment_mode === "manual");
       })
       .catch(() => setError("Не удалось загрузить тарифы"))
       .finally(() => setLoading(false));
@@ -66,6 +69,12 @@ export default function AgencyPricingPage() {
         </div>
 
         {error && <div className="max-w-md mx-auto mb-6 text-center text-sm text-red-500">{error}</div>}
+        {manualNote && (
+          <div className="max-w-xl mx-auto mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm text-blue-900">
+            Онлайн-оплата для агентств скоро появится. Сейчас тариф подключаем вручную — напишите нам, и мы выставим
+            счёт Kaspi.
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-20">
@@ -129,7 +138,7 @@ export default function AgencyPricingPage() {
                     )}
                   </ul>
                   <button
-                    onClick={() => setCheckoutPlan(plan.id)}
+                    onClick={() => (manualMode ? setManualNote(true) : setCheckoutPlan(plan.id))}
                     disabled={isCurrent}
                     className={`w-full py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${
                       isPopular ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-100 hover:bg-gray-200 text-gray-900"

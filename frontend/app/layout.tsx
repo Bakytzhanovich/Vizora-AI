@@ -23,7 +23,6 @@ const manrope = Manrope({
 
 // TODO: update to real domain once purchased (ТЗ-030)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vizora-ai-theta.vercel.app";
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export const metadata: Metadata = {
   title: {
@@ -104,7 +103,6 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#F5F5FF" />
-        <link rel="preconnect" href={API_URL} crossOrigin="anonymous" />
         {/* Sets data-theme from localStorage before first paint — without this,
             a user who picked "dark" would see a flash of the light default
             (CSS vars in :root) on every load, since ThemeProvider only runs

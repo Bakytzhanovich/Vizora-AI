@@ -67,6 +67,8 @@ class User(Base):
     # customer/subscription object, so there's no stripe_customer_id equivalent.
     kaspi_last_payment_id = Column(String(64), nullable=True)
     sessions_used_this_month = Column(Integer, nullable=False, default=0)
+    # First day of the month sessions_used_this_month counts (Almaty time).
+    sessions_month = Column(Date, nullable=True)
     faq_used_today = Column(Integer, nullable=False, default=0)
     faq_reset_date = Column(Date, nullable=True)
     trial_discount_shown = Column(Boolean, nullable=False, default=False)

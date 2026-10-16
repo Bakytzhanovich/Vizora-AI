@@ -118,12 +118,12 @@ async def start_session(
     # deliberately does not commit for this reason.
     #
     # get_user_access() is the one exception: it commits internally when it
-    # demotes a just-lapsed paid plan to free (subscription_service.py), which
-    # would release this lock right before its own session-count check runs —
-    # reopening the same race for exactly that transition. Call it once to
-    # flush any pending demotion, then re-acquire the lock: the plan is now
-    # already "free" and persisted, so this second call can't itself commit
-    # and drop the lock before the insert further down.
+    # demotes a just-lapsed paid plan to free or starts a new month's session
+    # count (subscription_service.py), which would release this lock right
+    # before its own session-count check runs — reopening the same race for
+    # exactly that transition. Call it once to flush any pending change, then
+    # re-acquire the lock: the change is now persisted, so this second call
+    # can't itself commit and drop the lock before the insert further down.
     user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
