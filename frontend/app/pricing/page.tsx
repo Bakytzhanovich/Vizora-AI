@@ -28,7 +28,7 @@ function PricingContent() {
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [paymentMode, setPaymentMode] = useState<"manual" | "kaspi">("manual");
-  const [socialProof, setSocialProof] = useState<{ student_count: number; average_score: number | null } | null>(null);
+  const [socialProof, setSocialProof] = useState<{ student_count: number } | null>(null);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -255,12 +255,6 @@ function PricingContent() {
               <span className="flex items-center gap-1.5">
                 <GraduationCap size={15} className="text-accent" />
                 {t("social_proof.students", { count: socialProof.student_count })}
-              </span>
-            )}
-            {socialProof.average_score != null && (
-              <span className="flex items-center gap-1.5">
-                <Star size={15} className="text-warning" fill="currentColor" />
-                {t("social_proof.average_score", { score: socialProof.average_score })}
               </span>
             )}
           </div>

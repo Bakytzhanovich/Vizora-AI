@@ -666,7 +666,7 @@ export async function apiGetManualPaymentRequest() {
 }
 
 export async function apiGetSocialProof() {
-  const { data } = await api.get<{ student_count: number; average_score: number | null }>(
+  const { data } = await api.get<{ student_count: number }>(
     "/payments/social-proof"
   );
   return data;

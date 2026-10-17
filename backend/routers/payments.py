@@ -21,7 +21,6 @@ from app.core.security import get_current_user_id
 from app.models.agency import Agency
 from app.models.payment_request import PaymentRequest
 from app.models.profile import StudentProfile
-from app.models.simulator import SimulatorSession
 from app.models.subscription_event import SubscriptionEvent
 from app.models.user import User
 from app.services import kaspi_pay_client
@@ -79,40 +78,9 @@ async def list_plans():
 
 @router.get("/social-proof")
 async def social_proof(db: AsyncSession = Depends(get_db)):
-    """Public — powers the trust row under /pricing plans. Computed from real
-    data (not hardcoded) so it never drifts out of sync with actual usage.
-
-    Scores are stored as a JSON blob per session (see SimulatorSession.scores),
-    so averaging happens in Python rather than a dialect-specific JSON query —
-    this app runs on both SQLite (local dev) and Postgres (prod), and this
-    mirrors the same pattern already used in /trial-summary above.
-    """
+    """Public — the student count in the trust row under /pricing plans."""
     student_count = await db.scalar(select(func.count(StudentProfile.id)))
-
-    sessions = list(
-        (
-            await db.execute(
-                select(SimulatorSession.scores).where(SimulatorSession.completed.is_(True))
-            )
-        )
-        .scalars()
-        .all()
-    )
-    scores: list[float] = []
-    for raw in sessions:
-        if not raw:
-            continue
-        try:
-            overall = json.loads(raw).get("overall")
-        except (json.JSONDecodeError, AttributeError):
-            continue
-        if isinstance(overall, (int, float)):
-            scores.append(float(overall))
-
-    return {
-        "student_count": student_count or 0,
-        "average_score": round(sum(scores) / len(scores), 1) if scores else None,
-    }
+    return {"student_count": student_count or 0}
 
 
 class CreatePaymentRequest(BaseModel):
