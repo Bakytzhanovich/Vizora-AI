@@ -8,6 +8,7 @@ import {
   publishAdminOffer,
   rejectAdminOffer,
   type AdminJobOffer,
+  type AdminOfferStats,
   type AdminOfferStatus,
 } from "@/lib/admin-api";
 
@@ -36,9 +37,30 @@ function formatPhone(p: string): string {
   return `+7 ${p.slice(1, 4)} ${p.slice(4, 7)} ${p.slice(7, 9)} ${p.slice(9, 11)}`;
 }
 
+function Summary({ stats }: { stats: AdminOfferStats }) {
+  const items = [
+    { label: "Заработано", value: `${formatKzt(stats.revenue_kzt)} ₸`, sub: `${formatKzt(stats.revenue_30d_kzt)} ₸ за 30 дней` },
+    { label: "Оплачено размещений", value: formatKzt(stats.paid), sub: `из ${formatKzt(stats.total)} заявок` },
+    { label: "Продавцов", value: formatKzt(stats.sellers), sub: "разместили хотя бы один оффер" },
+    { label: "Сейчас на доске", value: formatKzt(stats.published), sub: `${formatKzt(stats.expired)} истекли · ${formatKzt(stats.sold)} продано` },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      {items.map((i) => (
+        <div key={i.label} className="rounded-xl border border-[#242837] bg-[#12141C] p-4">
+          <p className="text-sm text-[#81889B]">{i.label}</p>
+          <p className="mt-2 text-xl font-bold text-white sm:text-2xl">{i.value}</p>
+          <p className="mt-1 text-xs text-[#81889B]">{i.sub}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function OffersContent() {
   const [filter, setFilter] = useState<Filter>("pending");
   const [offers, setOffers] = useState<AdminJobOffer[]>([]);
+  const [stats, setStats] = useState<AdminOfferStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -48,7 +70,9 @@ function OffersContent() {
     setLoading(true);
     setError(null);
     try {
-      setOffers((await getAdminOffers(filter)).offers);
+      const data = await getAdminOffers(filter);
+      setOffers(data.offers);
+      setStats(data.stats ?? null);
     } catch {
       setError("Не удалось загрузить офферы");
     } finally {
@@ -76,6 +100,8 @@ function OffersContent() {
 
   return (
     <div className="space-y-5">
+      {stats && <Summary stats={stats} />}
+
       <div className="rounded-xl border border-[#242837] bg-[#12141C] p-4 text-sm leading-relaxed text-[#A3A8B8]">
         Студент разместил оффер → открой файл и проверь, что оффер настоящий → выстави счёт Kaspi на сумму размещения
         на указанный номер → когда счёт оплачен, нажми <span className="font-semibold text-[#F5F7FF]">«Опубликовать»</span>.
@@ -93,6 +119,7 @@ function OffersContent() {
             }`}
           >
             {f.label}
+            {stats && <span className="ml-1.5 opacity-70">{f.id === "all" ? stats.total : f.id === "published" ? stats.published + stats.expired : stats[f.id]}</span>}
           </button>
         ))}
         <button

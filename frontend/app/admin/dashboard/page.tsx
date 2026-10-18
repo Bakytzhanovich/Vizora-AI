@@ -6,6 +6,7 @@ import {
   Activity,
   AlertCircle,
   BarChart3,
+  Briefcase,
   Building2,
   CheckCircle2,
   Clock,
@@ -15,6 +16,7 @@ import {
   ServerCog,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PanelErrorBoundary } from "@/components/admin/PanelErrorBoundary";
 import {
@@ -568,6 +570,17 @@ function OverviewSection({ overview }: { overview: AdminOverview }) {
             icon={Languages}
             tone="emerald"
           />
+        )}
+        {overview.offers && (
+          <Link href="/admin/offers" className="rounded-xl transition-opacity hover:opacity-80">
+            <StatCard
+              title="Офферы W&T, заработано ₸"
+              value={overview.offers.revenue_kzt}
+              subtitle={`${overview.offers.pending} ждут проверки · ${overview.offers.published} на доске`}
+              icon={Briefcase}
+              tone="amber"
+            />
+          </Link>
         )}
       </div>
 

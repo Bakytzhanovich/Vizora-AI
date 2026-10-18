@@ -49,6 +49,7 @@ export interface AdminOverview {
   // Students per CEFR band by their latest level test. Optional: the backend
   // deploys separately and may not send it yet.
   english_levels?: Record<"A1" | "A2" | "B1" | "B2" | "C1" | "C2", number>;
+  offers?: AdminOfferStats;
 }
 
 export interface AdminUsersResponse {
@@ -249,8 +250,22 @@ export interface AdminJobOffer extends JobOffer {
   created_at: string;
 }
 
+export interface AdminOfferStats {
+  total: number;
+  pending: number;
+  published: number;
+  expired: number;
+  hidden: number;
+  rejected: number;
+  sold: number;
+  sellers: number;
+  paid: number;
+  revenue_kzt: number;
+  revenue_30d_kzt: number;
+}
+
 export function getAdminOffers(status: AdminOfferStatus | "all") {
-  return adminFetch<{ offers: AdminJobOffer[] }>(`/admin/offers?status=${status}`);
+  return adminFetch<{ offers: AdminJobOffer[]; stats?: AdminOfferStats }>(`/admin/offers?status=${status}`);
 }
 
 export async function openAdminOfferProof(id: string) {

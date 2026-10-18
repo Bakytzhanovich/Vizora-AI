@@ -91,7 +91,12 @@ class JobOfferBoardTests(unittest.TestCase):
         self.assertEqual((proof.status_code, proof.headers["content-type"]), (200, "image/png"))
         self.assertEqual(self.client.get(f"/api/admin/offers/{offer_id}/proof", headers=self._h("b1")).status_code, 403)
 
+        stats = self.client.get("/api/admin/offers?status=all", headers=self._h("owner")).json()["stats"]
+        self.assertEqual((stats["pending"], stats["paid"], stats["revenue_kzt"]), (1, 0, 0))
+
         self.assertEqual(self.client.post(f"/api/admin/offers/{offer_id}/publish", headers=self._h("owner")).status_code, 200)
+        stats = self.client.get("/api/admin/overview", headers=self._h("owner")).json()["offers"]
+        self.assertEqual((stats["published"], stats["sellers"], stats["revenue_kzt"]), (1, 1, 3000))
         listed = self.client.get("/api/offers", headers=self._h("b1")).json()["offers"]
         self.assertEqual([o["contact"] for o in listed if o["id"] == offer_id], ["@seller_kz"])
 

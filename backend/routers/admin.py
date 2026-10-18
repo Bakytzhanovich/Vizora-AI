@@ -528,6 +528,7 @@ async def admin_overview(
             {"plan": row[0], "count": row[1]}
             for row in plan_rows
         ],
+        "offers": await _offer_stats(db),
     }
 
 
@@ -1189,6 +1190,31 @@ async def cancel_payment_request(
 # ─── Job offer board moderation ───
 
 
+async def _offer_stats(db: AsyncSession) -> dict:
+    now = datetime.utcnow()
+    by_status = dict((await db.execute(select(JobOffer.status, func.count()).group_by(JobOffer.status))).all())
+    expired = await _count(db, JobOffer, JobOffer.status == "published", JobOffer.expires_at <= now)
+    # Publishing happens only after the Kaspi invoice is paid, so published_at marks a paid listing.
+    paid = JobOffer.published_at.isnot(None)
+    revenue = await db.scalar(select(func.coalesce(func.sum(JobOffer.listing_fee), 0)).where(paid))
+    revenue_30d = await db.scalar(
+        select(func.coalesce(func.sum(JobOffer.listing_fee), 0)).where(JobOffer.published_at >= now - timedelta(days=30))
+    )
+    return {
+        "total": sum(by_status.values()),
+        "pending": by_status.get("pending", 0),
+        "published": by_status.get("published", 0) - expired,
+        "expired": expired,
+        "hidden": by_status.get("hidden", 0),
+        "rejected": by_status.get("rejected", 0),
+        "sold": by_status.get("sold", 0),
+        "sellers": await _distinct_count(db, JobOffer.user_id),
+        "paid": await _count(db, JobOffer, paid),
+        "revenue_kzt": int(revenue or 0),
+        "revenue_30d_kzt": int(revenue_30d or 0),
+    }
+
+
 @router.get("/offers")
 async def list_offers_for_review(
     status_filter: str = Query("pending", alias="status", pattern="^(pending|published|hidden|rejected|sold|all)$"),
@@ -1217,7 +1243,8 @@ async def list_offers_for_review(
                 "created_at": o.created_at,
             }
             for o, email in rows
-        ]
+        ],
+        "stats": await _offer_stats(db),
     }
 
 
