@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Dumbbell } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Dumbbell, Download, Loader2 } from "lucide-react";
+import { apiDownloadSessionPdf } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import { ScoreCard } from "./ScoreCard";
 import { OfficerDecision, OfficerDecisionCard, isOfficerDecision } from "./OfficerDecisionCard";
@@ -167,6 +168,8 @@ interface Props {
   feedback: FeedbackData;
   history: HistoryItem[];
   onRetry: () => void;
+  sessionId: string | null;
+  canDownloadPdf: boolean;
 }
 
 function formatDuration(sec: number) {
@@ -297,9 +300,21 @@ function PhraseCard({ item, index }: { item: PhraseToMemorize; index: number }) 
   );
 }
 
-export function ResultsScreen({ feedback, history, onRetry }: Props) {
+export function ResultsScreen({ feedback, history, onRetry, sessionId, canDownloadPdf }: Props) {
   const router = useRouter();
   const { t } = useTranslation("simulator");
+  const [pdfState, setPdfState] = useState<"idle" | "loading" | "error">("idle");
+
+  const downloadPdf = async () => {
+    if (!sessionId) return;
+    setPdfState("loading");
+    try {
+      await apiDownloadSessionPdf(sessionId);
+      setPdfState("idle");
+    } catch {
+      setPdfState("error");
+    }
+  };
   const { scores } = feedback;
   const overall = scores.overall ?? ((scores.confidence + scores.language + scores.content) / 3);
   const pct = Math.round((overall / 10) * 100);
@@ -540,6 +555,20 @@ export function ResultsScreen({ feedback, history, onRetry }: Props) {
                 </ul>
               </div>
             )}
+          </div>
+        )}
+
+        {canDownloadPdf && sessionId && (
+          <div className="mb-3">
+            <button
+              onClick={downloadPdf}
+              disabled={pdfState === "loading"}
+              className="flex w-full min-h-11 items-center justify-center gap-2 bg-card border border-border text-primary font-semibold py-3 rounded-xl hover:border-accent transition-all text-sm disabled:opacity-60"
+            >
+              {pdfState === "loading" ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {t("results.download_pdf")}
+            </button>
+            {pdfState === "error" && <p className="text-error text-xs mt-2 text-center">{t("results.download_pdf_error")}</p>}
           </div>
         )}
 

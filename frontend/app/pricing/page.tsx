@@ -99,7 +99,6 @@ function PricingContent() {
         { label: t("features.emergency"), ok: true },
         { label: t("features.unlimited_sessions"), ok: false },
         { label: t("features.pdf_report"), ok: false },
-        { label: t("features.early_access"), ok: false },
       ];
     }
     // premium
@@ -107,8 +106,6 @@ function PricingContent() {
       { label: t("features.everything_standard"), ok: true },
       { label: t("features.unlimited_sessions"), ok: true },
       { label: t("features.pdf_report"), ok: true },
-      { label: t("features.priority_support"), ok: true },
-      { label: t("features.early_access"), ok: true },
     ];
   };
 

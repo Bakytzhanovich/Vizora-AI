@@ -260,6 +260,8 @@ export default function SimulatorPage() {
         feedback={feedback}
         history={history}
         onRetry={handleRetry}
+        sessionId={session?.sessionId ?? null}
+        canDownloadPdf={!!subscription?.limits.pdf_report}
       />
     );
   }

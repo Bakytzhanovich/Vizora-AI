@@ -628,6 +628,16 @@ export interface Plan {
   limits: PlanLimits;
 }
 
+export async function apiDownloadSessionPdf(sessionId: string) {
+  const { data } = await api.get<Blob>(`/simulator/session/${sessionId}/pdf-report`, { responseType: "blob" });
+  const url = URL.createObjectURL(data);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `vizora-report-${sessionId.slice(0, 8)}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function apiGetPlans() {
   const { data } = await api.get<{
     plans: Plan[];
