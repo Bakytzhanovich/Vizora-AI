@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Map, MessageCircle, Mic, FileText, User, LogOut, type LucideIcon } from "lucide-react";
+import { Home, Map, MessageCircle, Mic, FileText, Briefcase, User, LogOut, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
@@ -16,6 +16,7 @@ const NAV_ITEMS: { href: string; icon: LucideIcon; key: string }[] = [
   { href: "/chat", icon: MessageCircle, key: "chat" },
   { href: "/simulator", icon: Mic, key: "simulator" },
   { href: "/documents", icon: FileText, key: "documents" },
+  { href: "/offers", icon: Briefcase, key: "offers" },
 ];
 
 /** Persistent left nav for the desktop app shell — the lg+ counterpart to

@@ -461,6 +461,20 @@ async def payment_status(
 # ─── Manual Kaspi invoice requests (PAYMENT_MODE=manual) ───
 
 
+def normalize_kz_phone(v: str) -> str:
+    # Kaspi accounts are on Kazakhstan mobile numbers: accept +7 / 8 / 7
+    # prefixes with any separators and store the 7XXXXXXXXXX form the
+    # owner types into Kaspi Pay.
+    digits = re.sub(r"\D", "", v)
+    if len(digits) == 11 and digits[0] in "78":
+        digits = "7" + digits[1:]
+    elif len(digits) == 10:
+        digits = "7" + digits
+    if not re.fullmatch(r"7[0-9]{10}", digits):
+        raise ValueError("Phone must be a Kazakhstan number, e.g. +7 701 123 45 67")
+    return digits
+
+
 class ManualPaymentRequestBody(BaseModel):
     plan: str
     billing_period: str = "monthly"
@@ -470,17 +484,7 @@ class ManualPaymentRequestBody(BaseModel):
     @field_validator("phone")
     @classmethod
     def normalize_phone(cls, v: str) -> str:
-        # Kaspi accounts are on Kazakhstan mobile numbers: accept +7 / 8 / 7
-        # prefixes with any separators and store the 7XXXXXXXXXX form the
-        # owner types into Kaspi Pay.
-        digits = re.sub(r"\D", "", v)
-        if len(digits) == 11 and digits[0] in "78":
-            digits = "7" + digits[1:]
-        elif len(digits) == 10:
-            digits = "7" + digits
-        if not re.fullmatch(r"7[0-9]{10}", digits):
-            raise ValueError("Phone must be a Kazakhstan number, e.g. +7 701 123 45 67")
-        return digits
+        return normalize_kz_phone(v)
 
 
 def _manual_request_out(req: PaymentRequest) -> dict:

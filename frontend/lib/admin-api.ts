@@ -1,6 +1,6 @@
 "use client";
 
-import { api } from "@/lib/api";
+import { api, type JobOffer } from "@/lib/api";
 
 async function adminFetch<T>(path: string): Promise<T> {
   const { data } = await api.get<T>(path);
@@ -234,4 +234,42 @@ export async function approveAdminPaymentRequest(id: string) {
 export async function cancelAdminPaymentRequest(id: string) {
   const { data } = await api.post<{ status: string }>(`/admin/payment-requests/${id}/cancel`);
   return data;
+}
+
+export type AdminOfferStatus = "pending" | "published" | "hidden" | "rejected" | "sold";
+
+export interface AdminJobOffer extends JobOffer {
+  email: string;
+  status: AdminOfferStatus;
+  phone: string;
+  listing_fee: number;
+  reports_count: number;
+  reject_reason: string | null;
+  proof_type: string;
+  created_at: string;
+}
+
+export function getAdminOffers(status: AdminOfferStatus | "all") {
+  return adminFetch<{ offers: AdminJobOffer[] }>(`/admin/offers?status=${status}`);
+}
+
+export async function openAdminOfferProof(id: string) {
+  // The proof needs the admin's token, so it can't be a plain link. The tab is
+  // opened before the await: browsers block window.open outside the click.
+  const tab = window.open("", "_blank");
+  try {
+    const { data } = await api.get<Blob>(`/admin/offers/${id}/proof`, { responseType: "blob" });
+    if (tab) tab.location.href = URL.createObjectURL(data);
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
+}
+
+export async function publishAdminOffer(id: string) {
+  await api.post(`/admin/offers/${id}/publish`);
+}
+
+export async function rejectAdminOffer(id: string, reason: string) {
+  await api.post(`/admin/offers/${id}/reject`, { reason });
 }

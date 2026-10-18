@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   BarChart3,
+  Briefcase,
   Bot,
   Building2,
   CreditCard,
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/admin/dashboard?section=users", label: "Users", icon: Users },
   { href: "/admin/dashboard?section=agencies", label: "Agencies", icon: Building2 },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/offers", label: "Offers", icon: Briefcase },
   { href: "/admin/dashboard?section=analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/knowledge-base", label: "Knowledge Base", icon: Database },
   { href: "/admin/dashboard?section=system", label: "System", icon: ServerCog },

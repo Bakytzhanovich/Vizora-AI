@@ -725,3 +725,65 @@ export async function apiGetPaymentStatus() {
   const { data } = await api.get<PaymentStatus>("/payments/status");
   return data;
 }
+
+// ─── Job offer board ───
+
+export interface JobOffer {
+  id: string;
+  employer: string;
+  position: string;
+  state: string;
+  city: string;
+  start_date: string;
+  end_date: string;
+  hourly_wage: number;
+  hours_per_week: number;
+  housing: string | null;
+  sponsor: string;
+  agency: string | null;
+  description: string | null;
+  price_kzt: number;
+  contact: string;
+  published_at: string | null;
+  expires_at: string | null;
+}
+
+export type MyJobOfferStatus = "pending" | "published" | "hidden" | "rejected" | "sold" | "expired";
+
+export interface MyJobOffer extends JobOffer {
+  status: MyJobOfferStatus;
+  reject_reason: string | null;
+  listing_fee: number;
+  phone: string;
+  created_at: string;
+}
+
+export async function apiGetOffers(params: { state?: string; q?: string }) {
+  const { data } = await api.get<{
+    offers: (JobOffer & { is_mine: boolean })[];
+    listing_fee_kzt: number;
+    listing_days: number;
+  }>("/offers", { params });
+  return data;
+}
+
+export async function apiGetMyOffers() {
+  const { data } = await api.get<{ offers: MyJobOffer[] }>("/offers/mine");
+  return data.offers;
+}
+
+export async function apiCreateOffer(form: FormData) {
+  const { data } = await api.post<{ id: string; status: string; listing_fee: number; phone: string }>("/offers", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function apiMarkOfferSold(id: string) {
+  await api.post(`/offers/${id}/sold`);
+}
+
+export async function apiReportOffer(id: string) {
+  const { data } = await api.post<{ status: "reported" | "already_reported" }>(`/offers/${id}/report`);
+  return data.status;
+}

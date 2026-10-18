@@ -6,8 +6,8 @@ import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from pydantic import BaseModel, Field
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,7 @@ from app.models.documents import DocumentProgress
 from app.models.early_access import EarlyAccessEmail
 from app.models.emergency import EmergencySession
 from app.models.knowledge_base import KnowledgeBase, ScraperRun
+from app.models.job_offer import JobOffer
 from app.models.level_test import LevelTest
 from app.models.payment_request import PaymentRequest
 from app.models.profile import StudentProfile
@@ -31,6 +32,7 @@ from app.models.subscription_event import SubscriptionEvent
 from app.models.user import User
 from app.services.level_test_service import latest_level_results, level_distribution
 from app.services.push_service import _send_to_user
+from routers.offers import LISTING_DAYS, offer_out
 from routers.payments import PLAN_NAMES_RU, _apply_successful_payment
 from app.core.security import get_current_user
 
@@ -1182,3 +1184,95 @@ async def cancel_payment_request(
     req.resolved_by = acting_admin.id
     await db.commit()
     return {"status": "cancelled"}
+
+
+# ─── Job offer board moderation ───
+
+
+@router.get("/offers")
+async def list_offers_for_review(
+    status_filter: str = Query("pending", alias="status", pattern="^(pending|published|hidden|rejected|sold|all)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
+        select(JobOffer, User.email)
+        .join(User, User.id == JobOffer.user_id)
+        .order_by(JobOffer.created_at.desc())
+        .limit(200)
+    )
+    if status_filter != "all":
+        query = query.where(JobOffer.status == status_filter)
+    rows = (await db.execute(query)).all()
+    return {
+        "offers": [
+            {
+                **offer_out(o),
+                "email": email,
+                "status": o.status,
+                "phone": o.phone,
+                "listing_fee": o.listing_fee,
+                "reports_count": o.reports_count,
+                "reject_reason": o.reject_reason,
+                "proof_type": o.proof_type,
+                "created_at": o.created_at,
+            }
+            for o, email in rows
+        ]
+    }
+
+
+async def _get_offer(offer_id: str, db: AsyncSession) -> JobOffer:
+    offer = await db.get(JobOffer, offer_id)
+    if not offer:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return offer
+
+
+@router.get("/offers/{offer_id}/proof")
+async def get_offer_proof(offer_id: str, db: AsyncSession = Depends(get_db)):
+    offer = await _get_offer(offer_id, db)
+    proof = await db.scalar(select(JobOffer.proof).where(JobOffer.id == offer_id))
+    return Response(
+        content=proof,
+        media_type=offer.proof_type,
+        headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.post("/offers/{offer_id}/publish")
+async def publish_offer(offer_id: str, db: AsyncSession = Depends(get_db)):
+    """pending: the listing fee is paid and the proof checks out — goes live for
+    LISTING_DAYS. hidden: the owner looked at the reports and keeps it up."""
+    offer = await _get_offer(offer_id, db)
+    if offer.status not in ("pending", "hidden"):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Offer is already {offer.status}")
+    if offer.status == "pending":
+        offer.published_at = datetime.utcnow()
+        offer.expires_at = offer.published_at + timedelta(days=LISTING_DAYS)
+    offer.status = "published"
+    offer.reject_reason = None
+    await db.commit()
+    try:
+        await _send_to_user(db, offer.user_id, "Оффер опубликован", f"{offer.position}, {offer.city}", url="/offers")
+    except Exception:
+        pass
+    return {"status": "published"}
+
+
+class RejectOfferBody(BaseModel):
+    reason: str = Field(min_length=3, max_length=300)
+
+
+@router.post("/offers/{offer_id}/reject")
+async def reject_offer(offer_id: str, body: RejectOfferBody, db: AsyncSession = Depends(get_db)):
+    offer = await _get_offer(offer_id, db)
+    if offer.status not in ("pending", "hidden"):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Offer is already {offer.status}")
+    offer.status = "rejected"
+    offer.reject_reason = body.reason.strip()
+    await db.commit()
+    try:
+        await _send_to_user(db, offer.user_id, "Оффер не опубликован", offer.reject_reason, url="/offers")
+    except Exception:
+        pass
+    return {"status": "rejected"}
