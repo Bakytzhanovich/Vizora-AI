@@ -2,6 +2,7 @@
 
 import { forwardRef } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import type { RoadmapStepData } from "@/lib/api";
 import { ActionButton } from "./ActionButton";
 import { RoadmapLine } from "./RoadmapLine";
@@ -11,7 +12,7 @@ const MILESTONE_CONFIG: Record<string, { accent: string; bg: string; ring: strin
     accent: "#F59E0B",
     bg: "bg-warning/10 border-warning/30",
     ring: "ring-warning/25",
-    badge: "🏆 Главная цель!",
+    badge: "main_goal",
   },
   arrival: {
     accent: "#00D4AA",
@@ -35,6 +36,7 @@ interface Props {
 export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
   ({ step, isLast, onMarkComplete, updating }, ref) => {
     const cfg = MILESTONE_CONFIG[step.id] ?? MILESTONE_CONFIG.visa;
+    const { t, i18n } = useTranslation("roadmap");
     const isCompleted = step.status === "completed";
     const isCurrent = step.status === "in_progress";
     const isPending = step.status === "pending";
@@ -85,14 +87,14 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
           >
             <div className="flex items-start justify-between gap-2 flex-wrap">
               <p className={`text-sm font-bold leading-snug ${isPending ? "text-secondary" : "text-primary"}`}>
-                {step.title}
+                {t(`steps.${step.id}.title`)}
               </p>
               {cfg.badge && isCurrent && (
                 <span
                   className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{ color: cfg.accent, backgroundColor: `${cfg.accent}20` }}
                 >
-                  {cfg.badge}
+                  {t(cfg.badge)}
                 </span>
               )}
               {cfg.badge && isCompleted && (
@@ -100,18 +102,18 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
                   className="text-xs font-bold px-2 py-0.5 rounded-full"
                   style={{ color: cfg.accent, backgroundColor: `${cfg.accent}20` }}
                 >
-                  {cfg.badge}
+                  {t(cfg.badge)}
                 </span>
               )}
             </div>
 
             {!isPending && (
-              <p className="text-secondary text-xs mt-1 leading-relaxed">{step.description}</p>
+              <p className="text-secondary text-xs mt-1 leading-relaxed">{t(`steps.${step.id}.description`)}</p>
             )}
 
             {isCompleted && step.completed_at && (
               <p className="text-xs mt-1.5 font-semibold" style={{ color: cfg.accent }}>
-                ✓ Выполнено {new Date(step.completed_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                {t("done_on", { date: new Date(step.completed_at).toLocaleDateString(i18n.language === "kz" ? "kk-KZ" : "ru-RU", { day: "numeric", month: "long" }) })}
               </p>
             )}
 
@@ -121,8 +123,8 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
                   className="mt-2 rounded-lg px-3 py-2"
                   style={{ backgroundColor: `${cfg.accent}18` }}
                 >
-                  <p className="text-xs leading-relaxed" style={{ color: cfg.accent }}>
-                    💡 {step.tips}
+                  <p className="text-primary text-xs leading-relaxed">
+                    💡 {t(`steps.${step.id}.tips`)}
                   </p>
                 </div>
                 <ActionButton stepId={step.id} />
@@ -132,14 +134,14 @@ export const MilestoneStep = forwardRef<HTMLDivElement, Props>(
                     disabled={updating}
                     className="mt-1 min-h-11 flex items-center text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50"
                   >
-                    {updating ? "Сохраняем..." : "Отметить выполненным ✓"}
+                    {updating ? t("saving") : t("mark_done")}
                   </button>
                 )}
               </>
             )}
 
             {isPending && (
-              <p className="text-secondary text-xs mt-1">Ещё впереди</p>
+              <p className="text-secondary text-xs mt-1">{t("ahead")}</p>
             )}
           </motion.div>
         </div>

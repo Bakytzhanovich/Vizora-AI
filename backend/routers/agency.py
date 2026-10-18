@@ -11,7 +11,7 @@ import bcrypt
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import func, select, text
+from sqlalchemy import bindparam, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.agency_auth import AgencyCtx, create_member_token, get_current_member, require_admin
@@ -22,12 +22,11 @@ from app.models.agency import Agency, AgencyInvite, AgencyMember, AgencyStudent
 from app.models.chat import ChatMessage
 from app.models.level_test import LevelTest
 from app.models.profile import StudentProfile
-from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
-from app.services.document_progress import document_progress, document_progress_many
+from app.services.document_progress import document_progress_many
 from app.services.level_test_service import LEVEL_TITLES, latest_level_results, level_distribution
-from app.services.roadmap_service import _PROGRESS_WEIGHTS
+from app.services.roadmap_service import VISA_STEP_IDS, completed_steps_many, journey_progress, readiness_many
 from app.services.subscription_service import get_agency_billing_status
 from app.services.subscription_service import set_free_plan
 from middleware.rate_limit import limiter
@@ -36,25 +35,32 @@ router = APIRouter(prefix="/agency", tags=["agency"])
 
 # ─── Internal helpers ─────────────────────────────────────────────────────────
 
-async def _get_student_last_active(db: AsyncSession, user_id: str) -> datetime | None:
-    result = await db.execute(
-        text("""
-            SELECT MAX(ts) FROM (
-                SELECT created_at AS ts FROM chat_messages WHERE user_id = :uid
-                UNION ALL
-                SELECT created_at AS ts FROM simulator_sessions WHERE user_id = :uid
-                UNION ALL
-                SELECT updated_at AS ts FROM document_progress WHERE user_id = :uid
-                UNION ALL
-                SELECT created_at AS ts FROM level_tests WHERE user_id = :uid
-            ) AS activity
-        """),
-        {"uid": user_id},
-    )
-    last = result.scalar()
+_LAST_ACTIVE_SQL = text("""
+    SELECT user_id, MAX(ts) FROM (
+        SELECT user_id, created_at AS ts FROM chat_messages WHERE user_id IN :uids
+        UNION ALL
+        SELECT user_id, created_at AS ts FROM simulator_sessions WHERE user_id IN :uids
+        UNION ALL
+        SELECT user_id, updated_at AS ts FROM document_progress WHERE user_id IN :uids
+        UNION ALL
+        SELECT user_id, created_at AS ts FROM level_tests WHERE user_id IN :uids
+    ) AS activity
+    GROUP BY user_id
+""").bindparams(bindparam("uids", expanding=True))
+
+
+async def _last_active_many(db: AsyncSession, user_ids: list[str]) -> dict[str, datetime]:
+    """Latest activity per student; students with none are left out."""
+    if not user_ids:
+        return {}
+    rows = (await db.execute(_LAST_ACTIVE_SQL, {"uids": list(user_ids)})).all()
     # Raw SQL bypasses column types: Postgres returns a datetime, SQLite (tests)
     # an ISO string.
-    return datetime.fromisoformat(last) if isinstance(last, str) else last
+    return {uid: datetime.fromisoformat(ts) if isinstance(ts, str) else ts for uid, ts in rows if ts}
+
+
+async def _get_student_last_active(db: AsyncSession, user_id: str) -> datetime | None:
+    return (await _last_active_many(db, [user_id])).get(user_id)
 
 
 # No look-alike characters (0/O, 1/l/I): the agency reads the password out or
@@ -110,26 +116,6 @@ async def _invite_existing_student(db: AsyncSession, ctx: AgencyCtx, user: User)
             user_id=user.id,
             assigned_manager_id=ctx.member_id if ctx.role == "manager" else None,
         ))
-
-
-async def _get_student_readiness(db: AsyncSession, user_id: str) -> int:
-    rows = await db.execute(
-        select(RoadmapProgress.step_id).where(
-            RoadmapProgress.user_id == user_id,
-            RoadmapProgress.status == "completed",
-        )
-    )
-    completed = {r[0] for r in rows.fetchall()}
-    completed.add("profile")
-
-    if await document_progress(db, user_id) >= 100:
-        completed.add("documents")
-
-    return sum(w for sid, w in _PROGRESS_WEIGHTS.items() if sid in completed)
-
-
-async def _get_doc_progress_pct(db: AsyncSession, user_id: str) -> int:
-    return await document_progress(db, user_id)
 
 
 async def _get_simulator_stats(db: AsyncSession, user_id: str) -> tuple[int, float]:
@@ -523,16 +509,8 @@ async def list_students(
     level_results = await latest_level_results(db, user_ids)
 
     doc_map = await document_progress_many(db, user_ids)
-
-    rp_rows = await db.execute(
-        select(RoadmapProgress.user_id, RoadmapProgress.step_id).where(
-            RoadmapProgress.user_id.in_(user_ids),
-            RoadmapProgress.status == "completed",
-        )
-    )
-    rp_map: dict[str, set[str]] = {}
-    for uid, sid in rp_rows.fetchall():
-        rp_map.setdefault(uid, set()).add(sid)
+    readiness_map = await readiness_many(db, user_ids)
+    last_active_map = await _last_active_many(db, user_ids)
 
     today = datetime.utcnow().date()
     students = []
@@ -546,14 +524,11 @@ async def list_students(
         university = profile.university if profile else ""
         interview_date = str(profile.interview_date) if profile and profile.interview_date else None
 
-        completed_steps = rp_map.get(uid, set()) | {"profile"}
-        doc_pct = doc_map.get(uid, 0)
-        if doc_pct >= 100:
-            completed_steps.add("documents")
-        readiness = sum(w for sid, w in _PROGRESS_WEIGHTS.items() if sid in completed_steps)
+        readiness = readiness_map[uid]
+        doc_pct = doc_map[uid]
 
         sim_count, sim_avg = sim_data.get(uid, (0, 0.0))
-        last_active = await _get_student_last_active(db, uid)
+        last_active = last_active_map.get(uid)
 
         if search and search.lower() not in name.lower() and search.lower() not in user.email.lower():
             continue
@@ -621,18 +596,9 @@ async def get_student(
     if not user:
         raise HTTPException(status_code=404)
 
-    rp_rows = await db.execute(
-        select(RoadmapProgress).where(RoadmapProgress.user_id == student_id)
-    )
-    roadmap_rows = rp_rows.scalars().all()
-    completed_steps = {r.step_id for r in roadmap_rows if r.status == "completed"}
-    completed_steps.add("profile")
-
-    doc_pct = await _get_doc_progress_pct(db, student_id)
-    if doc_pct >= 100:
-        completed_steps.add("documents")
-
-    readiness = sum(w for sid, w in _PROGRESS_WEIGHTS.items() if sid in completed_steps)
+    completed_steps = (await completed_steps_many(db, [student_id]))[student_id]
+    doc_pct = (await document_progress_many(db, [student_id]))[student_id]
+    readiness = journey_progress(completed_steps, VISA_STEP_IDS)
     sim_count, sim_avg = await _get_simulator_stats(db, student_id)
 
     score_breakdown = {"confidence": 0.0, "language": 0.0, "content": 0.0}
@@ -782,16 +748,8 @@ async def get_analytics(
 
     today = datetime.utcnow().date()
 
-    active_today = 0
-    for uid in user_ids:
-        last = await _get_student_last_active(db, uid)
-        if last and last.date() == today:
-            active_today += 1
-
-    readiness_vals = []
-    for uid in user_ids:
-        r = await _get_student_readiness(db, uid)
-        readiness_vals.append(r)
+    active_today = sum(1 for last in (await _last_active_many(db, user_ids)).values() if last.date() == today)
+    readiness_vals = list((await readiness_many(db, user_ids)).values())
 
     avg_readiness = round(sum(readiness_vals) / total) if readiness_vals else 0
     dist = {"high": 0, "medium": 0, "low": 0}

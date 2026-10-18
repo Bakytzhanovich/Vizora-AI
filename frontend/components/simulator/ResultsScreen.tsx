@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Dumbbell, Download, Loader2 } from "lucide-react";
-import { apiDownloadSessionPdf } from "@/lib/api";
+import { ChevronDown, ChevronUp, CheckCircle2, AlertTriangle, Dumbbell, Download, Loader2, Star } from "lucide-react";
+import { apiDownloadSessionPdf, apiRateSession } from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import { ScoreCard } from "./ScoreCard";
 import { OfficerDecision, OfficerDecisionCard, isOfficerDecision } from "./OfficerDecisionCard";
@@ -300,6 +300,77 @@ function PhraseCard({ item, index }: { item: PhraseToMemorize; index: number }) 
   );
 }
 
+function SessionRating({ sessionId }: { sessionId: string }) {
+  const { t } = useTranslation("simulator");
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "rated" | "done" | "error">("idle");
+
+  // The star tap is saved right away so a rating isn't lost when the student
+  // skips the comment; sending a comment overwrites the same row.
+  const save = async (value: number, message?: string) => {
+    setState("saving");
+    try {
+      await apiRateSession(sessionId, value, message);
+      setState(message ? "done" : "rated");
+    } catch {
+      setState("error");
+    }
+  };
+
+  if (state === "done") {
+    return <p className="mb-3 rounded-2xl bg-card border border-border p-4 text-center text-sm text-primary">{t("results.rate_thanks")}</p>;
+  }
+
+  return (
+    <div className="mb-3 rounded-2xl bg-card border border-border p-4">
+      <p className="text-center text-sm font-semibold text-primary">{t("results.rate_title")}</p>
+      <div className="mt-2 flex justify-center" role="radiogroup" aria-label={t("results.rate_title")}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={rating === n}
+            aria-label={t("results.rate_star", { count: n })}
+            disabled={state === "saving"}
+            onClick={() => {
+              setRating(n);
+              save(n);
+            }}
+            className="flex h-11 w-11 items-center justify-center"
+          >
+            <Star size={28} className={n <= rating ? "fill-warning text-warning" : "text-border"} aria-hidden />
+          </button>
+        ))}
+      </div>
+      {rating > 0 && (
+        <div className="mt-3 space-y-2">
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            maxLength={2000}
+            rows={2}
+            placeholder={t("results.rate_comment")}
+            className="w-full rounded-xl bg-bg border border-border px-3 py-2.5 text-base text-primary placeholder:text-secondary focus:border-accent outline-none"
+          />
+          {comment.trim() && (
+            <button
+              onClick={() => save(rating, comment.trim())}
+              disabled={state === "saving"}
+              className="w-full min-h-11 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-60"
+            >
+              {t("results.rate_send")}
+            </button>
+          )}
+          {state === "rated" && !comment.trim() && <p className="text-center text-xs text-secondary">{t("results.rate_thanks")}</p>}
+        </div>
+      )}
+      {state === "error" && <p className="mt-2 text-center text-xs text-error">{t("results.rate_error")}</p>}
+    </div>
+  );
+}
+
 export function ResultsScreen({ feedback, history, onRetry, sessionId, canDownloadPdf }: Props) {
   const router = useRouter();
   const { t } = useTranslation("simulator");
@@ -557,6 +628,8 @@ export function ResultsScreen({ feedback, history, onRetry, sessionId, canDownlo
             )}
           </div>
         )}
+
+        {sessionId && <SessionRating sessionId={sessionId} />}
 
         {canDownloadPdf && sessionId && (
           <div className="mb-3">

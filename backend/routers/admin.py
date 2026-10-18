@@ -21,6 +21,7 @@ from app.models.chat import ChatMessage
 from app.models.documents import DocumentProgress
 from app.models.early_access import EarlyAccessEmail
 from app.models.emergency import EmergencySession
+from app.models.feedback import Feedback
 from app.models.knowledge_base import KnowledgeBase, ScraperRun
 from app.models.job_offer import JobOffer
 from app.models.level_test import LevelTest
@@ -1303,3 +1304,49 @@ async def reject_offer(offer_id: str, body: RejectOfferBody, db: AsyncSession = 
     except Exception:
         pass
     return {"status": "rejected"}
+
+
+# ─── Student feedback ───
+
+
+@router.get("/feedback")
+async def list_feedback(
+    kind: str = Query("all", pattern="^(all|idea|bug|question|session)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    query = (
+        select(Feedback, User.email)
+        .join(User, User.id == Feedback.user_id)
+        .order_by(Feedback.created_at.desc())
+        .limit(200)
+    )
+    if kind != "all":
+        query = query.where(Feedback.kind == kind)
+    rows = (await db.execute(query)).all()
+    by_kind = dict((await db.execute(select(Feedback.kind, func.count()).group_by(Feedback.kind))).all())
+    ratings = dict(
+        (await db.execute(select(Feedback.rating, func.count()).where(Feedback.rating.isnot(None)).group_by(Feedback.rating))).all()
+    )
+    rated = sum(ratings.values())
+    return {
+        "items": [
+            {
+                "id": f.id,
+                "email": email,
+                "kind": f.kind,
+                "rating": f.rating,
+                "message": f.message,
+                "page": f.page,
+                "session_id": f.session_id,
+                "created_at": _iso(f.created_at),
+            }
+            for f, email in rows
+        ],
+        "stats": {
+            "by_kind": {k: by_kind.get(k, 0) for k in ("idea", "bug", "question", "session")},
+            "total": sum(by_kind.values()),
+            "new_7d": await _count(db, Feedback, Feedback.created_at >= datetime.utcnow() - timedelta(days=7)),
+            "avg_rating": round(sum(r * c for r, c in ratings.items()) / rated, 2) if rated else None,
+            "ratings": {str(r): ratings.get(r, 0) for r in range(1, 6)},
+        },
+    }

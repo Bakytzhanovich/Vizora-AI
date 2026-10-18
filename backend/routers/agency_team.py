@@ -14,11 +14,9 @@ from app.core.database import get_db
 from app.core.security import validate_new_password
 from app.models.agency import Agency, AgencyInvite, AgencyMember, AgencyStudent
 from app.models.profile import StudentProfile
-from app.models.roadmap import RoadmapProgress
 from app.models.simulator import SimulatorSession
 from app.models.user import User
-from app.services.document_progress import document_progress
-from app.services.roadmap_service import _PROGRESS_WEIGHTS
+from app.services.roadmap_service import readiness_many
 from middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/agency/team", tags=["agency-team"])
@@ -56,19 +54,6 @@ async def _get_sim_stats(db: AsyncSession, user_id: str) -> tuple[int, float]:
             except Exception:
                 pass
     return count, round(total / valid, 1) if valid else 0.0
-
-
-async def _get_readiness(db: AsyncSession, user_id: str) -> int:
-    rows = await db.execute(
-        select(RoadmapProgress.step_id).where(
-            RoadmapProgress.user_id == user_id,
-            RoadmapProgress.status == "completed",
-        )
-    )
-    completed = {r[0] for r in rows.fetchall()} | {"profile"}
-    if await document_progress(db, user_id) >= 100:
-        completed.add("documents")
-    return sum(w for sid, w in _PROGRESS_WEIGHTS.items() if sid in completed)
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -397,6 +382,7 @@ async def get_member_students(
     users_rows = await db.execute(select(User).where(User.id.in_(user_ids)))
     users_map = {u.id: u for u in users_rows.scalars().all()}
 
+    readiness_map = await readiness_many(db, user_ids)
     today = datetime.utcnow().date()
     students = []
     for uid in user_ids:
@@ -415,7 +401,7 @@ async def get_member_students(
             except Exception:
                 pass
 
-        readiness = await _get_readiness(db, uid)
+        readiness = readiness_map[uid]
         sim_count, sim_avg = await _get_sim_stats(db, uid)
 
         students.append({

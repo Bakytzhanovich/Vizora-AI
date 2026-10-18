@@ -16,13 +16,15 @@ import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
 
 const MILESTONE_STEP_IDS = new Set(["visa", "arrival", "return"]);
 
-const CATEGORIES: { id: string; icon: string; label: string }[] = [
-  { id: "preparation", icon: "📋", label: "Подготовка" },
-  { id: "visa", icon: "🛂", label: "Виза" },
-  { id: "interview", icon: "🎤", label: "Интервью" },
-  { id: "travel", icon: "✈️", label: "Поездка" },
-  { id: "usa", icon: "🇺🇸", label: "В США" },
-  { id: "return", icon: "🏠", label: "Возвращение" },
+// Must follow step order: backend/app/services/roadmap_service.py groups steps
+// by these ids, and tests/test_roadmap.py checks the order matches.
+const CATEGORIES: { id: string; icon: string }[] = [
+  { id: "preparation", icon: "📋" },
+  { id: "visa", icon: "🛂" },
+  { id: "interview", icon: "🎤" },
+  { id: "travel", icon: "✈️" },
+  { id: "usa", icon: "🇺🇸" },
+  { id: "return", icon: "🏠" },
 ];
 
 // Simple emoji confetti burst
@@ -57,13 +59,14 @@ function Confetti({ onDone }: { onDone: () => void }) {
 
 export default function RoadmapPage() {
   const router = useRouter();
-  const { t } = useTranslation("common");
+  const { t } = useTranslation("roadmap");
   const [steps, setSteps] = useState<RoadmapStepData[]>([]);
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const currentRef = useRef<HTMLDivElement | null>(null);
 
@@ -92,6 +95,7 @@ export default function RoadmapPage() {
 
   const handleMarkComplete = useCallback(async (stepId: string) => {
     setUpdating(stepId);
+    setSaveError(false);
 
     // Optimistic update
     setSteps((prev) => {
@@ -105,10 +109,9 @@ export default function RoadmapPage() {
       return updated;
     });
 
-    if (stepId === "visa") setShowConfetti(true);
-
     try {
       const { next_step } = await apiUpdateRoadmapStep(stepId, "completed");
+      if (stepId === "visa") setShowConfetti(true);
 
       // Refresh from server to get accurate state
       const fresh = await apiGetRoadmap();
@@ -122,6 +125,7 @@ export default function RoadmapPage() {
         }, 300);
       }
     } catch {
+      setSaveError(true);
       // Revert optimistic update
       const fresh = await apiGetRoadmap().catch(() => null);
       if (fresh) {
@@ -144,9 +148,9 @@ export default function RoadmapPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-bg flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-error text-sm">Не удалось загрузить roadmap</p>
+        <p className="text-error text-sm">{t("load_error")}</p>
         <button onClick={() => router.push("/dashboard")} className="text-accent text-sm underline">
-          Вернуться на главную
+          {t("back_home")}
         </button>
       </div>
     );
@@ -169,7 +173,7 @@ export default function RoadmapPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
-              aria-label={t("common.back")}
+              aria-label={t("common.back", { ns: "common" })}
               className="-m-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-secondary hover:text-primary transition-colors"
             >
               <ArrowLeft size={20} />
@@ -187,13 +191,19 @@ export default function RoadmapPage() {
           progress={progress}
         />
 
+        {saveError && (
+          <p role="alert" className="mb-4 rounded-xl border border-error/30 bg-error/10 px-3 py-2.5 text-sm text-error">
+            {t("save_error")}
+          </p>
+        )}
+
         {CATEGORIES.map((cat) => {
           const catSteps = steps.filter((s) => s.category === cat.id);
           if (!catSteps.length) return null;
 
           return (
             <div key={cat.id}>
-              <CategoryLabel icon={cat.icon} label={cat.label} />
+              <CategoryLabel icon={cat.icon} label={t(`categories.${cat.id}`)} />
 
               {catSteps.map((step, idx) => {
                 const isLast =
@@ -228,10 +238,8 @@ export default function RoadmapPage() {
             className="mt-8 bg-gradient-to-r from-accent/20 to-teal/20 border border-accent/30 rounded-2xl p-6 text-center"
           >
             <div className="text-4xl mb-3">🏆</div>
-            <h2 className="text-primary font-bold text-lg mb-1">Программа завершена!</h2>
-            <p className="text-secondary text-sm">
-              Ты прошёл весь путь Work &amp; Travel USA. Поздравляем!
-            </p>
+            <h2 className="text-primary font-bold text-lg mb-1">{t("all_done_title")}</h2>
+            <p className="text-secondary text-sm">{t("all_done_text")}</p>
           </motion.div>
         )}
       </div>

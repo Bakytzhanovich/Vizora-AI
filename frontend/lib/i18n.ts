@@ -12,6 +12,8 @@ import ruLanding from "@/public/locales/ru/landing.json";
 import ruPricing from "@/public/locales/ru/pricing.json";
 import ruProfile from "@/public/locales/ru/profile.json";
 import ruOffers from "@/public/locales/ru/offers.json";
+import ruFeedback from "@/public/locales/ru/feedback.json";
+import ruRoadmap from "@/public/locales/ru/roadmap.json";
 
 import kzCommon from "@/public/locales/kz/common.json";
 import kzDashboard from "@/public/locales/kz/dashboard.json";
@@ -24,6 +26,8 @@ import kzLanding from "@/public/locales/kz/landing.json";
 import kzPricing from "@/public/locales/kz/pricing.json";
 import kzProfile from "@/public/locales/kz/profile.json";
 import kzOffers from "@/public/locales/kz/offers.json";
+import kzFeedback from "@/public/locales/kz/feedback.json";
+import kzRoadmap from "@/public/locales/kz/roadmap.json";
 
 export const STORAGE_KEY = "vizora_language";
 export const SUPPORTED_LANGUAGES = ["ru", "kz"] as const;
@@ -54,6 +58,8 @@ if (!i18n.isInitialized) {
         pricing: ruPricing,
         profile: ruProfile,
         offers: ruOffers,
+        feedback: ruFeedback,
+        roadmap: ruRoadmap,
       },
       kz: {
         common: kzCommon,
@@ -67,6 +73,8 @@ if (!i18n.isInitialized) {
         pricing: kzPricing,
         profile: kzProfile,
         offers: kzOffers,
+        feedback: kzFeedback,
+        roadmap: kzRoadmap,
       },
     },
     // Always "ru" here, matching what the server renders (it has no access
@@ -87,6 +95,8 @@ if (!i18n.isInitialized) {
       "pricing",
       "profile",
       "offers",
+      "feedback",
+      "roadmap",
     ],
     interpolation: { escapeValue: false },
     react: { useSuspense: false },

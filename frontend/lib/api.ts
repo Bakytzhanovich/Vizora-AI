@@ -343,13 +343,11 @@ export async function apiGetCommonMistakes() {
 
 export type RoadmapStatus = "pending" | "in_progress" | "completed";
 
+// Titles, descriptions and tips come from the "roadmap" locale, keyed by id.
 export interface RoadmapStepData {
   id: string;
   number: number;
-  title: string;
-  description: string;
   category: string;
-  tips: string;
   auto_complete: boolean;
   status: RoadmapStatus;
   completed_at: string | null;
@@ -636,6 +634,16 @@ export async function apiDownloadSessionPdf(sessionId: string) {
   a.download = `vizora-report-${sessionId.slice(0, 8)}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export type FeedbackKind = "idea" | "bug" | "question";
+
+export async function apiSendFeedback(kind: FeedbackKind, message: string, page?: string) {
+  await api.post("/feedback", { kind, message, page });
+}
+
+export async function apiRateSession(sessionId: string, rating: number, message?: string) {
+  await api.put(`/feedback/session/${sessionId}`, { rating, message });
 }
 
 export async function apiGetPlans() {

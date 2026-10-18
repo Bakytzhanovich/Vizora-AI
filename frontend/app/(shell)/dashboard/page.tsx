@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogOut, ChevronDown, AlertTriangle, Sparkles, MessageCircle, Mic, FileText, Gift, LifeBuoy, User, Briefcase } from "lucide-react";
+import { LogOut, ChevronDown, AlertTriangle, Sparkles, MessageCircle, Mic, FileText, Gift, LifeBuoy, User, Briefcase, MessageSquare } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RiskCard } from "@/components/dashboard/RiskCard";
@@ -347,6 +347,16 @@ export default function DashboardPage() {
                 <LifeBuoy size={15} className="text-error" />
               </span>
               <span className="flex-1 text-primary text-sm font-medium">{t("dashboard:emergency_list_label")}</span>
+              <span className="text-secondary shrink-0">›</span>
+            </button>
+            <button
+              onClick={() => router.push("/feedback")}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-border/40 transition-colors"
+            >
+              <span className="w-7 h-7 rounded-lg bg-border flex items-center justify-center shrink-0">
+                <MessageSquare size={15} className="text-secondary" />
+              </span>
+              <span className="flex-1 text-primary text-sm font-medium">{t("common:nav.feedback")}</span>
               <span className="text-secondary shrink-0">›</span>
             </button>
           </motion.div>

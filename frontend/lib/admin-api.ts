@@ -288,3 +288,28 @@ export async function publishAdminOffer(id: string) {
 export async function rejectAdminOffer(id: string, reason: string) {
   await api.post(`/admin/offers/${id}/reject`, { reason });
 }
+
+export type AdminFeedbackKind = "idea" | "bug" | "question" | "session";
+
+export interface AdminFeedbackItem {
+  id: string;
+  email: string;
+  kind: AdminFeedbackKind;
+  rating: number | null;
+  message: string | null;
+  page: string | null;
+  session_id: string | null;
+  created_at: string | null;
+}
+
+export interface AdminFeedbackStats {
+  by_kind: Record<AdminFeedbackKind, number>;
+  total: number;
+  new_7d: number;
+  avg_rating: number | null;
+  ratings: Record<"1" | "2" | "3" | "4" | "5", number>;
+}
+
+export function getAdminFeedback(kind: AdminFeedbackKind | "all") {
+  return adminFetch<{ items: AdminFeedbackItem[]; stats: AdminFeedbackStats }>(`/admin/feedback?kind=${kind}`);
+}

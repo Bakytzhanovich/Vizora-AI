@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { Trans, useTranslation } from "react-i18next";
 
 interface Props {
   currentStepNumber: number;
@@ -9,13 +10,19 @@ interface Props {
 }
 
 export function RoadmapProgress({ currentStepNumber, totalSteps, progress }: Props) {
+  const { t } = useTranslation("roadmap");
   return (
     <div className="mb-6">
       <div className="flex items-end justify-between mb-2">
         <div>
-          <h1 className="text-xl font-bold text-primary">Твой путь к визе</h1>
+          <h1 className="text-xl font-bold text-primary">{t("title")}</h1>
           <p className="text-secondary text-sm mt-0.5">
-            Шаг <span className="text-accent font-semibold">{currentStepNumber}</span> из {totalSteps}
+            <Trans
+              t={t}
+              i18nKey="step_of"
+              values={{ current: currentStepNumber, total: totalSteps }}
+              components={{ 1: <span className="text-accent font-semibold" /> }}
+            />
           </p>
         </div>
         <span className="text-accent font-bold text-lg tabular-nums">{progress}%</span>

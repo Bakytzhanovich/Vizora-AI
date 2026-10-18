@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Map, MessageCircle, Mic, FileText, Briefcase, User, LogOut, type LucideIcon } from "lucide-react";
+import { Home, Map, MessageCircle, Mic, FileText, Briefcase, User, LogOut, MessageSquare, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { BrandedLogo } from "@/components/branding/BrandedLogo";
@@ -75,6 +75,17 @@ export function Sidebar() {
           >
             <User size={18} />
             {t("nav.profile")}
+          </button>
+          <button
+            onClick={() => router.push("/feedback")}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              pathname === "/feedback"
+                ? "bg-accent/10 text-accent"
+                : "text-secondary hover:text-primary hover:bg-border"
+            }`}
+          >
+            <MessageSquare size={18} />
+            {t("nav.feedback")}
           </button>
         </div>
 

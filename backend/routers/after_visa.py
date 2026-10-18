@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import get_current_user_id
 from app.models.after_visa import AfterVisaProgress
-from app.models.roadmap import RoadmapProgress
 from app.services.after_visa_service import (
     AFTER_VISA_MODULES,
     compute_module_progress,

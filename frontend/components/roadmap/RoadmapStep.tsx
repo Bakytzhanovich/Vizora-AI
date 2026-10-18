@@ -2,6 +2,7 @@
 
 import { forwardRef } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import type { RoadmapStepData } from "@/lib/api";
 import { ActionButton } from "./ActionButton";
 import { RoadmapLine } from "./RoadmapLine";
@@ -15,6 +16,7 @@ interface Props {
 
 export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
   ({ step, isLast, onMarkComplete, updating }, ref) => {
+    const { t, i18n } = useTranslation("roadmap");
     const isCompleted = step.status === "completed";
     const isCurrent = step.status === "in_progress";
     const isPending = step.status === "pending";
@@ -56,29 +58,29 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
           >
             <div className="flex items-start justify-between gap-2">
               <p className={`text-sm font-semibold leading-snug ${isPending ? "text-secondary" : "text-primary"}`}>
-                {step.title}
+                {t(`steps.${step.id}.title`)}
               </p>
               {isCurrent && (
                 <span className="shrink-0 text-xs font-bold text-accent bg-accent/15 px-1.5 py-0.5 rounded-full">
-                  СЕЙЧАС
+                  {t("now").toUpperCase()}
                 </span>
               )}
             </div>
 
             {!isPending && (
-              <p className="text-secondary text-xs mt-1 leading-relaxed">{step.description}</p>
+              <p className="text-secondary text-xs mt-1 leading-relaxed">{t(`steps.${step.id}.description`)}</p>
             )}
 
             {isCompleted && step.completed_at && (
               <p className="text-teal text-xs mt-1.5">
-                ✓ Выполнено {new Date(step.completed_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+                {t("done_on", { date: new Date(step.completed_at).toLocaleDateString(i18n.language === "kz" ? "kk-KZ" : "ru-RU", { day: "numeric", month: "long" }) })}
               </p>
             )}
 
             {isCurrent && (
               <>
                 <div className="mt-2 bg-accent/10 rounded-lg px-3 py-2">
-                  <p className="text-accent-light text-xs leading-relaxed">💡 {step.tips}</p>
+                  <p className="text-primary text-xs leading-relaxed">💡 {t(`steps.${step.id}.tips`)}</p>
                 </div>
                 <ActionButton stepId={step.id} />
                 {!step.auto_complete && (
@@ -87,14 +89,14 @@ export const RoadmapStep = forwardRef<HTMLDivElement, Props>(
                     disabled={updating}
                     className="mt-1 min-h-11 text-xs text-secondary hover:text-teal transition-colors disabled:opacity-50 flex items-center gap-1"
                   >
-                    {updating ? "Сохраняем..." : "Отметить выполненным ✓"}
+                    {updating ? t("saving") : t("mark_done")}
                   </button>
                 )}
               </>
             )}
 
             {isPending && !step.auto_complete && (
-              <p className="text-secondary text-xs mt-1">Ещё впереди</p>
+              <p className="text-secondary text-xs mt-1">{t("ahead")}</p>
             )}
           </motion.div>
         </div>
