@@ -43,64 +43,58 @@ export function setStoredLanguage(lang: SupportedLanguage): void {
   localStorage.setItem(STORAGE_KEY, lang);
 }
 
+const resources = {
+  ru: {
+    common: ruCommon,
+    dashboard: ruDashboard,
+    onboarding: ruOnboarding,
+    simulator: ruSimulator,
+    chat: ruChat,
+    documents: ruDocuments,
+    emergency: ruEmergency,
+    landing: ruLanding,
+    pricing: ruPricing,
+    profile: ruProfile,
+    offers: ruOffers,
+    feedback: ruFeedback,
+    roadmap: ruRoadmap,
+  },
+  kz: {
+    common: kzCommon,
+    dashboard: kzDashboard,
+    onboarding: kzOnboarding,
+    simulator: kzSimulator,
+    chat: kzChat,
+    documents: kzDocuments,
+    emergency: kzEmergency,
+    landing: kzLanding,
+    pricing: kzPricing,
+    profile: kzProfile,
+    offers: kzOffers,
+    feedback: kzFeedback,
+    roadmap: kzRoadmap,
+  },
+};
+
 if (!i18n.isInitialized) {
   i18n.use(initReactI18next).init({
-    resources: {
-      ru: {
-        common: ruCommon,
-        dashboard: ruDashboard,
-        onboarding: ruOnboarding,
-        simulator: ruSimulator,
-        chat: ruChat,
-        documents: ruDocuments,
-        emergency: ruEmergency,
-        landing: ruLanding,
-        pricing: ruPricing,
-        profile: ruProfile,
-        offers: ruOffers,
-        feedback: ruFeedback,
-        roadmap: ruRoadmap,
-      },
-      kz: {
-        common: kzCommon,
-        dashboard: kzDashboard,
-        onboarding: kzOnboarding,
-        simulator: kzSimulator,
-        chat: kzChat,
-        documents: kzDocuments,
-        emergency: kzEmergency,
-        landing: kzLanding,
-        pricing: kzPricing,
-        profile: kzProfile,
-        offers: kzOffers,
-        feedback: kzFeedback,
-        roadmap: kzRoadmap,
-      },
-    },
+    resources,
     // Always "ru" here, matching what the server renders (it has no access
     // to localStorage) — switching to the stored language happens after
     // mount in I18nInit, to avoid a hydration text mismatch.
     lng: "ru",
     fallbackLng: "ru",
     defaultNS: "common",
-    ns: [
-      "common",
-      "dashboard",
-      "onboarding",
-      "simulator",
-      "chat",
-      "documents",
-      "emergency",
-      "landing",
-      "pricing",
-      "profile",
-      "offers",
-      "feedback",
-      "roadmap",
-    ],
+    ns: Object.keys(resources.ru),
     interpolation: { escapeValue: false },
     react: { useSuspense: false },
   });
+} else {
+  // Dev hot reload re-runs this module on an already initialized instance;
+  // without this a namespace added since the page loaded shows raw keys.
+  for (const [lng, namespaces] of Object.entries(resources)) {
+    for (const [ns, data] of Object.entries(namespaces)) i18n.addResourceBundle(lng, ns, data, true, true);
+  }
 }
 
 export default i18n;
