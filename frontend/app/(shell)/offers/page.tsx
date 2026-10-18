@@ -245,7 +245,7 @@ export default function OffersPage() {
             className="min-h-11 shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-accent px-3 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
           >
             <Plus size={16} aria-hidden />
-            {t("sell")}
+            {t("sell_short")}
           </button>
         </div>
       </div>
