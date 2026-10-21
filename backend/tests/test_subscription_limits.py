@@ -11,6 +11,9 @@ class _Db:
     async def commit(self):
         pass
 
+    async def scalar(self, _query):
+        return None  # no referral bonus sessions
+
 
 def _standard_user(used: int, month) -> User:
     return User(

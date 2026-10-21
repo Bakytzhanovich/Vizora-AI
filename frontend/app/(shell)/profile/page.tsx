@@ -11,6 +11,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LogoutConfirmModal } from "@/components/ui/LogoutConfirmModal";
 import { PoweredByFooter } from "@/components/branding/PoweredByFooter";
+import { ChangePasswordCard } from "@/components/profile/ChangePasswordCard";
 import { apiGetPlans } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 
@@ -227,6 +228,8 @@ export default function ProfilePage() {
             <ThemeSwitcher />
           </div>
         </motion.div>
+
+        {user && <ChangePasswordCard hasPassword={user.has_password} />}
 
         {/* Logout */}
         <motion.button

@@ -1,7 +1,6 @@
 """APScheduler setup for web push inactivity/interview reminders.
 
-Mirrors scraper/scheduler.py's structure and telegram-bot/notifications.py's
-schedule (10:00 and 18:00 Almaty time).
+Mirrors scraper/scheduler.py's structure. Runs once a day at 10:00 Almaty time.
 """
 
 import logging
@@ -30,14 +29,16 @@ def start_push_scheduler() -> AsyncIOScheduler:
     scheduler.add_job(
         run_all_push_checks,
         trigger="cron",
-        hour="10,18",
+        # Once a day: each reminder targets one specific day, so a second run
+        # sent the same message again.
+        hour=10,
         id="vizora_web_push_notifications",
         replace_existing=True,
         misfire_grace_time=1800,
     )
 
     scheduler.start()
-    logger.info("Push scheduler started: checks at 10:00 and 18:00 Almaty time.")
+    logger.info("Push scheduler started: daily check at 10:00 Almaty time.")
     return scheduler
 
 

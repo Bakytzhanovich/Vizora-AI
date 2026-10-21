@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Literal
@@ -9,16 +9,12 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.security import get_current_user_id
+from app.core.security import get_current_user_id, has_known_password
 from app.models.agency import Agency, AgencyInvite, AgencyStudent
 from app.models.profile import StudentProfile
 from app.models.referral import Referral
 from app.models.user import User
-from app.services.referral_service import (
-    check_and_grant_rewards,
-    count_completed_referrals,
-    grant_welcome_bonus,
-)
+from app.services.referral_service import grant_welcome_bonus
 from app.services.risk_service import generate_risk_profile
 from app.services.subscription_service import get_user_access
 from app.services.trial_notifications import get_subscription_banner
@@ -87,19 +83,15 @@ async def onboarding(
     await db.commit()
     await db.refresh(profile)
 
-    # Complete referral if this user was invited
+    # An invited student gets their welcome session now; the referral itself
+    # counts for the referrer only once this student pays (payments.py).
     referral = await db.scalar(
         select(Referral).where(
             and_(Referral.referred_id == user_id, Referral.status == "pending")
         )
     )
     if referral:
-        referral.status = "completed"
-        referral.completed_at = datetime.utcnow()
-        await db.commit()
         await grant_welcome_bonus(user_id, db)
-        completed = await count_completed_referrals(referral.referrer_id, db)
-        await check_and_grant_rewards(referral.referrer_id, completed, db)
 
     return {
         "profile": {
@@ -186,7 +178,14 @@ async def get_me(
                 }
 
     return {
-        "user": {"id": user.id, "email": user.email, "role": user.role, "language": user.language},
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "language": user.language,
+            # Google/Telegram accounts: the form then skips "current password".
+            "has_password": has_known_password(user),
+        },
         "profile": {
             "id": profile.id,
             "name": profile.name,

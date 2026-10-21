@@ -12,12 +12,13 @@ forward (see routers/payments.py).
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agency import Agency
 from app.models.simulator import SimulatorSession
 from app.models.user import User
+from app.services.referral_service import bonus_sessions
 
 PAID_PLANS = ("standard", "premium", "agency_starter", "agency_business", "agency_partner")
 AGENCY_PLANS = ("agency_starter", "agency_business", "agency_partner")
@@ -80,8 +81,12 @@ FEATURE_KEYS = {
 }
 
 
+def _almaty_today() -> date:
+    return datetime.now(ZoneInfo("Asia/Almaty")).date()
+
+
 def _current_month() -> date:
-    return datetime.now(ZoneInfo("Asia/Almaty")).date().replace(day=1)
+    return _almaty_today().replace(day=1)
 
 
 def set_free_plan(user: User) -> None:
@@ -120,14 +125,15 @@ async def get_user_access(user: User, db: AsyncSession) -> dict:
             user.sessions_used_this_month = 0
             user.sessions_month = month
             await db.commit()
+        limit = limits["simulator_sessions_per_month"] + await bonus_sessions(user.id, db)
         result["sessions_used"] = user.sessions_used_this_month
-        result["sessions_limit"] = limits["simulator_sessions_per_month"]
-        result["sessions_ok"] = user.sessions_used_this_month < limits["simulator_sessions_per_month"]
+        result["sessions_limit"] = limit
+        result["sessions_ok"] = user.sessions_used_this_month < limit
     elif limits.get("simulator_sessions_total") is not None:
         total_used = await db.scalar(
             select(func.count()).select_from(SimulatorSession).where(SimulatorSession.user_id == user.id)
         )
-        limit = limits["simulator_sessions_total"]
+        limit = limits["simulator_sessions_total"] + await bonus_sessions(user.id, db)
         # Cap the displayed count at the limit — a user who downgrades back to
         # FREE after racking up many sessions on a paid plan would otherwise
         # show a nonsensical "23/1 used" instead of a sane "1/1".
@@ -164,20 +170,28 @@ async def check_feature_access(user_id: str, feature: str, db: AsyncSession) -> 
     if feature == "faq":
         if limits["faq_per_day"] is None:
             return True, "ok"
-        today = date.today()
-        if user.faq_reset_date != today:
-            user.faq_used_today = 0
-            user.faq_reset_date = today
-        if user.faq_used_today < limits["faq_per_day"]:
-            # Increment right here, atomically with the check that grants
-            # access — this counter only exists to cap free-plan users, so it
-            # must never move for standard/premium users (faq_per_day: None
-            # short-circuits above before this runs).
-            user.faq_used_today += 1
-            await db.commit()
-            return True, "ok"
+        # One conditional UPDATE does the day rollover, the check and the
+        # increment, so parallel requests can't all read the same old count.
+        # The day is Almaty's, like the session month.
+        today = _almaty_today()
+        granted = await db.execute(
+            update(User)
+            .where(
+                User.id == user_id,
+                or_(
+                    User.faq_reset_date.is_(None),
+                    User.faq_reset_date != today,
+                    User.faq_used_today < limits["faq_per_day"],
+                ),
+            )
+            .values(
+                faq_used_today=case((User.faq_reset_date == today, User.faq_used_today + 1), else_=1),
+                faq_reset_date=today,
+            )
+            .execution_options(synchronize_session=False)
+        )
         await db.commit()
-        return False, "faq_limit"
+        return (True, "ok") if granted.rowcount else (False, "faq_limit")
 
     if limits.get(feature, False):
         return True, "ok"

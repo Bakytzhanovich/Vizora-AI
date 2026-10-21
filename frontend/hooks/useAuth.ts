@@ -12,6 +12,7 @@ interface AuthUser {
   email: string;
   role: string;
   language: string;
+  has_password: boolean;
 }
 
 interface AuthState {

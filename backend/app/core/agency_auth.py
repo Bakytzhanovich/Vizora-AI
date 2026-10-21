@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from slowapi.util import get_remote_address
+from middleware.rate_limit import client_ip
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -52,7 +52,7 @@ async def get_current_member(
     except jwt.InvalidTokenError:
         asyncio.create_task(log_suspicious_activity(
             event_type="invalid_jwt",
-            ip=get_remote_address(request),
+            ip=client_ip(request),
             details={"reason": "Invalid agency token", "path": request.url.path},
         ))
         raise HTTPException(status_code=401, detail="Invalid agency token")
@@ -62,7 +62,7 @@ async def get_current_member(
     if role not in ("admin", "manager"):
         asyncio.create_task(log_suspicious_activity(
             event_type="invalid_jwt",
-            ip=get_remote_address(request),
+            ip=client_ip(request),
             details={"reason": "Unrecognized agency token role", "path": request.url.path},
         ))
         raise HTTPException(status_code=401, detail="Устаревший токен. Войдите снова.")
@@ -83,7 +83,7 @@ async def get_current_member(
         if not member or member.status != "active":
             asyncio.create_task(log_suspicious_activity(
                 event_type="deactivated_account_access",
-                ip=get_remote_address(request),
+                ip=client_ip(request),
                 user_id=ctx.member_id,
                 details={"path": request.url.path},
             ))

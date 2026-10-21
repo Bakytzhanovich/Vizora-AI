@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -30,7 +30,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=True)
     role = Column(String(20), nullable=False, default="student")
-    refresh_token_hash = Column(String(255), nullable=True)
+    # Space-separated SHA-256 hashes, newest first: one per signed-in device
+    # (routers/auth.py). A single slot logged the laptop out on every phone login.
+    refresh_token_hash = Column(Text, nullable=True)
     telegram_id = Column(String(20), unique=True, nullable=True, index=True)
     telegram_username = Column(String(255), nullable=True)
     oauth_provider = Column(String(20), nullable=True)  # e.g. "google"; null for email/password users

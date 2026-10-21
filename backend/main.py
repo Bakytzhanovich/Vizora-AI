@@ -148,13 +148,9 @@ async def lifespan(app: FastAPI):
     # Start web push inactivity/interview reminder scheduler
     from app.services.push_scheduler import start_push_scheduler, stop_push_scheduler
     start_push_scheduler()
-    # Start monthly session / daily FAQ usage-counter reset scheduler
-    from app.services.subscription_scheduler import start_subscription_scheduler, stop_subscription_scheduler
-    start_subscription_scheduler()
     yield
     stop_kb_scheduler()
     stop_push_scheduler()
-    stop_subscription_scheduler()
 
 
 app = FastAPI(

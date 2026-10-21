@@ -195,6 +195,10 @@ async def respond(
         raise HTTPException(status_code=400, detail="Answer is empty")
 
     session = await _load_session(db, body.session_id, user_id)
+    if session.completed:
+        # Answering on after /end turned one session into an unlimited one,
+        # past the monthly session limit.
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Session is already finished")
     profile, risks = await _load_profile(db, user_id)
 
     student_message = {
@@ -309,12 +313,17 @@ async def respond(
 
 
 @router.post("/end")
+@limiter.limit("10/minute")  # each call is a full AI feedback generation
 async def end_session(
+    request: Request,
     body: EndRequest,
     user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     session = await _load_session(db, body.session_id, user_id)
+    if session.completed and session.feedback:
+        # A retry or a repeated call gets the saved result, not another paid AI call.
+        return {"feedback": json.loads(session.feedback), "session_id": session.id}
     transcript: list[dict] = json.loads(session.transcript)
     profile, risks = await _load_profile(db, user_id)
 

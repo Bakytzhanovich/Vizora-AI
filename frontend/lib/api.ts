@@ -267,7 +267,7 @@ export interface SubscriptionInfo {
 
 export async function apiGetMe() {
   const { data } = await api.get<{
-    user: { id: string; email: string; role: string; language: string };
+    user: { id: string; email: string; role: string; language: string; has_password: boolean };
     profile: UserProfile | null;
     risk_profile: RiskProfile | null;
     subscription: SubscriptionInfo;
@@ -638,6 +638,10 @@ export async function apiDownloadSessionPdf(sessionId: string) {
 
 export type FeedbackKind = "idea" | "bug" | "question";
 
+export async function apiChangePassword(current_password: string, new_password: string) {
+  await api.post("/auth/change-password", { current_password, new_password });
+}
+
 export async function apiSendFeedback(kind: FeedbackKind, message: string, page?: string) {
   await api.post("/feedback", { kind, message, page });
 }
@@ -649,8 +653,6 @@ export async function apiRateSession(sessionId: string, rating: number, message?
 export async function apiGetPlans() {
   const { data } = await api.get<{
     plans: Plan[];
-    upgrade_discount_code: string;
-    upgrade_discount_rate: number;
     payment_mode: "manual" | "kaspi";
   }>("/payments/plans");
   return data;
@@ -699,16 +701,8 @@ export interface CreatePaymentResponse {
   mock_mode: boolean;
 }
 
-export async function apiCreatePayment(
-  plan: string,
-  billing_period: "monthly" | "yearly" = "monthly",
-  discount_code?: string
-) {
-  const { data } = await api.post<CreatePaymentResponse>("/payments/create-payment", {
-    plan,
-    billing_period,
-    ...(discount_code ? { discount_code } : {}),
-  });
+export async function apiCreatePayment(plan: string, billing_period: "monthly" | "yearly" = "monthly") {
+  const { data } = await api.post<CreatePaymentResponse>("/payments/create-payment", { plan, billing_period });
   return data;
 }
 

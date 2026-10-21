@@ -1,7 +1,7 @@
 """Referral program logic — code generation, reward tiers, reward granting."""
 import random
 import string
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, func, select
@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.referral import Referral, ReferralCode, ReferralReward
+from app.models.user import User
 
 REWARD_TIERS: list[dict[str, Any]] = [
     {
@@ -113,11 +114,34 @@ async def count_completed_referrals(referrer_id: str, db: AsyncSession) -> int:
     return result or 0
 
 
+# Far enough to read as "forever" while staying a plain date the plan logic
+# already understands.
+LIFETIME_PERIOD_END = datetime(2100, 1, 1)
+
+
+def _extend_premium(user: User, days: int | None) -> None:
+    """Month or lifetime Premium from a reward. A running paid period is
+    extended rather than replaced, so the student never loses days they paid for."""
+    now = datetime.utcnow()
+    running = (
+        user.subscription_plan in ("standard", "premium")
+        and user.subscription_period_end
+        and user.subscription_period_end > now
+    )
+    base = user.subscription_period_end if running else now
+    user.subscription_plan = "premium"
+    user.subscription_status = "active"
+    user.subscription_period_end = LIFETIME_PERIOD_END if days is None else max(base, now) + timedelta(days=days)
+
+
 async def check_and_grant_rewards(
     referrer_id: str, completed_count: int, db: AsyncSession
 ) -> list[dict[str, Any]]:
-    """Grant all tiers up to completed_count that haven't been granted yet."""
+    """Grant all tiers up to completed_count that haven't been granted yet.
+    Access tiers take effect right here; sessions and the discount are read
+    from the reward rows by subscription_service and routers/payments.py."""
     granted = []
+    referrer = await db.get(User, referrer_id)
     for tier in REWARD_TIERS:
         if completed_count < tier["referrals_needed"]:
             continue
@@ -139,10 +163,48 @@ async def check_and_grant_rewards(
                     status="earned",
                 )
             )
+            if referrer and tier["reward_type"] in ("unlimited_access", "lifetime_access"):
+                _extend_premium(referrer, tier["reward_value"])
             granted.append(tier)
     if granted:
         await db.commit()
     return granted
+
+
+async def complete_referral_on_payment(referred_id: str, db: AsyncSession) -> None:
+    """A referral counts once the invited student pays: counting sign-ups let
+    anyone farm lifetime access with throwaway accounts."""
+    referral = await db.scalar(
+        select(Referral).where(Referral.referred_id == referred_id, Referral.status == "pending")
+    )
+    if not referral:
+        return
+    referral.status = "completed"
+    referral.completed_at = datetime.utcnow()
+    await db.commit()
+    completed = await count_completed_referrals(referral.referrer_id, db)
+    await check_and_grant_rewards(referral.referrer_id, completed, db)
+
+
+async def bonus_sessions(user_id: str, db: AsyncSession) -> int:
+    """Extra simulator sessions from the welcome bonus and the first tier."""
+    total = await db.scalar(
+        select(func.sum(ReferralReward.reward_value)).where(
+            ReferralReward.user_id == user_id,
+            ReferralReward.reward_type.in_(("simulator_session", WELCOME_BONUS["reward_type"])),
+        )
+    )
+    return total or 0
+
+
+async def unused_referral_discount(user_id: str, db: AsyncSession) -> ReferralReward | None:
+    return await db.scalar(
+        select(ReferralReward).where(
+            ReferralReward.user_id == user_id,
+            ReferralReward.reward_type == "discount",
+            ReferralReward.status == "earned",
+        )
+    )
 
 
 async def grant_welcome_bonus(referred_id: str, db: AsyncSession) -> None:

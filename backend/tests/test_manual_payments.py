@@ -13,6 +13,7 @@ from app.core.database import Base, get_db
 from app.core.agency_auth import create_member_token
 from app.core.security import create_access_token, hash_password
 from app.models.agency import Agency, AgencyMember
+from app.models.referral import Referral
 from app.models.user import User
 from main import app
 from middleware.rate_limit import limiter
@@ -168,6 +169,32 @@ class ManualPaymentTests(unittest.TestCase):
         approve = self.client.post(f"/api/admin/payment-requests/{req['id']}/approve", headers=self._headers("owner"))
         self.assertEqual(approve.status_code, 409)
 
+
+    def test_referral_counts_when_the_friend_pays_and_the_discount_is_used_once(self):
+        async def seed() -> dict:
+            async with self.sessionmaker() as s:
+                people = {n: User(email=f"{n}@ref.com", password_hash="x") for n in ("inviter", "friend", "f1", "f2")}
+                s.add_all(people.values())
+                await s.flush()
+                # Two friends paid earlier; the third one's payment unlocks the 30% tier.
+                for n in ("f1", "f2"):
+                    s.add(Referral(referrer_id=people["inviter"].id, referred_id=people[n].id,
+                                   referral_code="INV1", status="completed"))
+                s.add(Referral(referrer_id=people["inviter"].id, referred_id=people["friend"].id,
+                               referral_code="INV1", status="pending"))
+                await s.commit()
+                return {n: u.id for n, u in people.items()}
+
+        self.ids.update(asyncio.run(seed()))
+        self.assertEqual(self._request("inviter")["amount"], 3_900)
+
+        friend_req = self._request("friend")
+        self.client.post(f"/api/admin/payment-requests/{friend_req['id']}/approve", headers=self._headers("owner"))
+
+        discounted = self._request("inviter")
+        self.assertEqual(discounted["amount"], 2_730)
+        self.client.post(f"/api/admin/payment-requests/{discounted['id']}/approve", headers=self._headers("owner"))
+        self.assertEqual(self._request("inviter")["amount"], 3_900)
 
 if __name__ == "__main__":
     unittest.main()

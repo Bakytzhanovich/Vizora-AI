@@ -32,7 +32,7 @@ LEGACY_COLUMNS = {
     "users": {
         "telegram_id": "VARCHAR(20)",
         "telegram_username": "VARCHAR(255)",
-        "refresh_token_hash": "VARCHAR(255)",
+        "refresh_token_hash": "TEXT",
     },
     "agency_students": {
         "assigned_manager_id": "VARCHAR(36)",

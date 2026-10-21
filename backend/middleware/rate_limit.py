@@ -32,7 +32,20 @@ logger = logging.getLogger(__name__)
 # and would've hit /chat/message, /simulator/*, /agency/team/invite too).
 # Retry-After for the 429 case is computed manually below instead, without
 # going through that code path at all.
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+def client_ip(request: Request) -> str:
+    """The student's IP, not the proxy's. Every request reaches us through
+    Vercel's /api rewrite and Render's load balancer, so the socket address is
+    the same handful of proxy IPs for everyone — keyed on it, the 5/minute
+    login limit was one bucket for the whole site. Vercel sets the first
+    X-Forwarded-For entry to the real client. A caller that goes to Render
+    directly can forge it and dodge the limits — accepted, since the other
+    choice throttles every student together."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    first = forwarded.split(",")[0].strip()
+    return first or get_remote_address(request)
+
+
+limiter = Limiter(key_func=client_ip, default_limits=["100/minute"])
 
 
 def _retry_after_seconds(request: Request) -> int:
@@ -68,7 +81,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
     # hits hardest.
     asyncio.create_task(log_suspicious_activity(
         event_type="rate_limit_exceeded",
-        ip=get_remote_address(request),
+        ip=client_ip(request),
         details={"path": request.url.path, "method": request.method},
     ))
 

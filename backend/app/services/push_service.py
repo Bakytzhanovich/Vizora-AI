@@ -12,7 +12,7 @@ import logging
 from datetime import date, datetime, timedelta
 
 from pywebpush import WebPushException, webpush
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -78,69 +78,90 @@ async def notify_admins(title: str, body: str, url: str) -> None:
         logger.warning("Admin push failed", exc_info=True)
 
 
+def _web_push_only():
+    """Has a browser subscription and no linked Telegram — the Telegram bot
+    already sends the same reminders there (telegram-bot/notifications.py)."""
+    has_push = select(PushSubscription.user_id).distinct().scalar_subquery()
+    return and_(User.id.in_(has_push), User.telegram_id.is_(None))
+
+
+def _first_name(profile: StudentProfile) -> str:
+    # Agency-created profiles can have a blank name; split()[0] crashed the whole run.
+    parts = (profile.name or "").split()
+    return parts[0] if parts else "Привет"
+
+
 async def send_interview_3day_reminders(db: AsyncSession) -> None:
     target_date = date.today() + timedelta(days=3)
     has_session_subq = (
         select(SimulatorSession.user_id).where(SimulatorSession.completed == True).distinct().scalar_subquery()
     )
-    has_push_subq = select(PushSubscription.user_id).distinct().scalar_subquery()
     rows = await db.execute(
         select(User, StudentProfile)
         .join(StudentProfile, StudentProfile.user_id == User.id)
         .where(
             and_(
-                User.id.in_(has_push_subq),
+                _web_push_only(),
                 StudentProfile.interview_date == target_date,
                 User.id.not_in(has_session_subq),
             )
         )
     )
     for user, profile in rows:
-        name = profile.name.split()[0]
         await _send_to_user(
             db,
             user.id,
             "До интервью 3 дня",
-            f"{name}, ты ещё не прошёл ни одной тренировки. Самое время попрактиковаться в симуляторе.",
+            f"{_first_name(profile)}, ты ещё не прошёл ни одной тренировки. Самое время попрактиковаться в симуляторе.",
             "/simulator",
         )
 
 
 async def send_interview_1day_reminders(db: AsyncSession) -> None:
     target_date = date.today() + timedelta(days=1)
-    has_push_subq = select(PushSubscription.user_id).distinct().scalar_subquery()
     rows = await db.execute(
         select(User, StudentProfile)
         .join(StudentProfile, StudentProfile.user_id == User.id)
-        .where(and_(User.id.in_(has_push_subq), StudentProfile.interview_date == target_date))
+        .where(and_(_web_push_only(), StudentProfile.interview_date == target_date))
     )
     for user, profile in rows:
-        name = profile.name.split()[0]
         await _send_to_user(
             db,
             user.id,
             "Удачи завтра!",
-            f"{name}, завтра твоё интервью в консульстве. Ты готов — Vizora AI верит в тебя!",
+            f"{_first_name(profile)}, завтра твоё интервью в консульстве. Ты готов — Vizora AI верит в тебя!",
             "/dashboard",
         )
 
 
 async def send_roadmap_stuck_reminders(db: AsyncSession) -> None:
-    cutoff = datetime.utcnow() - timedelta(days=7)
-    active_subq = select(RoadmapProgress.user_id).where(RoadmapProgress.created_at >= cutoff).distinct().scalar_subquery()
-    has_push_subq = select(PushSubscription.user_id).distinct().scalar_subquery()
+    """Once, on the 7th day without progress — not every run after it, which
+    nagged an idle student twice a day for good."""
+    day_start = datetime.combine(date.today() - timedelta(days=7), datetime.min.time())
+    last_step = (
+        select(RoadmapProgress.user_id, func.max(RoadmapProgress.created_at).label("at"))
+        .group_by(RoadmapProgress.user_id)
+        .subquery()
+    )
+    last_activity = func.coalesce(last_step.c.at, StudentProfile.created_at)
     rows = await db.execute(
         select(User, StudentProfile)
         .join(StudentProfile, StudentProfile.user_id == User.id)
-        .where(and_(User.id.in_(has_push_subq), User.id.not_in(active_subq)))
+        .outerjoin(last_step, last_step.c.user_id == User.id)
+        .where(
+            and_(
+                _web_push_only(),
+                last_activity >= day_start,
+                last_activity < day_start + timedelta(days=1),
+            )
+        )
     )
     for user, profile in rows:
-        name = profile.name.split()[0]
         await _send_to_user(
             db,
             user.id,
             "Мы скучаем!",
-            f"{name}, ты не заходил в Vizora AI уже 7 дней. Не останавливайся — продолжи готовиться к интервью.",
+            f"{_first_name(profile)}, ты не заходил в Vizora AI уже 7 дней. Не останавливайся — продолжи готовиться к интервью.",
             "/roadmap",
         )
 

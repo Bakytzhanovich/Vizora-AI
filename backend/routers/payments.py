@@ -25,6 +25,7 @@ from app.models.subscription_event import SubscriptionEvent
 from app.models.user import User
 from app.services import kaspi_pay_client
 from app.services.push_service import notify_admins
+from app.services.referral_service import complete_referral_on_payment, unused_referral_discount
 from app.services.subscription_service import AGENCY_PLANS, PAID_PLANS, PLAN_LIMITS, get_user_access
 
 logger = logging.getLogger(__name__)
@@ -50,10 +51,9 @@ PLAN_NAMES_RU = {
     "agency_partner": "Agency Partner",
 }
 
-# Promo discount for FREE-plan users upgrading — separate from any trial
-# concept (there is no trial anymore, FREE is permanent).
-UPGRADE_DISCOUNT_CODE = "trial30"
-UPGRADE_DISCOUNT_RATE = 0.3
+# Earned by inviting 3 friends who paid (referral_service.REWARD_TIERS);
+# applied automatically to the student's next purchase.
+REFERRAL_DISCOUNT_RATE = 0.3
 
 
 @router.get("/plans")
@@ -70,8 +70,6 @@ async def list_plans():
             }
             for plan_id, prices in PLAN_PRICES_KZT.items()
         ],
-        "upgrade_discount_code": UPGRADE_DISCOUNT_CODE,
-        "upgrade_discount_rate": UPGRADE_DISCOUNT_RATE,
         "payment_mode": settings.PAYMENT_MODE,
     }
 
@@ -86,7 +84,6 @@ async def social_proof(db: AsyncSession = Depends(get_db)):
 class CreatePaymentRequest(BaseModel):
     plan: str
     billing_period: str = "monthly"  # "monthly" | "yearly"
-    discount_code: str | None = None
 
 
 async def _create_kaspi_payment_or_502(
@@ -123,7 +120,7 @@ async def create_payment(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    amount, discount_applied = await _checkout_amount(user, body.plan, body.billing_period, body.discount_code, db)
+    amount, discount_applied = await _checkout_amount(user.id, body.plan, body.billing_period, db)
 
     order_id = str(uuid.uuid4())
     result = await _create_kaspi_payment_or_502(
@@ -155,16 +152,12 @@ async def create_payment(
     }
 
 
-async def _checkout_amount(
-    user: User, plan: str, billing_period: str, discount_code: str | None, db: AsyncSession
-) -> tuple[int, bool]:
-    """Price for a student checkout, with the one-time upgrade discount for
-    FREE users. Shared by the Kaspi QR checkout and manual invoice requests."""
+async def _checkout_amount(user_id: str, plan: str, billing_period: str, db: AsyncSession) -> tuple[int, bool]:
+    """Price for a student checkout, with an unused referral discount applied.
+    Shared by the Kaspi QR checkout and manual invoice requests."""
     amount = PLAN_PRICES_KZT[plan][billing_period]
-    if discount_code == UPGRADE_DISCOUNT_CODE:
-        access = await get_user_access(user, db)
-        if access["plan"] == "free":
-            return round(amount * (1 - UPGRADE_DISCOUNT_RATE)), True
+    if await unused_referral_discount(user_id, db):
+        return round(amount * (1 - REFERRAL_DISCOUNT_RATE)), True
     return amount, False
 
 
@@ -249,6 +242,14 @@ async def _apply_successful_payment(
     user.kaspi_last_payment_id = payment_id
     user.sessions_used_this_month = 0
 
+    # A price below the list price can only come from the referral discount
+    # (_checkout_amount), so this purchase used it up.
+    full_price = PLAN_PRICES_KZT.get(checkout_event.plan, {}).get(billing_period)
+    discount = await unused_referral_discount(user.id, db)
+    if discount and full_price and checkout_event.amount < full_price:
+        discount.status = "claimed"
+        discount.claimed_at = datetime.utcnow()
+
     db.add(
         SubscriptionEvent(
             user_id=user.id,
@@ -268,7 +269,9 @@ async def _apply_successful_payment(
         # than surfacing a raw 500 to the webhook caller.
         await db.rollback()
         return {"status": "already_applied"}
-    return {"status": "activated", "plan": user.subscription_plan, "period_end": user.subscription_period_end}
+    result = {"status": "activated", "plan": user.subscription_plan, "period_end": user.subscription_period_end}
+    await complete_referral_on_payment(user.id, db)
+    return result
 
 
 async def _apply_successful_agency_payment(
@@ -479,7 +482,6 @@ class ManualPaymentRequestBody(BaseModel):
     plan: str
     billing_period: str = "monthly"
     phone: str
-    discount_code: str | None = None
 
     @field_validator("phone")
     @classmethod
@@ -518,7 +520,7 @@ async def create_manual_request(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    amount, _ = await _checkout_amount(user, body.plan, body.billing_period, body.discount_code, db)
+    amount, _ = await _checkout_amount(user_id, body.plan, body.billing_period, db)
 
     # One open request per student: picking another plan or fixing the phone
     # updates it instead of piling up requests the owner would have to sort out.

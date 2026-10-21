@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import secrets
+import time
 import urllib.parse
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
@@ -19,7 +20,10 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     get_current_user_id,
+    TELEGRAM_EMAIL_DOMAIN,
+    has_known_password,
     hash_password,
+    validate_new_password,
     verify_password,
 )
 from app.models.profile import StudentProfile
@@ -27,8 +31,7 @@ from app.models.referral import Referral, ReferralCode
 from app.models.user import User
 from app.services.security_logger import log_suspicious_activity
 from app.services.subscription_service import set_free_plan
-from middleware.rate_limit import limiter
-from slowapi.util import get_remote_address
+from middleware.rate_limit import client_ip, limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -111,6 +114,7 @@ class TelegramTokenResponse(BaseModel):
 
 
 REFRESH_COOKIE_NAME = "refresh_token"
+TELEGRAM_INIT_DATA_MAX_AGE = 24 * 60 * 60
 
 
 def _refresh_cookie_options() -> dict[str, object]:
@@ -134,6 +138,21 @@ def _clear_refresh_cookie(response: Response) -> None:
 
 def _hash_refresh_token(refresh_token: str) -> str:
     return hashlib.sha256(refresh_token.encode()).hexdigest()
+
+
+MAX_DEVICES = 5
+
+
+def _device_hashes(user: User) -> list[str]:
+    return (user.refresh_token_hash or "").split()
+
+
+def _store_refresh_token(user: User, refresh_token: str, replaces: str | None = None) -> None:
+    """Add this device's token, dropping the one it replaces (a refresh) and
+    the oldest devices past MAX_DEVICES."""
+    old = _hash_refresh_token(replaces) if replaces else None
+    others = [h for h in _device_hashes(user) if h != old]
+    user.refresh_token_hash = " ".join([_hash_refresh_token(refresh_token), *others][:MAX_DEVICES])
 
 
 def _validate_origin(request: Request) -> None:
@@ -167,7 +186,7 @@ async def _issue_login_response(
     issuance and cookie semantics stay in one place.
     """
     refresh_token = create_refresh_token(user.id)
-    user.refresh_token_hash = _hash_refresh_token(refresh_token)
+    _store_refresh_token(user, refresh_token)
     await db.commit()
     _set_refresh_cookie(response, refresh_token)
 
@@ -227,7 +246,7 @@ async def register(
                     referrer_name = referrer_profile.name.split()[0]
 
     refresh_token = create_refresh_token(user.id)
-    user.refresh_token_hash = _hash_refresh_token(refresh_token)
+    _store_refresh_token(user, refresh_token)
     await db.commit()
     _set_refresh_cookie(response, refresh_token)
 
@@ -259,7 +278,7 @@ async def login(
         # this on every failed attempt.
         asyncio.create_task(log_suspicious_activity(
             event_type="failed_login",
-            ip=get_remote_address(request),
+            ip=client_ip(request),
             user_id=user.id if user else None,
             details={"email": body.email.lower()},
         ))
@@ -297,9 +316,16 @@ async def google_auth(
 
     if user:
         if user.oauth_provider is None:
-            # Existing email/password account signing in with Google for the first time — link it.
+            # Existing email/password account signing in with Google for the
+            # first time — link it. Emails aren't verified at sign-up, so the
+            # password may belong to whoever registered this address first (or
+            # to the agency that created it). Google just proved the real
+            # owner: drop that password and every session it opened.
             user.oauth_provider = "google"
             user.oauth_id = google_id
+            user.password_hash = None
+            user.password_set_by_agency = None
+            user.refresh_token_hash = None
             if avatar_url:
                 user.avatar_url = avatar_url
     else:
@@ -335,11 +361,11 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
 
     user_id = decode_token(refresh_token, expected_type="refresh")
     user = await db.get(User, user_id)
-    if not user or user.refresh_token_hash != _hash_refresh_token(refresh_token):
+    if not user or _hash_refresh_token(refresh_token) not in _device_hashes(user):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     new_refresh_token = create_refresh_token(user.id)
-    user.refresh_token_hash = _hash_refresh_token(new_refresh_token)
+    _store_refresh_token(user, new_refresh_token, replaces=refresh_token)
     await db.commit()
     _set_refresh_cookie(response, new_refresh_token)
 
@@ -355,10 +381,53 @@ async def logout(
 ):
     _validate_origin(request)
     user = await db.get(User, user_id)
-    if user:
-        user.refresh_token_hash = None
+    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if user and refresh_token:
+        # Only this device; the student's other devices stay signed in.
+        current = _hash_refresh_token(refresh_token)
+        user.refresh_token_hash = " ".join(h for h in _device_hashes(user) if h != current) or None
         await db.commit()
     _clear_refresh_cookie(response)
+    return {"success": True}
+
+
+class ChangePasswordRequest(BaseModel):
+    # Empty for accounts that never had a password (Google/Telegram sign-in).
+    current_password: str = ""
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_rules(cls, v: str) -> str:
+        return validate_new_password(v)
+
+
+@router.post("/change-password")
+@limiter.limit("5/minute")
+async def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    response: Response,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Also the student's way out of an agency-issued password: once they set
+    their own, the agency can no longer issue a new one."""
+    _validate_origin(request)
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    if has_known_password(user) and not await verify_password(body.current_password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный текущий пароль")
+
+    user.password_hash = await asyncio.to_thread(hash_password, body.new_password)
+    user.password_set_by_agency = None
+    # Signs out every other device: whoever knew the old password loses access.
+    user.refresh_token_hash = None
+    refresh_token = create_refresh_token(user.id)
+    _store_refresh_token(user, refresh_token)
+    await db.commit()
+    _set_refresh_cookie(response, refresh_token)
     return {"success": True}
 
 
@@ -373,6 +442,13 @@ def _validate_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
     params = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
     received_hash = params.pop("hash", None)
     if not received_hash:
+        return None
+    # Signed initData never expires on its own; without an age check a copy
+    # that leaked once would sign in forever.
+    try:
+        if time.time() - int(params.get("auth_date", "0")) > TELEGRAM_INIT_DATA_MAX_AGE:
+            return None
+    except ValueError:
         return None
 
     data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
@@ -418,7 +494,7 @@ async def telegram_auth(
 
     if not user:
         is_new = True
-        synthetic_email = f"tg_{tg_id}@tg.vizora.internal"
+        synthetic_email = f"tg_{tg_id}{TELEGRAM_EMAIL_DOMAIN}"
         user = User(
             email=synthetic_email,
             password_hash=hash_password(secrets.token_urlsafe(32)),
@@ -471,7 +547,7 @@ async def telegram_auth(
     )
 
     refresh_token = create_refresh_token(user.id)
-    user.refresh_token_hash = _hash_refresh_token(refresh_token)
+    _store_refresh_token(user, refresh_token)
     await db.commit()
     _set_refresh_cookie(response, refresh_token)
 

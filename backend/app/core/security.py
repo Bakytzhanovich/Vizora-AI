@@ -6,7 +6,7 @@ import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from slowapi.util import get_remote_address
+from middleware.rate_limit import client_ip
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -27,6 +27,15 @@ def validate_new_password(password: str) -> str:
     if len(password.encode("utf-8")) > 72:
         raise ValueError("Пароль слишком длинный (максимум 72 байта)")
     return password
+
+
+TELEGRAM_EMAIL_DOMAIN = "@tg.vizora.internal"
+
+
+def has_known_password(user: User) -> bool:
+    """Telegram sign-up stores a random password nobody knows; Google sign-up
+    stores none. Only a password someone actually set can be asked for."""
+    return user.password_hash is not None and not user.email.endswith(TELEGRAM_EMAIL_DOMAIN)
 
 
 def hash_password(password: str) -> str:
@@ -95,7 +104,7 @@ async def get_current_user_id(
             # is waiting on.
             asyncio.create_task(log_suspicious_activity(
                 event_type="invalid_jwt",
-                ip=get_remote_address(request),
+                ip=client_ip(request),
                 details={"reason": exc.detail, "path": request.url.path},
             ))
         raise
